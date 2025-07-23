@@ -101,13 +101,13 @@ def place_obstacles():
     empty = [(x, y) for x in range(BOARD_WIDTH) for y in range(BOARD_HEIGHT)]
     random.shuffle(empty)
     idx = 0
-    for _ in range(7):  # Çimen (slow)
+    for _ in range(11):  # Çimen (slow)
         pos = empty[idx]; idx += 1
         obstacles.append({"pos": pos, "type": "slow"})
-    for _ in range(5):  # Kutu (poison)
+    for _ in range(7):  # Kutu (poison)
         pos = empty[idx]; idx += 1
         obstacles.append({"pos": pos, "type": "poison"})
-    for _ in range(5):  # Gizli duvar
+    for _ in range(7):  # Gizli duvar
         pos = empty[idx]; idx += 1
         obstacles.append({"pos": pos, "type": "hidden_wall"})
     return obstacles

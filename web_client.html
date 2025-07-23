@@ -18,16 +18,76 @@
             position: fixed;
             inset: 0;
             z-index: 10;
-            background: rgba(34,34,34,0.95);
+            /* Arka planı bulanık ve görsel ile kapla */
+            background: url('assets/Background.jpg') center center/cover no-repeat;
         }
-        #ui h1 { margin-bottom: 32px; }
-        #ui input { margin-bottom: 16px; }
-        #ui button { margin-bottom: 8px; }
+        #ui::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(34,34,34,0.55);
+            backdrop-filter: blur(6px);
+            z-index: -1;
+        }
+        #ui h1 {
+            margin-bottom: 32px;
+            font-size: 2.8em;
+            font-weight: 900;
+            letter-spacing: 2px;
+            color: #fff;
+            text-shadow: 0 2px 12px #000a;
+        }
+        #ui input {
+            margin-bottom: 12px;
+            padding: 12px 24px;
+            font-size: 1.3em;
+            border-radius: 10px;
+            border: 2px solid #444;
+            outline: none;
+            background: rgba(255,255,255,0.12);
+            color: #fff;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+            transition: border 0.2s, box-shadow 0.2s;
+        }
+        #ui input:focus {
+            border: 2px solid #4caf50;
+            box-shadow: 0 2px 12px #4caf5055;
+        }
+        #ui input.error {
+            border: 2px solid #e53935;
+        }
+        #ui button {
+            margin-bottom: 8px;
+            padding: 12px 32px;
+            font-size: 1.2em;
+            border-radius: 10px;
+            border: none;
+            background: linear-gradient(90deg, #4caf50 60%, #388e3c 100%);
+            color: #fff;
+            font-weight: bold;
+            letter-spacing: 1px;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.13);
+            transition: background 0.2s, box-shadow 0.2s;
+        }
+        #ui button:hover, #ui button:focus {
+            background: linear-gradient(90deg, #388e3c 60%, #4caf50 100%);
+            box-shadow: 0 4px 16px #4caf5055;
+        }
+        #ui .error-msg {
+            color: #e53935;
+            font-size: 1.1em;
+            margin-bottom: 10px;
+            min-height: 24px;
+            font-weight: 500;
+            text-shadow: 0 1px 4px #000a;
+        }
         #left-panel {
             position: fixed;
             left: 0;
             top: 0;
-            width: 260px;
+            width: 160px;
             height: 100vh;
             background: #222;
             display: flex;
@@ -49,7 +109,7 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.15);
         }
         #game-container {
-            margin-left: 260px;
+            margin-left: 180px;
         }
         #game {
             background: #111;
@@ -76,17 +136,47 @@
             border-radius: 16px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.18);
         }
+        #top-usernames {
+            position: fixed;
+            left: 160px;
+            top: 0;
+            width: calc(100vw - 160px);
+            height: 48px;
+            background: transparent;
+            color: #fff;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: flex-start;
+            z-index: 15;
+            font-size: 1.3em;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            padding-left: 32px;
+            gap: 48px;
+            pointer-events: none;
+        }
+        #top-usernames span {
+            background: rgba(34,34,34,0.45);
+            border-radius: 8px;
+            padding: 6px 18px;
+            margin-right: 0;
+            pointer-events: auto;
+        }
+        #left-panel { z-index: 20; }
+        #game-container { margin-left: 160px; }
     </style>
 </head>
 <body>
     <div id="ui">
-        <h1> Snake Game</h1>
+        <h1>Snake Game</h1>
+        <div class="error-msg" id="ui-error"></div>
         <input id="nicknameInput" type="text" maxlength="16" placeholder="Kullanıcı adı" />
         <button id="startBtn">Başla</button>
     </div>
     <div id="left-panel" style="display:none;">
         <div id="scoreboard"></div>
     </div>
+    <div id="top-usernames" style="display:none;"></div>
     <div id="game-container" style="display:none;">
         <div style="position:relative;">
             <canvas id="game" width="1200" height="700"></canvas>
@@ -140,7 +230,7 @@
             gameState = state;
             if (!myId) myId = nickname;
             draw();
-            updateScoreboard();
+            updateTopUsernames();
         };
         ws.onclose = () => {
             setTimeout(connect, 1000);
@@ -166,17 +256,34 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
         if (!gameState) return;
-        // Engeller
+        // Yılanlar
+        if (gameState.snakes) {
+            for (const [pid, snake] of Object.entries(gameState.snakes)) {
+                ctx.fillStyle = (pid === myId) ? 'lime' : 'yellow';
+                for (const [i, seg] of snake.entries()) {
+                    ctx.fillRect(seg[0]*CELL_SIZE, seg[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                }
+            }
+        }
+        // Engeller (yılanlardan sonra çiz)
         if (gameState.obstacles) {
             for (const obs of gameState.obstacles) {
                 const [ox, oy] = obs.pos;
-                const size = CELL_SIZE * 1.2;
+                const size = CELL_SIZE * 1.5;
                 const offset = (size - CELL_SIZE) / 2;
                 if (obs.type === 'slow' && assets.grass) ctx.drawImage(assets.grass, ox*CELL_SIZE - offset, oy*CELL_SIZE - offset, size, size);
                 else if (obs.type === 'poison' && assets.box) ctx.drawImage(assets.box, ox*CELL_SIZE - offset, oy*CELL_SIZE - offset, size, size);
                 else if (obs.type === 'hidden_wall') {
-                    ctx.fillStyle = '#555';
-                    ctx.fillRect(ox*CELL_SIZE, oy*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                    let show = false;
+                    if (gameState.snakes && myId && gameState.snakes[myId] && gameState.snakes[myId].length > 0) {
+                        const [hx, hy] = gameState.snakes[myId][0];
+                        const dist = Math.abs(hx - ox) + Math.abs(hy - oy);
+                        if (dist <= 4) show = true;
+                    }
+                    if (show) {
+                        ctx.fillStyle = '#555';
+                        ctx.fillRect(ox*CELL_SIZE, oy*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                    }
                 }
             }
         }
@@ -211,15 +318,6 @@
             if (assets.golden) ctx.drawImage(assets.golden, gx*CELL_SIZE, gy*CELL_SIZE, CELL_SIZE, CELL_SIZE);
             else { ctx.fillStyle = 'gold'; ctx.beginPath(); ctx.arc(gx*CELL_SIZE+CELL_SIZE/2, gy*CELL_SIZE+CELL_SIZE/2, CELL_SIZE/2, 0, 2*Math.PI); ctx.fill(); }
         }
-        // Yılanlar
-        if (gameState.snakes) {
-            for (const [pid, snake] of Object.entries(gameState.snakes)) {
-                ctx.fillStyle = (pid === myId) ? 'lime' : 'yellow';
-                for (const [i, seg] of snake.entries()) {
-                    ctx.fillRect(seg[0]*CELL_SIZE, seg[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
-                }
-            }
-        }
         // Kalan süre
         if (gameState.time_left !== undefined) {
             ctx.fillStyle = 'yellow';
@@ -240,14 +338,16 @@
     }
 
     // --- Skor tablosu ---
-    function updateScoreboard() {
-        const sb = document.getElementById('scoreboard');
-        if (!gameState || !gameState.scores) { sb.innerHTML = ''; return; }
-        let html = '<b>Skorlar:</b> ';
-        for (const [pid, score] of Object.entries(gameState.scores)) {
-            html += `<span style="margin-right:20px">${pid}: ${score}</span>`;
+    function updateScoreboard() { /* Artık kullanılmıyor */ }
+
+    function updateTopUsernames() {
+        const topDiv = document.getElementById('top-usernames');
+        if (!gameState || !gameState.scores) { topDiv.innerHTML = ''; return; }
+        let html = '';
+        for (const pid of Object.keys(gameState.scores)) {
+            html += `<span>${pid}: ${gameState.scores[pid]}</span>`;
         }
-        sb.innerHTML = html;
+        topDiv.innerHTML = html;
     }
 
     // --- Dinamik boyutlandırma fonksiyonu ---
@@ -259,16 +359,34 @@
     // --- Tam ekran butonu kaldırıldı ---
     // window.addEventListener('resize', resizeGameCanvas);
     // --- Oyun başlatıldığında canvas'ı tam ekran boyutla ---
-    document.getElementById('startBtn').onclick = () => {
-        nickname = document.getElementById('nicknameInput').value.trim();
-        if (!nickname) { alert('Kullanıcı adı gir!'); return; }
+    document.getElementById('startBtn').onclick = startGame;
+    document.getElementById('nicknameInput').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') startGame();
+    });
+    function startGame() {
+        const errorDiv = document.getElementById('ui-error');
+        const input = document.getElementById('nicknameInput');
+        nickname = input.value.trim();
+        errorDiv.textContent = '';
+        input.classList.remove('error');
+        if (!nickname) {
+            errorDiv.textContent = 'Kullanıcı adı gir!';
+            input.classList.add('error');
+            return;
+        }
+        if (nickname.length > 8) {
+            errorDiv.textContent = 'Kullanıcı adı en fazla 8 karakter olmalı!';
+            input.classList.add('error');
+            return;
+        }
         document.getElementById('ui').style.display = 'none';
         document.getElementById('game-container').style.display = 'flex';
         document.getElementById('left-panel').style.display = 'flex';
+        document.getElementById('top-usernames').style.display = 'flex';
         started = true;
         connect();
         draw();
-    };
+    }
 
     document.addEventListener('keydown', (e) => {
         if (!started || !ws || ws.readyState !== 1) return;
@@ -304,6 +422,9 @@
         resizeGameCanvas();
         draw();
     });
+
+    // --- Tam ekran fonksiyonu ---
+    // (Kaldırıldı)
     </script>
 </body>
 </html> 
