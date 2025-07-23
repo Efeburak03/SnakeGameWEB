@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>WebSocket Snake Game</title>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background: #222;
+        }
+        #ui {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: fixed;
+            inset: 0;
+            z-index: 10;
+            background: rgba(34,34,34,0.95);
+        }
+        #ui h1 { margin-bottom: 32px; }
+        #ui input { margin-bottom: 16px; }
+        #ui button { margin-bottom: 8px; }
+        #left-panel {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 260px;
+            height: 100vh;
+            background: #222;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: flex-start;
+            z-index: 20;
+            padding-top: 40px;
+            box-shadow: 2px 0 8px rgba(0,0,0,0.18);
+        }
+        #scoreboard {
+            margin: 0 0 16px 24px;
+            background: rgba(34,34,34,0.85);
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 1.3em;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+        #game-container {
+            margin-left: 260px;
+        }
+        #game {
+            background: #111;
+            display: block;
+            margin: 0 auto;
+            border-radius: 12px;
+            box-shadow: 0 2px 16px rgba(0,0,0,0.25);
+        }
+        .game-message {
+            position: absolute;
+            left: 0; right: 0; top: 0; bottom: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+            z-index: 5;
+        }
+        .game-message span {
+            background: rgba(34,34,34,0.85);
+            color: #fff;
+            font-size: 2.5em;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            padding: 24px 48px;
+            border-radius: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+        }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        <h1> Snake Game</h1>
+        <input id="nicknameInput" type="text" maxlength="16" placeholder="Kullanıcı adı" />
+        <button id="startBtn">Başla</button>
+    </div>
+    <div id="left-panel" style="display:none;">
+        <div id="scoreboard"></div>
+    </div>
+    <div id="game-container" style="display:none;">
+        <div style="position:relative;">
+            <canvas id="game" width="1200" height="700"></canvas>
+            <div id="game-message" class="game-message" style="display:none;"><span></span></div>
+        </div>
+    </div>
+    <script>
+    // --- Oyun parametreleri ---
+    let BOARD_WIDTH = 60;
+    let BOARD_HEIGHT = 35  ;
+    let CELL_SIZE = 20;
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    let ws = null;
+    let myId = null;
+    let gameState = null;
+    let started = false;
+    let readySent = false;
+    let eliminationTime = null;
+    let currentDirection = 'UP';
+    let nickname = '';
+    let assets = {};
+
+    // --- Görselleri yükle ---
+    const assetFiles = {
+        apple: 'assets/elma.png',
+        golden: 'assets/golden_apple.png',
+        grass: 'assets/çimen.png',
+        box: 'assets/kutu.png',
+        portal: 'assets/portal.png',
+        bg: 'assets/Background.jpg',
+    };
+    function loadAssets(cb) {
+        let loaded = 0, total = Object.keys(assetFiles).length;
+        for (const [key, src] of Object.entries(assetFiles)) {
+            const img = new Image();
+            img.onload = () => { assets[key] = img; if (++loaded === total) cb(); };
+            img.onerror = () => { loaded++; if (loaded === total) cb(); };
+            img.src = src;
+        }
+    }
+
+    // --- WebSocket bağlantısı ---
+    function connect() {
+        ws = new WebSocket('ws://localhost:8765');
+        ws.onopen = () => {
+            ws.send(JSON.stringify({type: 'join', client_id: nickname}));
+        };
+        ws.onmessage = (event) => {
+            const state = JSON.parse(event.data);
+            gameState = state;
+            if (!myId) myId = nickname;
+            draw();
+            updateScoreboard();
+        };
+        ws.onclose = () => {
+            setTimeout(connect, 1000);
+        };
+    }
+
+    // --- Oyun çizimi ---
+    function draw() {
+        // Arka planı tekrar eden desen olarak döşe
+        if (assets.bg) {
+            const pattern = ctx.createPattern(assets.bg, 'repeat');
+            ctx.save();
+            ctx.fillStyle = pattern;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.restore();
+        } else if (assets.grass) {
+            const pattern = ctx.createPattern(assets.grass, 'repeat');
+            ctx.save();
+            ctx.fillStyle = pattern;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.restore();
+        } else {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+        if (!gameState) return;
+        // Engeller
+        if (gameState.obstacles) {
+            for (const obs of gameState.obstacles) {
+                const [ox, oy] = obs.pos;
+                const size = CELL_SIZE * 1.2;
+                const offset = (size - CELL_SIZE) / 2;
+                if (obs.type === 'slow' && assets.grass) ctx.drawImage(assets.grass, ox*CELL_SIZE - offset, oy*CELL_SIZE - offset, size, size);
+                else if (obs.type === 'poison' && assets.box) ctx.drawImage(assets.box, ox*CELL_SIZE - offset, oy*CELL_SIZE - offset, size, size);
+                else if (obs.type === 'hidden_wall') {
+                    ctx.fillStyle = '#555';
+                    ctx.fillRect(ox*CELL_SIZE, oy*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                }
+            }
+        }
+        // Portallar
+        if (gameState.portals) {
+            for (const [a, b] of gameState.portals) {
+                if (assets.portal) {
+                    const size = CELL_SIZE * 1.2;
+                    const offset = (size - CELL_SIZE) / 2;
+                    ctx.drawImage(assets.portal, a[0]*CELL_SIZE - offset, a[1]*CELL_SIZE - offset, size, size);
+                    ctx.drawImage(assets.portal, b[0]*CELL_SIZE - offset, b[1]*CELL_SIZE - offset, size, size);
+                } else {
+                    ctx.fillStyle = '#80f';
+                    ctx.fillRect(a[0]*CELL_SIZE, a[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                    ctx.fillRect(b[0]*CELL_SIZE, b[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                }
+            }
+        }
+        // Yemler
+        if (gameState.food) {
+            for (const [fx, fy] of gameState.food) {
+                if (assets.apple) {
+                    const size = CELL_SIZE * 1.2;
+                    const offset = (size - CELL_SIZE) / 2;
+                    ctx.drawImage(assets.apple, fx*CELL_SIZE - offset, fy*CELL_SIZE - offset, size, size);
+                } else { ctx.fillStyle = 'red'; ctx.fillRect(fx*CELL_SIZE, fy*CELL_SIZE, CELL_SIZE, CELL_SIZE); }
+            }
+        }
+        // Altın elma
+        if (gameState.golden_food) {
+            const [gx, gy] = gameState.golden_food;
+            if (assets.golden) ctx.drawImage(assets.golden, gx*CELL_SIZE, gy*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+            else { ctx.fillStyle = 'gold'; ctx.beginPath(); ctx.arc(gx*CELL_SIZE+CELL_SIZE/2, gy*CELL_SIZE+CELL_SIZE/2, CELL_SIZE/2, 0, 2*Math.PI); ctx.fill(); }
+        }
+        // Yılanlar
+        if (gameState.snakes) {
+            for (const [pid, snake] of Object.entries(gameState.snakes)) {
+                ctx.fillStyle = (pid === myId) ? 'lime' : 'yellow';
+                for (const [i, seg] of snake.entries()) {
+                    ctx.fillRect(seg[0]*CELL_SIZE, seg[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                }
+            }
+        }
+        // Kalan süre
+        if (gameState.time_left !== undefined) {
+            ctx.fillStyle = 'yellow';
+            ctx.font = '24px Arial';
+            ctx.fillText('Süre: ' + (gameState.time_left||0) + ' sn', canvas.width/2-60, 30);
+        }
+        // Oyun mesajı gösterimi
+        const msgDiv = document.getElementById('game-message');
+        if (gameState.active && myId && !gameState.active[myId]) {
+            msgDiv.style.display = 'flex';
+            msgDiv.querySelector('span').textContent = 'Elenedin! Devam için Enter';
+        } else if (gameState.waiting_for_restart) {
+            msgDiv.style.display = 'flex';
+            msgDiv.querySelector('span').textContent = 'Oyun Bitti! Kazanan: ' + (gameState.winner_id||'-') + '\nDevam için Enter (tüm oyuncular)';
+        } else {
+            msgDiv.style.display = 'none';
+        }
+    }
+
+    // --- Skor tablosu ---
+    function updateScoreboard() {
+        const sb = document.getElementById('scoreboard');
+        if (!gameState || !gameState.scores) { sb.innerHTML = ''; return; }
+        let html = '<b>Skorlar:</b> ';
+        for (const [pid, score] of Object.entries(gameState.scores)) {
+            html += `<span style="margin-right:20px">${pid}: ${score}</span>`;
+        }
+        sb.innerHTML = html;
+    }
+
+    // --- Dinamik boyutlandırma fonksiyonu ---
+    // (Tam ekran ve responsive kodları kaldırıldı)
+    function resizeGameCanvas() {
+        // Sabit boyut, sadece yeniden çiz
+        draw();
+    }
+    // --- Tam ekran butonu kaldırıldı ---
+    // window.addEventListener('resize', resizeGameCanvas);
+    // --- Oyun başlatıldığında canvas'ı tam ekran boyutla ---
+    document.getElementById('startBtn').onclick = () => {
+        nickname = document.getElementById('nicknameInput').value.trim();
+        if (!nickname) { alert('Kullanıcı adı gir!'); return; }
+        document.getElementById('ui').style.display = 'none';
+        document.getElementById('game-container').style.display = 'flex';
+        document.getElementById('left-panel').style.display = 'flex';
+        started = true;
+        connect();
+        draw();
+    };
+
+    document.addEventListener('keydown', (e) => {
+        if (!started || !ws || ws.readyState !== 1) return;
+        if (!myId) return;
+        if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
+            e.preventDefault();
+        }
+        if (e.key === 'ArrowUp') sendMove('UP');
+        else if (e.key === 'ArrowDown') sendMove('DOWN');
+        else if (e.key === 'ArrowLeft') sendMove('LEFT');
+        else if (e.key === 'ArrowRight') sendMove('RIGHT');
+        else if (e.key === 'Enter') {
+            if (gameState && gameState.active && !gameState.active[myId]) {
+                ws.send(JSON.stringify({type: 'restart', client_id: myId}));
+            } else if (gameState && gameState.waiting_for_restart) {
+                if (!readySent) {
+                    ws.send(JSON.stringify({type: 'ready', client_id: myId}));
+                    readySent = true;
+                }
+            }
+        }
+    });
+
+    function sendMove(dir) {
+        if (!myId) return;
+        if (dir === currentDirection) return;
+        ws.send(JSON.stringify({type: 'move', client_id: myId, direction: dir}));
+        currentDirection = dir;
+    }
+
+    // --- Başlat ---
+    loadAssets(() => {
+        resizeGameCanvas();
+        draw();
+    });
+    </script>
+</body>
+</html> 
