@@ -5,6 +5,7 @@ import random
 import time
 from common import MSG_MOVE, MSG_STATE, MSG_RESTART, create_state_message, MAX_PLAYERS, get_snake_color, OBSTACLE_TYPES
 import copy
+import os
 
 BOARD_WIDTH = 60   # Enine daha geniş
 BOARD_HEIGHT = 35 # 700/20 = 35 satır
@@ -502,8 +503,10 @@ async def ws_handler(websocket):
         if websocket in clients:
             del clients[websocket]
 
+PORT = int(os.environ.get("PORT", 8765))
+
 async def main():
-    async with websockets.serve(ws_handler, "0.0.0.0", 8765):
+    async with websockets.serve(ws_handler, "0.0.0.0", PORT):
         await game_loop()
 
 if __name__ == "__main__":
