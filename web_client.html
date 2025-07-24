@@ -335,6 +335,21 @@
         } else {
             msgDiv.style.display = 'none';
         }
+        // Power-up'lar
+        if (gameState.powerups) {
+            for (const pu of gameState.powerups) {
+                const [x, y] = pu.pos;
+                let color = '#ccc';
+                if (pu.type === 'speed') color = 'blue';
+                else if (pu.type === 'shield') color = 'black';
+                else if (pu.type === 'invisible') color = 'gray';
+                else if (pu.type === 'reverse') color = 'white';
+                ctx.beginPath();
+                ctx.arc(x*CELL_SIZE+CELL_SIZE/2, y*CELL_SIZE+CELL_SIZE/2, CELL_SIZE/2.2, 0, 2*Math.PI);
+                ctx.fillStyle = color;
+                ctx.fill();
+            }
+        }
     }
 
     // --- Skor tablosu ---
