@@ -3,7 +3,7 @@ import websockets
 import json
 import random
 import time
-from common import MSG_MOVE, MSG_STATE, MSG_RESTART, create_state_message, MAX_PLAYERS, get_snake_color, OBSTACLE_TYPES
+from common import MSG_MOVE, MSG_STATE, MSG_RESTART, create_state_message, MAX_PLAYERS, get_snake_color, OBSTACLE_TYPES, POWERUP_TYPES
 import copy
 import os
 
@@ -14,12 +14,7 @@ TICK_RATE = 0.05  # saniye, 30 FPS
 
 # Power-up türleri
 def random_powerup(snakes, foods, obstacles, portals, powerups):
-    POWERUP_TYPES = [
-        {"type": "speed", "color": (0, 0, 255)},        # Hızlandırıcı (mavi)
-        {"type": "shield", "color": (0, 0, 0)},        # Zırh (siyah)
-        {"type": "invisible", "color": (128, 128, 128)}, # Görünmezlik (gri)
-        {"type": "reverse", "color": (255, 255, 255)},   # Ters kontrol (beyaz)
-    ]
+    # POWERUP_TYPES artık common.py'den geliyor
     occupied = set()
     for snake in snakes.values():
         occupied.update(snake)
@@ -143,7 +138,20 @@ def reset_snake(client_id):
     game_state["snakes"][client_id] = snake
     game_state["directions"][client_id] = "UP"
     game_state["active"][client_id] = True
-    game_state["colors"][client_id] = get_snake_color(client_id)
+    # Kullanılan renkleri bul ve çakışmayı engelle
+    used_colors = set(game_state["colors"].values())
+    all_colors = [
+        (0, 255, 0),    # Yeşil
+        (255, 255, 0),  # Sarı
+        (0, 255, 255),  # Camgöbeği
+        (255, 0, 255),  # Mor
+        (255, 128, 0),  # Turuncu
+        (128, 0, 255),  # Mavi-mor
+        (255, 0, 0),    # Kırmızı
+        (0, 128, 255),  # Açık mavi
+    ]
+    color = next((c for c in all_colors if c not in used_colors), get_snake_color(client_id))
+    game_state["colors"][client_id] = color
     if client_id not in game_state["scores"]:
         game_state["scores"][client_id] = 0
     if client_id not in game_state["active_powerups"]:
@@ -153,7 +161,7 @@ def reset_snake(client_id):
         game_state["portals"] = place_portals()      # Sadece ilk oyuncu girince portalları yerleştir
 
 # --- Power-up etkisi yardımcıları ---
-POWERUP_DURATIONS = {"speed": 10, "shield": 10, "invisible": 10, "reverse": 5}
+POWERUP_DURATIONS = {"speed": 10, "shield": 10, "invisible": 10, "reverse": 5, "freeze": 5, "giant": 10}
 
 def has_powerup(cid, ptype):
     now = time.time()
@@ -291,6 +299,9 @@ async def game_loop():
                     None
                 )
             for client_id in list(game_state["snakes"].keys()):
+                # Eğer oyuncu dondurulmuşsa hareket ettirme
+                if has_powerup(client_id, "frozen"):
+                    continue
                 if has_powerup(client_id, "speed"):
                     move_snake(client_id)
                 else:
@@ -363,6 +374,17 @@ def move_snake(client_id):
             if client_id not in game_state["active_powerups"]:
                 game_state["active_powerups"][client_id] = []
             game_state["active_powerups"][client_id].append({"type": pu["type"], "tick": time.time()})
+            # Freeze: diğer oyuncuları dondur
+            if pu["type"] == "freeze":
+                for other_id in game_state["snakes"]:
+                    if other_id != client_id:
+                        game_state["active_powerups"].setdefault(other_id, []).append({"type": "frozen", "tick": time.time()})
+            # Giant: yılanı büyüt
+            if pu["type"] == "giant":
+                snake = game_state["snakes"][client_id]
+                for _ in range(START_LENGTH):
+                    snake.append(snake[-1])
+                game_state["snakes"][client_id] = snake
             game_state["powerups"].remove(pu)
     # --- PORTAL KONTROLÜ ---
     for portal_a, portal_b in game_state.get("portals", []):
@@ -485,6 +507,10 @@ async def ws_handler(websocket):
             msg = json.loads(message)
             if msg.get("type") == "join":
                 client_id = msg.get("client_id")
+                # Aynı isimle giriş engeli
+                if client_id in game_state["snakes"]:
+                    await websocket.send(json.dumps({"type": "error", "message": "Bu kullanıcı adı zaten oyunda!"}))
+                    break  # Bağlantıyı kapat
                 reset_snake(client_id)
                 clients[websocket] = client_id
             elif msg.get("type") == MSG_MOVE:

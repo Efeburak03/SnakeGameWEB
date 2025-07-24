@@ -36,4 +36,14 @@ OBSTACLE_TYPES = [
     {"type": "slow", "color": (0, 255, 0)},
     {"type": "poison", "color": (255, 0, 0)},
     {"type": "hidden_wall", "color": (80, 80, 80)},
+]
+
+# Power-up türleri için renkler ve tipler
+POWERUP_TYPES = [
+    {"type": "speed", "color": (0, 0, 255)},        # Hızlandırıcı (mavi)
+    {"type": "shield", "color": (0, 0, 0)},        # Zırh (siyah)
+    {"type": "invisible", "color": (128, 128, 128)}, # Görünmezlik (gri)
+    {"type": "reverse", "color": (255, 255, 255)},   # Ters kontrol (beyaz)
+    {"type": "freeze", "color": (0, 200, 255)},      # Rakibi dondurma (açık mavi)
+    {"type": "giant", "color": (255, 128, 0)},       # Dev yılan (turuncu)
 ] 

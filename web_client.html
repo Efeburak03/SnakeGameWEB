@@ -259,7 +259,9 @@
         // Yılanlar
         if (gameState.snakes) {
             for (const [pid, snake] of Object.entries(gameState.snakes)) {
-                ctx.fillStyle = (pid === myId) ? 'lime' : 'yellow';
+                let frozen = false;
+                if (gameState.powerup_timers && gameState.powerup_timers[pid] && gameState.powerup_timers[pid]["frozen"] > 0) frozen = true;
+                ctx.fillStyle = frozen ? '#888' : (pid === myId ? 'lime' : 'yellow');
                 for (const [i, seg] of snake.entries()) {
                     ctx.fillRect(seg[0]*CELL_SIZE, seg[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
                 }
@@ -331,7 +333,12 @@
             msgDiv.querySelector('span').textContent = 'Elenedin! Devam için Enter';
         } else if (gameState.waiting_for_restart) {
             msgDiv.style.display = 'flex';
-            msgDiv.querySelector('span').textContent = 'Oyun Bitti! Kazanan: ' + (gameState.winner_id||'-') + '\nDevam için Enter (tüm oyuncular)';
+            let winnerName = gameState.winner_id;
+            let winnerScore = gameState.scores && winnerName ? gameState.scores[winnerName] : '';
+            if (!winnerName || winnerName === '-') winnerName = 'Yok';
+            msgDiv.querySelector('span').textContent =
+                'Oyun Bitti! Kazanan: ' + winnerName + (winnerScore !== '' ? ' (' + winnerScore + ' puan)' : '') + '\n' +
+                'Devam için Enter (tüm oyuncular)';
         } else {
             msgDiv.style.display = 'none';
         }
@@ -344,6 +351,8 @@
                 else if (pu.type === 'shield') color = 'black';
                 else if (pu.type === 'invisible') color = 'gray';
                 else if (pu.type === 'reverse') color = 'white';
+                else if (pu.type === 'freeze') color = '#00c8ff';
+                else if (pu.type === 'giant') color = 'orange';
                 ctx.beginPath();
                 ctx.arc(x*CELL_SIZE+CELL_SIZE/2, y*CELL_SIZE+CELL_SIZE/2, CELL_SIZE/2.2, 0, 2*Math.PI);
                 ctx.fillStyle = color;
