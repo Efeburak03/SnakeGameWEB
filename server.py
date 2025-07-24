@@ -3,7 +3,7 @@ import websockets
 import json
 import random
 import time
-from common import MSG_MOVE, MSG_STATE, MSG_RESTART, create_state_message, MAX_PLAYERS, get_snake_color, OBSTACLE_TYPES, POWERUP_TYPES
+from common import MSG_MOVE, MSG_STATE, MSG_RESTART, create_state_message, MAX_PLAYERS, get_snake_color, OBSTACLE_TYPES, POWERUP_TYPES, INITIAL_FOOD_COUNT
 import copy
 import os
 
@@ -62,7 +62,7 @@ def random_food(snakes, foods, obstacles=None, portals=None, powerups=None, gold
 game_state = {
     "snakes": {},
     "directions": {},
-    "food": [(5, 5), (10, 10)],
+    "food": [(5, 5 + i*2) for i in range(INITIAL_FOOD_COUNT)],
     "golden_food": None,
     "active": {},
     "colors": {},
@@ -385,6 +385,29 @@ def move_snake(client_id):
                 for _ in range(START_LENGTH):
                     snake.append(snake[-1])
                 game_state["snakes"][client_id] = snake
+            # Magnet: yakındaki elmalar yaklaşsın
+            if pu["type"] == "magnet":
+                head = game_state["snakes"][client_id][0]
+                new_foods = []
+                for fx, fy in game_state["food"]:
+                    dist = abs(fx - head[0]) + abs(fy - head[1])
+                    if dist <= 5:
+                        # Elmayı yılanın başına bir adım yaklaştır
+                        dx = 1 if head[0] > fx else -1 if head[0] < fx else 0
+                        dy = 1 if head[1] > fy else -1 if head[1] < fy else 0
+                        new_fx = fx + dx
+                        new_fy = fy + dy
+                        # Elma başka bir yılanın üstüne gelmesin
+                        occupied = set()
+                        for s in game_state["snakes"].values():
+                            occupied.update(s)
+                        if (new_fx, new_fy) not in occupied:
+                            new_foods.append((new_fx, new_fy))
+                        else:
+                            new_foods.append((fx, fy))
+                    else:
+                        new_foods.append((fx, fy))
+                game_state["food"] = new_foods
             game_state["powerups"].remove(pu)
     # --- PORTAL KONTROLÜ ---
     for portal_a, portal_b in game_state.get("portals", []):

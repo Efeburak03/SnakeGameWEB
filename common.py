@@ -46,4 +46,8 @@ POWERUP_TYPES = [
     {"type": "reverse", "color": (255, 255, 255)},   # Ters kontrol (beyaz)
     {"type": "freeze", "color": (0, 200, 255)},      # Rakibi dondurma (açık mavi)
     {"type": "giant", "color": (255, 128, 0)},       # Dev yılan (turuncu)
-] 
+    {"type": "magnet", "color": (180, 0, 255)},      # Magnet (mor)
+]
+
+# Oyun başında elma sayısı
+INITIAL_FOOD_COUNT = 4 
