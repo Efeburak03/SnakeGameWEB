@@ -221,13 +221,7 @@
 
     // --- WebSocket bağlantısı ---
     function connect() {
-        let wsUrl;
-        if (window.location.hostname.endsWith('onrender.com')) {
-            wsUrl = 'wss://snakegameweb.onrender.com';
-        } else {
-            wsUrl = 'ws://localhost:8765/';
-        }
-        ws = new WebSocket(wsUrl);
+        ws = new WebSocket('wss://snakegameweb.onrender.com');
         ws.onopen = () => {
             ws.send(JSON.stringify({type: 'join', client_id: nickname}));
         };
