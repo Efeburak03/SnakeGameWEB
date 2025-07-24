@@ -503,13 +503,13 @@ async def ws_handler(websocket):
         if websocket in clients:
             del clients[websocket]
 
-PORT = int(os.environ.get("PORT", 8765))
+PORT = int(os.environ.get("PORT", 10000))
 
 async def main():
     async with websockets.serve(ws_handler, "0.0.0.0", PORT):
         await game_loop()
 
 if __name__ == "__main__":
-    print("[*] WebSocket tabanlı Snake sunucusu başlatıldı (ws://localhost:8765)")
+    print("[*] WebSocket tabanlı Snake sunucusu başlatıldı ")
     print("ÇALIŞAN DOSYA:", __file__)
     asyncio.run(main()) 
