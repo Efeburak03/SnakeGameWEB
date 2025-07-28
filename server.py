@@ -352,6 +352,8 @@ def move_snake(client_id):
         return
     snake = game_state["snakes"].get(client_id)
     direction = game_state["directions"].get(client_id, "UP")
+    if not direction:
+        return  # Direction gelmeden yılanı hareket ettirme
     if not snake:
         reset_snake(client_id)
         snake = game_state["snakes"][client_id]
