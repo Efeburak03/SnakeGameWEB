@@ -396,6 +396,7 @@
         if (e.key === 'Enter') startGame();
     });
     function startGame() {
+        hideEagleEggScreen();
         const errorDiv = document.getElementById('ui-error');
         const input = document.getElementById('nicknameInput');
         nickname = input.value.trim();
@@ -435,6 +436,7 @@
         else if (e.key === 'ArrowLeft') sendMove('LEFT');
         else if (e.key === 'ArrowRight') sendMove('RIGHT');
         else if (e.key === 'Enter') {
+            hideEagleEggScreen();
             if (gameState && gameState.active && !gameState.active[myId]) {
                 ws.send(JSON.stringify({type: 'restart', client_id: myId}));
             } else if (gameState && gameState.waiting_for_restart) {
@@ -495,6 +497,12 @@
         img.style.width = '220px';
         overlay.appendChild(img);
         overlay.style.display = 'flex';
+    }
+
+    // Oyuncu yeniden başlatınca eagle overlay'i kapat
+    function hideEagleEggScreen() {
+        const overlay = document.getElementById('eagle-egg-overlay');
+        if (overlay) overlay.style.display = 'none';
     }
 
     // --- Başlat ---
