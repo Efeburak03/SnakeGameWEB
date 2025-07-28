@@ -500,6 +500,86 @@
         if (overlay) overlay.style.display = 'none';
     }
 
+    // 1. HTML'e matrix-bg canvas'ı ekle (oyun canvas'ının üstüne, ama z-index düşük)
+    const matrixCanvas = document.createElement('canvas');
+    matrixCanvas.id = 'matrix-bg';
+    matrixCanvas.style.position = 'fixed';
+    matrixCanvas.style.left = '0';
+    matrixCanvas.style.top = '0';
+    matrixCanvas.style.width = '100vw';
+    matrixCanvas.style.height = '100vh';
+    matrixCanvas.style.pointerEvents = 'none';
+    matrixCanvas.style.zIndex = '1';
+    document.body.appendChild(matrixCanvas);
+
+    let matrixMode = false;
+    let matrixAnimId = null;
+
+    // 2. Matrix yağmuru animasyonu fonksiyonu
+    function startMatrixRain() {
+        const c = document.getElementById('matrix-bg');
+        const ctx = c.getContext('2d');
+        // Canvas boyutunu güncelle
+        c.width = window.innerWidth;
+        c.height = window.innerHeight;
+        // Karakterler
+        const letters = 'アァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズヅブプエェケセテネヘメレヱゲゼデベペオォコソトノホモヨョロヲゴゾドボポヴッンABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        const fontSize = 18;
+        const columns = Math.floor(c.width / fontSize);
+        const drops = Array(columns).fill(1);
+        function drawMatrix() {
+            ctx.fillStyle = 'rgba(0,0,0,0.15)';
+            ctx.fillRect(0, 0, c.width, c.height);
+            ctx.font = fontSize + 'px monospace';
+            ctx.fillStyle = '#0F0';
+            for (let i = 0; i < drops.length; i++) {
+                const text = letters[Math.floor(Math.random() * letters.length)];
+                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+                if (drops[i] * fontSize > c.height && Math.random() > 0.975) {
+                    drops[i] = 0;
+                }
+                drops[i]++;
+            }
+            matrixAnimId = requestAnimationFrame(drawMatrix);
+        }
+        drawMatrix();
+        window.addEventListener('resize', resizeMatrixCanvas);
+        function resizeMatrixCanvas() {
+            c.width = window.innerWidth;
+            c.height = window.innerHeight;
+        }
+    }
+    function stopMatrixRain() {
+        if (matrixAnimId) cancelAnimationFrame(matrixAnimId);
+        const c = document.getElementById('matrix-bg');
+        if (c) {
+            const ctx = c.getContext('2d');
+            ctx.clearRect(0, 0, c.width, c.height);
+        }
+        matrixMode = false;
+    }
+
+    // 3. Kullanıcı adı kontrolü ve animasyonu başlatma
+    function checkMatrixMode() {
+        const name = nickname.trim().toLowerCase();
+        if (['matrix','neo','admin'].includes(name)) {
+            matrixMode = true;
+            startMatrixRain();
+        } else {
+            stopMatrixRain();
+        }
+    }
+
+    // 4. startGame fonksiyonunda kontrolü çağır
+    const origStartGame = startGame;
+    startGame = function() {
+        checkMatrixMode();
+        origStartGame.apply(this, arguments);
+    };
+
+    // 5. Sayfa ilk yüklendiğinde ve oyun bitince Matrix yağmurunu durdur
+    window.addEventListener('beforeunload', stopMatrixRain);
+
     // --- Başlat ---
     loadAssets(() => {
         resizeGameCanvas();
