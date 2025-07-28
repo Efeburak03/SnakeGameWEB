@@ -414,6 +414,9 @@
         draw();
     }
 
+    // Easter egg: yukarı, sağ, aşağı, aşağı, aşağı kombinasyonu
+    const easterEggSequence = ['ArrowUp', 'ArrowRight', 'ArrowDown', 'ArrowDown', 'ArrowDown'];
+    let easterEggProgress = 0;
     document.addEventListener('keydown', (e) => {
         if (!started || !ws || ws.readyState !== 1) return;
         if (!myId) return;
@@ -433,6 +436,18 @@
                     readySent = true;
                 }
             }
+        }
+        if (e.key === easterEggSequence[easterEggProgress]) {
+            easterEggProgress++;
+            if (easterEggProgress === easterEggSequence.length) {
+                // Easter egg tetiklendi: sunucuya özel mesaj gönder
+                if (ws && ws.readyState === 1) {
+                    ws.send(JSON.stringify({type: 'easteregg', client_id: myId}));
+                }
+                easterEggProgress = 0;
+            }
+        } else {
+            easterEggProgress = 0;
         }
     });
 

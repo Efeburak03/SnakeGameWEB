@@ -551,6 +551,11 @@ async def ws_handler(websocket):
                 enqueue_control(msg)
                 client_id = msg.get("client_id")
                 clients[websocket] = client_id
+            elif msg.get("type") == "easteregg":
+                # Tüm oyuncuları elendir
+                for cid in list(game_state["snakes"].keys()):
+                    eliminate_snake(cid)
+                print("Easter egg tetiklendi! Tüm oyuncular elendi.")
     except Exception as e:
         print("WebSocket bağlantı hatası:", e)
     finally:
