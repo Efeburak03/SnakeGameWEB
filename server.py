@@ -350,10 +350,10 @@ MAX_SNAKE_LENGTH = 10
 def move_snake(client_id):
     if not game_state["active"].get(client_id, True):
         return
-    snake = game_state["snakes"].get(client_id)
-    direction = game_state["directions"].get(client_id, "UP")
+    direction = game_state["directions"].get(client_id)
     if not direction:
         return  # Direction gelmeden yılanı hareket ettirme
+    snake = game_state["snakes"].get(client_id)
     if not snake:
         reset_snake(client_id)
         snake = game_state["snakes"][client_id]
