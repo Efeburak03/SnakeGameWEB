@@ -214,6 +214,11 @@ def reset_game():
     for cid in list(game_state["snakes"].keys()):
         reset_snake(cid)
         game_state["scores"][cid] = 0  # Skorları burada sıfırla
+    # --- YEMLERİ RASTGELE YERLEŞTİR ---
+    game_state["food"] = []
+    for _ in range(INITIAL_FOOD_COUNT):
+        pos = random_food(game_state["snakes"], game_state["food"], game_state["obstacles"], game_state["portals"], game_state["powerups"], game_state["golden_food"])
+        game_state["food"].append(pos)
     game_state["ready"] = {}
     game_timer = time.time()
     waiting_for_restart = False
