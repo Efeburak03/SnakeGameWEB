@@ -391,12 +391,18 @@
         if (e.key === 'Enter') startGame();
     });
     function startGame() {
-        hideEagleEggScreen();
-        const errorDiv = document.getElementById('ui-error');
+        // Kullanıcı adını input'tan tekrar al
         const input = document.getElementById('nicknameInput');
         nickname = input.value.trim();
-        errorDiv.textContent = '';
+        // Matrix mode kontrolü
+        if (nickname && ['matrix','neo','admin'].includes(nickname.toLowerCase())) {
+            startMatrixRain();
+        } else {
+            stopMatrixRain();
+        }
+        const errorDiv = document.getElementById('ui-error');
         input.classList.remove('error');
+        errorDiv.textContent = '';
         if (!nickname) {
             errorDiv.textContent = 'Kullanıcı adı gir!';
             input.classList.add('error');
@@ -412,7 +418,7 @@
         document.getElementById('left-panel').style.display = 'flex';
         document.getElementById('top-usernames').style.display = 'flex';
         started = true;
-        currentDirection = null; // Yön bilgisini sıfırla!
+        currentDirection = null;
         connect();
         draw();
     }
