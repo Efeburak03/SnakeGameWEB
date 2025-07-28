@@ -500,7 +500,7 @@
         if (overlay) overlay.style.display = 'none';
     }
 
-    // Matrix yağmuru için canvas'ı başta ekle
+    // Matrix yağmuru için canvas'ı body'nin en başına ekle
     let matrixCanvas = document.getElementById('matrix-bg');
     if (!matrixCanvas) {
         matrixCanvas = document.createElement('canvas');
@@ -511,9 +511,19 @@
         matrixCanvas.style.width = '100vw';
         matrixCanvas.style.height = '100vh';
         matrixCanvas.style.pointerEvents = 'none';
-        matrixCanvas.style.zIndex = '1';
-        document.body.appendChild(matrixCanvas);
+        matrixCanvas.style.zIndex = '0'; // EN ARKADA!
+        document.body.insertBefore(matrixCanvas, document.body.firstChild);
     }
+    // Oyun canvası ve UI elementlerinin z-index'i 1 veya daha yüksek olmalı
+    const gameCanvas = document.getElementById('game');
+    if (gameCanvas) gameCanvas.style.zIndex = '1';
+    const leftPanel = document.getElementById('left-panel');
+    if (leftPanel) leftPanel.style.zIndex = '2';
+    const topUsernames = document.getElementById('top-usernames');
+    if (topUsernames) topUsernames.style.zIndex = '2';
+    const gameContainer = document.getElementById('game-container');
+    if (gameContainer) gameContainer.style.zIndex = '2';
+
     let matrixAnimId = null;
     function startMatrixRain() {
         const c = matrixCanvas;
