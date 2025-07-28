@@ -500,29 +500,26 @@
         if (overlay) overlay.style.display = 'none';
     }
 
-    // 1. HTML'e matrix-bg canvas'ı ekle (oyun canvas'ının üstüne, ama z-index düşük)
-    const matrixCanvas = document.createElement('canvas');
-    matrixCanvas.id = 'matrix-bg';
-    matrixCanvas.style.position = 'fixed';
-    matrixCanvas.style.left = '0';
-    matrixCanvas.style.top = '0';
-    matrixCanvas.style.width = '100vw';
-    matrixCanvas.style.height = '100vh';
-    matrixCanvas.style.pointerEvents = 'none';
-    matrixCanvas.style.zIndex = '1';
-    document.body.appendChild(matrixCanvas);
-
-    let matrixMode = false;
+    // Matrix yağmuru için canvas'ı başta ekle
+    let matrixCanvas = document.getElementById('matrix-bg');
+    if (!matrixCanvas) {
+        matrixCanvas = document.createElement('canvas');
+        matrixCanvas.id = 'matrix-bg';
+        matrixCanvas.style.position = 'fixed';
+        matrixCanvas.style.left = '0';
+        matrixCanvas.style.top = '0';
+        matrixCanvas.style.width = '100vw';
+        matrixCanvas.style.height = '100vh';
+        matrixCanvas.style.pointerEvents = 'none';
+        matrixCanvas.style.zIndex = '1';
+        document.body.appendChild(matrixCanvas);
+    }
     let matrixAnimId = null;
-
-    // 2. Matrix yağmuru animasyonu fonksiyonu
     function startMatrixRain() {
-        const c = document.getElementById('matrix-bg');
+        const c = matrixCanvas;
         const ctx = c.getContext('2d');
-        // Canvas boyutunu güncelle
         c.width = window.innerWidth;
         c.height = window.innerHeight;
-        // Karakterler
         const letters = 'アァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズヅブプエェケセテネヘメレヱゲゼデベペオォコソトノホモヨョロヲゴゾドボポヴッンABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
         const fontSize = 18;
         const columns = Math.floor(c.width / fontSize);
@@ -551,33 +548,22 @@
     }
     function stopMatrixRain() {
         if (matrixAnimId) cancelAnimationFrame(matrixAnimId);
-        const c = document.getElementById('matrix-bg');
-        if (c) {
-            const ctx = c.getContext('2d');
-            ctx.clearRect(0, 0, c.width, c.height);
-        }
-        matrixMode = false;
+        const ctx = matrixCanvas.getContext('2d');
+        ctx.clearRect(0, 0, matrixCanvas.width, matrixCanvas.height);
     }
 
-    // 3. Kullanıcı adı kontrolü ve animasyonu başlatma
-    function checkMatrixMode() {
-        const name = nickname.trim().toLowerCase();
-        if (['matrix','neo','admin'].includes(name)) {
-            matrixMode = true;
+    // startGame fonksiyonunun başında nickname kontrolüyle animasyonu başlat/durdur
+    const origStartGame = startGame;
+    startGame = function() {
+        if (nickname && ['matrix','neo','admin'].includes(nickname.trim().toLowerCase())) {
             startMatrixRain();
         } else {
             stopMatrixRain();
         }
-    }
-
-    // 4. startGame fonksiyonunda kontrolü çağır
-    const origStartGame = startGame;
-    startGame = function() {
-        checkMatrixMode();
         origStartGame.apply(this, arguments);
     };
 
-    // 5. Sayfa ilk yüklendiğinde ve oyun bitince Matrix yağmurunu durdur
+    // Oyun bitince veya sayfa kapanınca animasyonu durdur
     window.addEventListener('beforeunload', stopMatrixRain);
 
     // --- Başlat ---
