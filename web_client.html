@@ -83,33 +83,8 @@
             font-weight: 500;
             text-shadow: 0 1px 4px #000a;
         }
-        #left-panel {
-            position: fixed;
-            left: 0;
-            top: 0;
-            width: 160px;
-            height: 100vh;
-            background: #222;
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            justify-content: flex-start;
-            z-index: 20;
-            padding-top: 40px;
-            box-shadow: 2px 0 8px rgba(0,0,0,0.18);
-        }
-        #scoreboard {
-            margin: 0 0 16px 24px;
-            background: rgba(34,34,34,0.85);
-            color: #fff;
-            padding: 12px 24px;
-            border-radius: 12px;
-            font-size: 1.3em;
-            font-family: 'Segoe UI', Arial, sans-serif;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-        }
         #game-container {
-            margin-left: 180px;
+            margin-left: 0;
         }
         #game {
             background: #111;
@@ -162,8 +137,6 @@
             margin-right: 0;
             pointer-events: auto;
         }
-        #left-panel { z-index: 20; }
-        #game-container { margin-left: 160px; }
     </style>
 </head>
 <body>
@@ -172,9 +145,6 @@
         <div class="error-msg" id="ui-error"></div>
         <input id="nicknameInput" type="text" maxlength="16" placeholder="Kullanıcı adı" />
         <button id="startBtn">Başla</button>
-    </div>
-    <div id="left-panel" style="display:none;">
-    <div id="scoreboard"></div>
     </div>
     <div id="top-usernames" style="display:none;"></div>
     <div id="game-container" style="display:none;">
@@ -415,7 +385,6 @@
         }
         document.getElementById('ui').style.display = 'none';
         document.getElementById('game-container').style.display = 'flex';
-        document.getElementById('left-panel').style.display = 'flex';
         document.getElementById('top-usernames').style.display = 'flex';
         started = true;
         currentDirection = null;
@@ -523,8 +492,6 @@
     // Oyun canvası ve UI elementlerinin z-index'i 1 veya daha yüksek olmalı
     const gameCanvas = document.getElementById('game');
     if (gameCanvas) gameCanvas.style.zIndex = '1';
-    const leftPanel = document.getElementById('left-panel');
-    if (leftPanel) leftPanel.style.zIndex = '2';
     const topUsernames = document.getElementById('top-usernames');
     if (topUsernames) topUsernames.style.zIndex = '2';
     const gameContainer = document.getElementById('game-container');
