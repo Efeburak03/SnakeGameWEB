@@ -232,12 +232,7 @@
             if (!myId) myId = nickname;
             draw();
             updateTopUsernames();
-            if (gameState && gameState.active && myId && gameState.active[myId] === false && gameState.eagle_egg) {
-                showEagleEggScreen();
-            } else {
-                const overlay = document.getElementById('eagle-egg-overlay');
-                if (overlay) overlay.style.display = 'none';
-            }
+            // Eagle overlay'i burada asla kapatma!
         };
         ws.onclose = () => {
             setTimeout(connect, 1000);
