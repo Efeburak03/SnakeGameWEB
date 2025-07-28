@@ -196,7 +196,7 @@
     let started = false;
     let readySent = false;
     let eliminationTime = null;
-    let currentDirection = null;
+    let currentDirection = null; // Başlangıçta null
     let nickname = '';
     let assets = {};
 
@@ -409,6 +409,7 @@
         document.getElementById('left-panel').style.display = 'flex';
         document.getElementById('top-usernames').style.display = 'flex';
         started = true;
+        currentDirection = null; // Yön bilgisini sıfırla!
         connect();
         draw();
     }
