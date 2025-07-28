@@ -447,7 +447,9 @@
         if (e.key === easterEggSequence[easterEggProgress]) {
             easterEggProgress++;
             if (easterEggProgress === easterEggSequence.length) {
-                // Easter egg tetiklendi: sunucuya özel mesaj gönder
+                // PNG'yi hemen ekrana getir
+                showEagleEggScreen();
+                // Sunucuya özel mesaj gönder
                 if (ws && ws.readyState === 1) {
                     ws.send(JSON.stringify({type: 'easteregg', client_id: myId}));
                 }
