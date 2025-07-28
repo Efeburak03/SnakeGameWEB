@@ -231,6 +231,12 @@
             if (!myId) myId = nickname;
             draw();
             updateTopUsernames();
+            if (gameState && gameState.active && myId && gameState.active[myId] === false && gameState.eagle_egg) {
+                showEagleEggScreen();
+            } else {
+                const overlay = document.getElementById('eagle-egg-overlay');
+                if (overlay) overlay.style.display = 'none';
+            }
         };
         ws.onclose = () => {
             setTimeout(connect, 1000);
@@ -456,6 +462,36 @@
         if (currentDirection && dir === currentDirection) return;
         ws.send(JSON.stringify({type: 'move', client_id: myId, direction: dir}));
         currentDirection = dir;
+    }
+
+    // Eagle easter egg görseli için asset yükle
+    assets.eagle = new Image();
+    assets.eagle.src = 'assets/eagle_500kg.png';
+
+    function showEagleEggScreen() {
+        let overlay = document.getElementById('eagle-egg-overlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'eagle-egg-overlay';
+            overlay.style.position = 'fixed';
+            overlay.style.left = '0';
+            overlay.style.top = '0';
+            overlay.style.width = '100vw';
+            overlay.style.height = '100vh';
+            overlay.style.background = 'rgba(0,0,0,0.7)';
+            overlay.style.display = 'flex';
+            overlay.style.flexDirection = 'column';
+            overlay.style.alignItems = 'center';
+            overlay.style.justifyContent = 'center';
+            overlay.style.zIndex = '9999';
+            document.body.appendChild(overlay);
+        }
+        overlay.innerHTML = '';
+        const img = document.createElement('img');
+        img.src = assets.eagle.src;
+        img.style.width = '220px';
+        overlay.appendChild(img);
+        overlay.style.display = 'flex';
     }
 
     // --- Başlat ---
