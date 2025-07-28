@@ -406,6 +406,7 @@
         if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
             e.preventDefault();
         }
+        if (e.repeat) return; // Sadece ilk basışta çalışsın, basılı tutunca ilerlemesin
         if (e.key === 'ArrowUp') sendMove('UP');
         else if (e.key === 'ArrowDown') sendMove('DOWN');
         else if (e.key === 'ArrowLeft') sendMove('LEFT');
