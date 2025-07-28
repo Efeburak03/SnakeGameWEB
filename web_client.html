@@ -174,7 +174,7 @@
         <button id="startBtn">Başla</button>
     </div>
     <div id="left-panel" style="display:none;">
-        <div id="scoreboard"></div>
+    <div id="scoreboard"></div>
     </div>
     <div id="top-usernames" style="display:none;"></div>
     <div id="game-container" style="display:none;">
@@ -196,7 +196,7 @@
     let started = false;
     let readySent = false;
     let eliminationTime = null;
-    let currentDirection = 'UP';
+    let currentDirection = null;
     let nickname = '';
     let assets = {};
 
@@ -283,8 +283,8 @@
                         if (dist <= 4) show = true;
                     }
                     if (show) {
-                        ctx.fillStyle = '#555';
-                        ctx.fillRect(ox*CELL_SIZE, oy*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                    ctx.fillStyle = '#555';
+                    ctx.fillRect(ox*CELL_SIZE, oy*CELL_SIZE, CELL_SIZE, CELL_SIZE);
                     }
                 }
             }
@@ -437,7 +437,7 @@
 
     function sendMove(dir) {
         if (!myId) return;
-        if (dir === currentDirection) return;
+        if (currentDirection && dir === currentDirection) return;
         ws.send(JSON.stringify({type: 'move', client_id: myId, direction: dir}));
         currentDirection = dir;
     }
