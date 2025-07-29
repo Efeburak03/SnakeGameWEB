@@ -105,7 +105,7 @@
             align-items: center;
             justify-content: center;
             pointer-events: none;
-            z-index: 5;
+            z-index: 100;
         }
         .game-message span {
             background: rgba(34,34,34,0.85);
@@ -486,7 +486,7 @@
             overlay.style.flexDirection = 'column';
             overlay.style.alignItems = 'center';
             overlay.style.justifyContent = 'center';
-            overlay.style.zIndex = '9999';
+            overlay.style.zIndex = '99999';
             document.body.appendChild(overlay);
         }
         overlay.innerHTML = '';
