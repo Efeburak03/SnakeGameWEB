@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>WebSocket Snake Game</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, orientation=landscape">
     <style>
         html, body {
             height: 100%;
@@ -154,6 +155,7 @@
             right: 32px;
             left: auto;
             width: auto;
+            flex-direction: row;
             justify-content: flex-end;
             align-items: flex-end;
             z-index: 1000;
@@ -180,6 +182,34 @@
             background: #4caf50;
             color: #fff;
         }
+        .touch-btn-restart {
+            background: #e53935;
+            border: 2px solid #e53935;
+            font-size: 1.5em;
+            margin-left: 12px;
+        }
+        @media (orientation: portrait) {
+            body {
+                min-width: 100vw;
+                min-height: 100vh;
+                overflow: hidden;
+            }
+            #rotate-warning {
+                display: flex !important;
+            }
+        }
+        #rotate-warning {
+            display: none;
+            position: fixed;
+            z-index: 20000;
+            left: 0; top: 0; right: 0; bottom: 0;
+            background: #222c;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 2em;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -196,15 +226,13 @@
             <div id="game-message" class="game-message" style="display:none;"><span></span></div>
         </div>
     </div>
+    <div id="rotate-warning">Lütfen cihazınızı yatay konuma çevirin.<br/>Please rotate your device.</div>
     <div id="touch-controls">
-        <div style="display:flex; flex-direction:column; align-items:center;">
-            <button class="touch-btn" id="btn-up">▲</button>
-            <div style="display:flex; flex-direction:row;">
-                <button class="touch-btn" id="btn-left">◀</button>
-                <button class="touch-btn" id="btn-down">▼</button>
-                <button class="touch-btn" id="btn-right">▶</button>
-            </div>
-        </div>
+        <button class="touch-btn" id="btn-left">◀</button>
+        <button class="touch-btn" id="btn-up">▲</button>
+        <button class="touch-btn" id="btn-down">▼</button>
+        <button class="touch-btn" id="btn-right">▶</button>
+        <button class="touch-btn touch-btn-restart" id="btn-restart" style="display:none;">⟳</button>
     </div>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script>
@@ -256,6 +284,7 @@
             if (!myId) myId = nickname;
             draw();
             updateTopUsernames();
+            updateRestartButton();
         });
         socket.on('error', (err) => {
             const errorDiv = document.getElementById('ui-error');
@@ -645,11 +674,25 @@
         const down = document.getElementById('btn-down');
         const left = document.getElementById('btn-left');
         const right = document.getElementById('btn-right');
+        const restart = document.getElementById('btn-restart');
         if (!up) return;
         up.addEventListener('touchstart', e => { e.preventDefault(); sendMove('UP'); });
         down.addEventListener('touchstart', e => { e.preventDefault(); sendMove('DOWN'); });
         left.addEventListener('touchstart', e => { e.preventDefault(); sendMove('LEFT'); });
         right.addEventListener('touchstart', e => { e.preventDefault(); sendMove('RIGHT'); });
+        if (restart) {
+            restart.addEventListener('touchstart', e => {
+                e.preventDefault();
+                if (myId && gameState && gameState.active && !gameState.active[myId]) {
+                    socket.emit('restart', {client_id: myId});
+                } else if (gameState && gameState.waiting_for_restart) {
+                    if (!readySent) {
+                        socket.emit('ready', {client_id: myId});
+                        readySent = true;
+                    }
+                }
+            });
+        }
         // Masaüstünde görünmesin, mobilde görünsün
         function updateTouchControlsVisibility() {
             const controls = document.getElementById('touch-controls');
@@ -663,6 +706,32 @@
         updateTouchControlsVisibility();
     }
     window.addEventListener('DOMContentLoaded', setupTouchControls);
+
+    // Ekran dikeyse uyarı göster
+    function checkOrientation() {
+        const warning = document.getElementById('rotate-warning');
+        if (window.innerWidth < window.innerHeight) {
+            warning.style.display = 'flex';
+        } else {
+            warning.style.display = 'none';
+        }
+    }
+    window.addEventListener('resize', checkOrientation);
+    window.addEventListener('orientationchange', checkOrientation);
+    window.addEventListener('DOMContentLoaded', checkOrientation);
+
+    // Oyun state güncellendiğinde restart butonunu göster/gizle
+    function updateRestartButton() {
+        const restart = document.getElementById('btn-restart');
+        if (!restart) return;
+        if (myId && gameState && gameState.active && !gameState.active[myId]) {
+            restart.style.display = 'inline-flex';
+        } else if (gameState && gameState.waiting_for_restart) {
+            restart.style.display = 'inline-flex';
+        } else {
+            restart.style.display = 'none';
+        }
+    }
 
     // --- Başlat ---
     loadAssets(() => {

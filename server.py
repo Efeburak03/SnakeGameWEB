@@ -761,6 +761,12 @@ def on_ready(data):
         game_state["ready"] = {}
     game_state["ready"][client_id] = True
 
+@socketio.on('easteregg')
+def on_easteregg(data):
+    print('[DEBUG] Easter egg tetiklendi! Tüm oyuncular eleniyor.')
+    for cid in list(game_state["snakes"].keys()):
+        eliminate_snake(cid)
+
 @socketio.on('disconnect')
 def on_disconnect():
     sid = request.sid
