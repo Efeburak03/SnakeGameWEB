@@ -345,6 +345,7 @@
                 else if (pu.type === 'freeze') color = '#00c8ff';
                 else if (pu.type === 'giant') color = 'orange';
                 else if (pu.type === 'magnet') color = 'purple';
+                else if (pu.type === 'trail') color = '#00e6e6'; // Trail power-up için turkuaz
                 ctx.beginPath();
                 ctx.arc(x*CELL_SIZE+CELL_SIZE/2, y*CELL_SIZE+CELL_SIZE/2, CELL_SIZE/2.2, 0, 2*Math.PI);
                 ctx.fillStyle = color;
