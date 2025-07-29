@@ -142,6 +142,44 @@
             margin-right: 0;
             pointer-events: auto;
         }
+        @media (max-width: 900px) {
+            #touch-controls {
+                display: flex !important;
+            }
+        }
+        #touch-controls {
+            display: none;
+            position: fixed;
+            bottom: 32px;
+            right: 32px;
+            left: auto;
+            width: auto;
+            justify-content: flex-end;
+            align-items: flex-end;
+            z-index: 1000;
+            pointer-events: none;
+        }
+        .touch-btn {
+            width: 56px;
+            height: 56px;
+            margin: 6px;
+            border-radius: 50%;
+            background: rgba(34,34,34,0.8);
+            color: #fff;
+            font-size: 2em;
+            border: 2px solid #4caf50;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px #000a;
+            pointer-events: auto;
+            user-select: none;
+            touch-action: manipulation;
+        }
+        .touch-btn:active {
+            background: #4caf50;
+            color: #fff;
+        }
     </style>
 </head>
 <body>
@@ -156,6 +194,16 @@
         <div style="position:relative;">
             <canvas id="game" width="1200" height="700"></canvas>
             <div id="game-message" class="game-message" style="display:none;"><span></span></div>
+        </div>
+    </div>
+    <div id="touch-controls">
+        <div style="display:flex; flex-direction:column; align-items:center;">
+            <button class="touch-btn" id="btn-up">▲</button>
+            <div style="display:flex; flex-direction:row;">
+                <button class="touch-btn" id="btn-left">◀</button>
+                <button class="touch-btn" id="btn-down">▼</button>
+                <button class="touch-btn" id="btn-right">▶</button>
+            </div>
         </div>
     </div>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
@@ -590,6 +638,31 @@
 
     // Oyun bitince veya sayfa kapanınca animasyonu durdur
     window.addEventListener('beforeunload', stopMatrixRain);
+
+    // Dokunmatik yön tuşları
+    function setupTouchControls() {
+        const up = document.getElementById('btn-up');
+        const down = document.getElementById('btn-down');
+        const left = document.getElementById('btn-left');
+        const right = document.getElementById('btn-right');
+        if (!up) return;
+        up.addEventListener('touchstart', e => { e.preventDefault(); sendMove('UP'); });
+        down.addEventListener('touchstart', e => { e.preventDefault(); sendMove('DOWN'); });
+        left.addEventListener('touchstart', e => { e.preventDefault(); sendMove('LEFT'); });
+        right.addEventListener('touchstart', e => { e.preventDefault(); sendMove('RIGHT'); });
+        // Masaüstünde görünmesin, mobilde görünsün
+        function updateTouchControlsVisibility() {
+            const controls = document.getElementById('touch-controls');
+            if (window.innerWidth < 900 || /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent)) {
+                controls.style.display = 'flex';
+            } else {
+                controls.style.display = 'none';
+            }
+        }
+        window.addEventListener('resize', updateTouchControlsVisibility);
+        updateTouchControlsVisibility();
+    }
+    window.addEventListener('DOMContentLoaded', setupTouchControls);
 
     // --- Başlat ---
     loadAssets(() => {
