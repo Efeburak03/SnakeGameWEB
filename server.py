@@ -1,14 +1,11 @@
-import asyncio
-import websockets
-import json
+# --- En üstteki importlar ---
 import random
 import time
-from common import MSG_MOVE, MSG_STATE, MSG_RESTART, create_state_message, MAX_PLAYERS, get_snake_color, OBSTACLE_TYPES, POWERUP_TYPES, INITIAL_FOOD_COUNT
 import copy
 import os
-import threading
 from flask import Flask, send_from_directory, request
 from flask_socketio import SocketIO, emit, disconnect
+from common import MSG_MOVE, MSG_STATE, MSG_RESTART, create_state_message, MAX_PLAYERS, get_snake_color, OBSTACLE_TYPES, POWERUP_TYPES, INITIAL_FOOD_COUNT
 
 BOARD_WIDTH = 60   # Enine daha geniş
 BOARD_HEIGHT = 35 # 700/20 = 35 satır
