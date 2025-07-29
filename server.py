@@ -678,7 +678,7 @@ def game_loop():
                 else:
                     if tick_count % 2 == 0:
                         move_snake(client_id)
-        for sid, client_id in clients.items():
+        for sid, client_id in list(clients.items()):
             state_copy = copy.deepcopy(game_state)
             state_copy["winner_id"] = winner_id
             state_copy["waiting_for_restart"] = waiting_for_restart
@@ -758,9 +758,7 @@ def on_disconnect():
 
 # --- Oyun döngüsünü başlat ---
 def start_game_loop():
-    t = threading.Thread(target=game_loop)
-    t.daemon = True
-    t.start()
+    socketio.start_background_task(game_loop)
 
 if __name__ == "__main__":
     start_game_loop()
