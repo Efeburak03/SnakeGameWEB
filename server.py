@@ -327,6 +327,28 @@ async def game_loop():
                 else:
                     if tick_count % 2 == 0:
                         move_snake(client_id)
+        # --- Magnet power-up aktifse, elmalar sürekli çekilsin ---
+        for cid, snake in game_state["snakes"].items():
+            if has_powerup(cid, "magnet") and len(snake) > 0:
+                head = snake[0]
+                new_foods = []
+                for fx, fy in game_state["food"]:
+                    dist = abs(fx - head[0]) + abs(fy - head[1])
+                    if dist <= 5:
+                        dx = 1 if head[0] > fx else -1 if head[0] < fx else 0
+                        dy = 1 if head[1] > fy else -1 if head[1] < fy else 0
+                        new_fx = fx + dx
+                        new_fy = fy + dy
+                        occupied = set()
+                        for s in game_state["snakes"].values():
+                            occupied.update(s)
+                        if (new_fx, new_fy) not in occupied:
+                            new_foods.append((new_fx, new_fy))
+                        else:
+                            new_foods.append((fx, fy))
+                    else:
+                        new_foods.append((fx, fy))
+                game_state["food"] = new_foods
         # Her client için özel state gönder
         for client_id in list(game_state["snakes"].keys()):
             state_copy = copy.deepcopy(game_state)
@@ -389,6 +411,7 @@ def move_snake(client_id):
         game_state["scores"][client_id] = game_state["scores"].get(client_id, 0) + 5
         return
     # --- POWER-UP KONTROLÜ ---
+    # Magnet etkisi artık burada uygulanmıyor, sadece power-up'ı sil
     for pu in list(game_state.get("powerups", [])):
         if new_head == tuple(pu["pos"]):
             if "active_powerups" not in game_state:
@@ -396,40 +419,15 @@ def move_snake(client_id):
             if client_id not in game_state["active_powerups"]:
                 game_state["active_powerups"][client_id] = []
             game_state["active_powerups"][client_id].append({"type": pu["type"], "tick": time.time()})
-            # Freeze: diğer oyuncuları dondur
+            # Freeze ve giant etkileri burada kalacak
             if pu["type"] == "freeze":
                 for other_id in game_state["snakes"]:
                     if other_id != client_id:
                         game_state["active_powerups"].setdefault(other_id, []).append({"type": "frozen", "tick": time.time()})
-            # Giant: yılanı büyüt
             if pu["type"] == "giant":
                 snake = game_state["snakes"][client_id]
                 for _ in range(START_LENGTH):
                     snake.append(snake[-1])
-                game_state["snakes"][client_id] = snake
-            # Magnet: yakındaki elmalar yaklaşsın
-            if pu["type"] == "magnet":
-                head = game_state["snakes"][client_id][0]
-                new_foods = []
-                for fx, fy in game_state["food"]:
-                    dist = abs(fx - head[0]) + abs(fy - head[1])
-                    if dist <= 5:
-                        # Elmayı yılanın başına bir adım yaklaştır
-                        dx = 1 if head[0] > fx else -1 if head[0] < fx else 0
-                        dy = 1 if head[1] > fy else -1 if head[1] < fy else 0
-                        new_fx = fx + dx
-                        new_fy = fy + dy
-                        # Elma başka bir yılanın üstüne gelmesin
-                        occupied = set()
-                        for s in game_state["snakes"].values():
-                            occupied.update(s)
-                        if (new_fx, new_fy) not in occupied:
-                            new_foods.append((new_fx, new_fy))
-                        else:
-                            new_foods.append((fx, fy))
-                    else:
-                        new_foods.append((fx, fy))
-                game_state["food"] = new_foods
             game_state["powerups"].remove(pu)
     # --- PORTAL KONTROLÜ ---
     for portal_a, portal_b in game_state.get("portals", []):
