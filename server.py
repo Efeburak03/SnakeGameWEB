@@ -6,6 +6,8 @@ import time
 from common import MSG_MOVE, MSG_STATE, MSG_RESTART, create_state_message, MAX_PLAYERS, get_snake_color, OBSTACLE_TYPES, POWERUP_TYPES, INITIAL_FOOD_COUNT
 import copy
 import os
+import threading
+from flask import Flask, send_from_directory
 
 BOARD_WIDTH = 60   # Enine daha geniş
 BOARD_HEIGHT = 35 # 700/20 = 35 satır
@@ -605,7 +607,23 @@ async def main():
     async with websockets.serve(ws_handler, "0.0.0.0", PORT):
         await game_loop()
 
+app = Flask(__name__, static_folder='.', static_url_path='')
+
+@app.route('/')
+def index():
+    return send_from_directory('.', 'web_client.html')
+
+@app.route('/assets/<path:path>')
+def send_assets(path):
+    return send_from_directory('assets', path)
+
+def run_flask():
+    app.run(host='0.0.0.0', port=8000)
+
 if __name__ == "__main__":
     print("[*] WebSocket tabanlı Snake sunucusu başlatıldı ")
     print("ÇALIŞAN DOSYA:", __file__)
+    # Flask'ı ayrı bir thread'de başlat
+    threading.Thread(target=run_flask, daemon=True).start()
+    # WebSocket sunucusunu başlat
     asyncio.run(main()) 
