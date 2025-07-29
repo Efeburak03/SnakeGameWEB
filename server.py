@@ -250,8 +250,9 @@ async def game_loop():
     waiting_for_restart = False
     winner_id = None
     while True:
-        # Oyun hiç başlamadıysa ve en az bir oyuncu varsa, oyunu başlat
+        # Eğer oyun hiç başlamadıysa ve en az bir oyuncu varsa, oyunu başlat
         if game_timer is None and len(game_state["snakes"]) > 0:
+            print("[DEBUG] game_loop: Oyun başlatılıyor, reset_game çağrılıyor.")
             reset_game()
         clear_expired_powerups()
         global move_queue

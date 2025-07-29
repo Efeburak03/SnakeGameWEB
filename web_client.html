@@ -184,7 +184,7 @@
         box: 'assets/kutu.png',
         portal: 'assets/portal.png',
         bg: 'assets/Background.jpg',
-        eagle: 'assets/eagle_500kg.png', // EAGLE PNG EKLENDİ
+        eagle: 'assets/Eagle_500kg.png',
     };
     function loadAssets(cb) {
         let loaded = 0, total = Object.keys(assetFiles).length;
@@ -470,7 +470,7 @@
 
     // Eagle easter egg görseli için asset yükle
     assets.eagle = new Image();
-    assets.eagle.src = 'assets/eagle_500kg.png';
+    assets.eagle.src = 'assets/Eagle_500kg.png';
 
     function showEagleEggScreen() {
         let overlay = document.getElementById('eagle-egg-overlay');
@@ -492,7 +492,7 @@
         }
         overlay.innerHTML = '';
         const img = document.createElement('img');
-        img.src = assets.eagle && assets.eagle.src ? assets.eagle.src : 'assets/eagle_500kg.png';
+        img.src = assets.eagle && assets.eagle.src ? assets.eagle.src : 'assets/Eagle_500kg.png';
         img.alt = 'Eagle Easter Egg';
         img.style.width = '220px';
         img.style.maxWidth = '90vw';
