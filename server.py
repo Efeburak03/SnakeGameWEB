@@ -249,11 +249,16 @@ async def game_loop():
     tick_count = 0
     waiting_for_restart = False
     winner_id = None
+    game_started = False
     while True:
-        # Eğer oyun hiç başlamadıysa ve en az bir oyuncu varsa, oyunu başlat
-        if game_timer is None and len(game_state["snakes"]) > 0:
+        # Oyun hiç başlamadıysa ve en az bir oyuncu varsa, sadece bir kez başlat
+        if not game_started and game_timer is None and len(game_state["snakes"]) > 0:
             print("[DEBUG] game_loop: Oyun başlatılıyor, reset_game çağrılıyor.")
             reset_game()
+            game_started = True
+        # Oyun bittiğinde (tüm oyuncular elendiğinde veya süre bittiğinde) tekrar başlatmak için flag'i sıfırla
+        if game_timer is None:
+            game_started = False
         clear_expired_powerups()
         global move_queue
         new_queue = []
@@ -614,10 +619,17 @@ def game_loop():
     tick_count = 0
     waiting_for_restart = False
     winner_id = None
+    game_started = False
     while True:
         clear_expired_powerups()
         new_queue = []
         now = time.time()
+        if not game_started and game_timer is None and len(game_state["snakes"]) > 0:
+            print("[DEBUG] game_loop: Oyun başlatılıyor, reset_game çağrılıyor.")
+            reset_game()
+            game_started = True
+        if game_timer is None:
+            game_started = False
         if not waiting_for_restart and game_timer is not None and now - game_timer >= GAME_DURATION:
             max_score = -1
             winner_id = None
