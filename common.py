@@ -47,7 +47,7 @@ POWERUP_TYPES = [
     {"type": "freeze", "color": (0, 200, 255)},      # Rakibi dondurma (açık mavi)
     {"type": "giant", "color": (255, 128, 0)},       # Dev yılan (turuncu)
     {"type": "magnet", "color": (180, 0, 255)},      # Magnet (mor)
-    {"type": "trail", "color": (200, 200, 200, 128)}, # İz bırakıcı (yarı saydam gri)
+    {"type": "trail", "color": (0, 255, 200, 128)}, # İz bırakıcı (yarı saydam turkuaz)
 ]
 
 # Oyun başında elma sayısı
