@@ -522,9 +522,9 @@ def move_snake(client_id):
         # Yılanın son bloğu iz olarak eklenir
         if len(snake) > 0:
             trail.append(snake[-1])
-        # İz uzunluğu 4'ü geçmesin
-        if len(trail) > 4:
-            trail = trail[-4:]
+        # İz uzunluğu 6'yı geçmesin
+        if len(trail) > 6:
+            trail = trail[-6:]
         game_state["trails"][client_id] = trail
     else:
         # Power-up yoksa izleri temizle
