@@ -236,6 +236,7 @@ def reset_game():
         game_state["food"].append(pos)
     game_state["ready"] = {}
     game_timer = time.time()
+    print(f"[DEBUG] reset_game: game_timer set to {game_timer}")
     waiting_for_restart = False
     winner_id = None
 
@@ -685,6 +686,7 @@ def game_loop():
                 state_copy["time_left"] = max(0, int(GAME_DURATION - (now - game_timer)))
             else:
                 state_copy["time_left"] = 0
+            print(f"[DEBUG] game_loop: time_left={state_copy['time_left']} game_timer={game_timer}")
             state_copy["winner_id"] = winner_id
             state_copy["waiting_for_restart"] = waiting_for_restart
             state_copy["powerup_timers"] = {}
