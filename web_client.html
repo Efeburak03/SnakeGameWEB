@@ -158,6 +158,7 @@
             <div id="game-message" class="game-message" style="display:none;"><span></span></div>
         </div>
     </div>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script>
     // --- Oyun parametreleri ---
     let BOARD_WIDTH = 60;
@@ -165,7 +166,7 @@
     let CELL_SIZE = 20;
     const canvas = document.getElementById('game');
     const ctx = canvas.getContext('2d');
-    let ws = null;
+    let socket = null;
     let myId = null;
     let gameState = null;
     let started = false;
@@ -197,21 +198,26 @@
 
     // --- WebSocket bağlantısı ---
     function connect() {
-        ws = new WebSocket('wss://snakegameweb.onrender.com');
-        ws.onopen = () => {
-            ws.send(JSON.stringify({type: 'join', client_id: nickname}));
-        };
-        ws.onmessage = (event) => {
-            const state = JSON.parse(event.data);
+        socket = io();
+        socket.on('connect', () => {
+            socket.emit('join', {client_id: nickname});
+        });
+        socket.on('state', (state) => {
             gameState = state;
             if (!myId) myId = nickname;
             draw();
             updateTopUsernames();
-            // Eagle overlay'i burada asla kapatma!
-        };
-        ws.onclose = () => {
+        });
+        socket.on('error', (err) => {
+            const errorDiv = document.getElementById('ui-error');
+            errorDiv.textContent = err.message || 'Bağlantı hatası!';
+            document.getElementById('ui').style.display = 'flex';
+            document.getElementById('game-container').style.display = 'none';
+            document.getElementById('top-usernames').style.display = 'none';
+        });
+        socket.on('disconnect', () => {
             setTimeout(connect, 1000);
-        };
+        });
     }
 
     // --- Oyun çizimi ---
@@ -416,7 +422,7 @@
     const easterEggSequence = ['ArrowUp', 'ArrowRight', 'ArrowDown', 'ArrowDown', 'ArrowDown'];
     let easterEggProgress = 0;
     document.addEventListener('keydown', (e) => {
-        if (!started || !ws || ws.readyState !== 1) return;
+        if (!started || !socket || socket.disconnected) return;
         if (!myId) return;
         if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
             e.preventDefault();
@@ -429,10 +435,10 @@
         else if (e.key === 'Enter') {
             hideEagleEggScreen();
             if (gameState && gameState.active && !gameState.active[myId]) {
-                ws.send(JSON.stringify({type: 'restart', client_id: myId}));
+                socket.emit('restart', {client_id: myId});
             } else if (gameState && gameState.waiting_for_restart) {
                 if (!readySent) {
-                    ws.send(JSON.stringify({type: 'ready', client_id: myId}));
+                    socket.emit('ready', {client_id: myId});
                     readySent = true;
                 }
             }
@@ -443,8 +449,8 @@
                 // PNG'yi hemen ekrana getir
                 showEagleEggScreen();
                 // Sunucuya özel mesaj gönder
-                if (ws && ws.readyState === 1) {
-                    ws.send(JSON.stringify({type: 'easteregg', client_id: myId}));
+                if (socket && socket.connected) {
+                    socket.emit('easteregg', {client_id: myId});
                 }
                 easterEggProgress = 0;
             }
@@ -453,10 +459,11 @@
         }
     });
 
+    // --- Mesaj gönderme fonksiyonları ---
     function sendMove(dir) {
         if (!myId) return;
         if (currentDirection && dir === currentDirection) return;
-        ws.send(JSON.stringify({type: 'move', client_id: myId, direction: dir}));
+        socket.emit('move', {client_id: myId, direction: dir});
         currentDirection = dir;
     }
 

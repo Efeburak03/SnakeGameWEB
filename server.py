@@ -7,7 +7,8 @@ from common import MSG_MOVE, MSG_STATE, MSG_RESTART, create_state_message, MAX_P
 import copy
 import os
 import threading
-from flask import Flask, send_from_directory
+from flask import Flask, send_from_directory, request
+from flask_socketio import SocketIO, emit, disconnect
 
 BOARD_WIDTH = 60   # Enine daha geniş
 BOARD_HEIGHT = 35 # 700/20 = 35 satır
@@ -539,7 +540,7 @@ def move_snake(client_id):
             return
 
 move_queue = []
-clients = {}  # websocket: client_id
+clients = {}  # sid: client_id
 
 READY_MSG = "ready"
 
@@ -601,13 +602,110 @@ async def ws_handler(websocket):
         if websocket in clients:
             del clients[websocket]
 
-PORT = int(os.environ.get("PORT", 10000))
+# --- Oyun döngüsü ve oyuncu yönetimi ---
+move_queue = []
+clients = {}  # sid: client_id
+import threading
 
-async def main():
-    async with websockets.serve(ws_handler, "0.0.0.0", PORT):
-        await game_loop()
+def game_loop():
+    global game_timer, waiting_for_restart, winner_id
+    last_state_msg = None
+    powerup_spawn_chance = 0.01
+    max_powerups = 4
+    tick_count = 0
+    waiting_for_restart = False
+    winner_id = None
+    while True:
+        clear_expired_powerups()
+        new_queue = []
+        now = time.time()
+        if not waiting_for_restart and game_timer is not None and now - game_timer >= GAME_DURATION:
+            max_score = -1
+            winner_id = None
+            for cid, score in game_state["scores"].items():
+                if score > max_score:
+                    max_score = score
+                    winner_id = cid
+            waiting_for_restart = True
+            for cid in game_state["snakes"]:
+                game_state["active"][cid] = False
+        if waiting_for_restart and all_players_ready():
+            reset_game()
+        if not waiting_for_restart:
+            for msg in move_queue:
+                cid = msg["client_id"]
+                direction = msg["direction"]
+                if has_powerup(cid, "reverse"):
+                    OPP = {"UP":"DOWN","DOWN":"UP","LEFT":"RIGHT","RIGHT":"LEFT"}
+                    direction = OPP.get(direction, direction)
+                msg["direction"] = direction
+                new_queue.append(msg)
+            move_queue[:] = new_queue
+            while move_queue:
+                msg = move_queue.pop(0)
+                client_id = msg["client_id"]
+                direction = msg["direction"]
+                current_dir = game_state["directions"].get(client_id)
+                OPPOSITE_DIRECTIONS = {"UP": "DOWN", "DOWN": "UP", "LEFT": "RIGHT", "RIGHT": "LEFT"}
+                if current_dir and OPPOSITE_DIRECTIONS.get(current_dir) == direction:
+                    continue
+                if client_id in game_state["snakes"]:
+                    game_state["directions"][client_id] = direction
+                else:
+                    reset_snake(client_id)
+            if len(game_state["powerups"]) < max_powerups and random.random() < powerup_spawn_chance:
+                pu = random_powerup(
+                    game_state["snakes"],
+                    game_state["food"],
+                    game_state["obstacles"],
+                    game_state["portals"],
+                    game_state["powerups"]
+                )
+                same_type_count = sum(1 for p in game_state["powerups"] if p["type"] == pu["type"])
+                if same_type_count < 2:
+                    game_state["powerups"].append(pu)
+            if game_state["golden_food"] is None and random.random() < 0.01:
+                game_state["golden_food"] = random_food(
+                    game_state["snakes"],
+                    game_state["food"],
+                    game_state["obstacles"],
+                    game_state["portals"],
+                    game_state["powerups"],
+                    None
+                )
+            for client_id in list(game_state["snakes"].keys()):
+                if has_powerup(client_id, "frozen"):
+                    continue
+                if has_powerup(client_id, "speed"):
+                    move_snake(client_id)
+                else:
+                    if tick_count % 2 == 0:
+                        move_snake(client_id)
+        for sid, client_id in clients.items():
+            state_copy = copy.deepcopy(game_state)
+            state_copy["winner_id"] = winner_id
+            state_copy["waiting_for_restart"] = waiting_for_restart
+            state_copy["time_left"] = max(0, int(GAME_DURATION - (now - game_timer))) if game_timer and not waiting_for_restart else 0
+            state_copy["powerup_timers"] = {}
+            for cid2 in state_copy["snakes"].keys():
+                timers = {}
+                for ptype in ["speed","shield","invisible","reverse"]:
+                    tleft = get_powerup_timeleft(cid2, ptype)
+                    if tleft > 0:
+                        timers[ptype] = tleft
+                if timers:
+                    state_copy["powerup_timers"][cid2] = timers
+            state_copy["golden_food"] = game_state["golden_food"]
+            for cid2 in list(state_copy["snakes"].keys()):
+                if has_powerup(cid2, "invisible") and cid2 != client_id:
+                    state_copy["snakes"][cid2] = []
+            socketio.emit('state', state_copy, room=sid)
+        tick_count += 1
+        socketio.sleep(TICK_RATE)
 
+# --- Flask ve SocketIO sunucu kurulumu ---
 app = Flask(__name__, static_folder='.', static_url_path='')
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 
 @app.route('/')
 def index():
@@ -617,13 +715,57 @@ def index():
 def send_assets(path):
     return send_from_directory('assets', path)
 
-def run_flask():
-    app.run(host='0.0.0.0', port=8000)
+# --- Flask-SocketIO event handler'ları ---
+@socketio.on('join')
+def on_join(data):
+    client_id = data.get('client_id')
+    sid = request.sid
+    if client_id in game_state["snakes"]:
+        emit('error', {"message": "Bu kullanıcı adı zaten oyunda!"})
+        disconnect()
+        return
+    reset_snake(client_id)
+    clients[sid] = client_id
+
+@socketio.on('move')
+def on_move(data):
+    client_id = data.get('client_id')
+    direction = data.get('direction')
+    move_queue.append({"client_id": client_id, "direction": direction})
+
+@socketio.on('restart')
+def on_restart(data):
+    client_id = data.get('client_id')
+    reset_snake(client_id)
+
+@socketio.on('ready')
+def on_ready(data):
+    client_id = data.get('client_id')
+    if "ready" not in game_state:
+        game_state["ready"] = {}
+    game_state["ready"][client_id] = True
+
+@socketio.on('disconnect')
+def on_disconnect():
+    sid = request.sid
+    client_id = clients.get(sid)
+    if client_id:
+        game_state["snakes"].pop(client_id, None)
+        game_state["directions"].pop(client_id, None)
+        game_state["active"].pop(client_id, None)
+        game_state["colors"].pop(client_id, None)
+        game_state["scores"].pop(client_id, None)
+        if "active_powerups" in game_state:
+            game_state["active_powerups"].pop(client_id, None)
+    clients.pop(sid, None)
+
+# --- Oyun döngüsünü başlat ---
+def start_game_loop():
+    t = threading.Thread(target=game_loop)
+    t.daemon = True
+    t.start()
 
 if __name__ == "__main__":
-    print("[*] WebSocket tabanlı Snake sunucusu başlatıldı ")
-    print("ÇALIŞAN DOSYA:", __file__)
-    # Flask'ı ayrı bir thread'de başlat
-    threading.Thread(target=run_flask, daemon=True).start()
-    # WebSocket sunucusunu başlat
-    asyncio.run(main()) 
+    start_game_loop()
+    port = int(os.environ.get("PORT", 8000))
+    socketio.run(app, host="0.0.0.0", port=port) 

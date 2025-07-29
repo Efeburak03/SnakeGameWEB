@@ -1,30 +1,19 @@
 # 🐍 Snake Game Web
 
-Çok oyunculu, gerçek zamanlı web tabanlı Snake oyunu. WebSocket teknolojisi kullanılarak geliştirilmiş ve Render hosting platformunda yayınlanmıştır.
+Çok oyunculu, gerçek zamanlı web tabanlı Snake oyunu. Flask-SocketIO ve Socket.IO teknolojisiyle geliştirilmiş ve Render hosting platformunda yayınlanmıştır.
 
 ## 🎮 Oyun Özellikleri
 
 ### Temel Özellikler
 - **Çok Oyunculu**: Maksimum 8 oyuncu aynı anda oynayabilir
-- **Gerçek Zamanlı**: WebSocket bağlantısı ile anlık oyun deneyimi
+- **Gerçek Zamanlı**: Socket.IO ile anlık oyun deneyimi
 - **Modern UI**: Responsive tasarım ve modern görsel arayüz
 - **Cross-Platform**: Tüm modern web tarayıcılarında çalışır
 
 ### Oyun Mekanikleri
 - **Farklı Yılan Renkleri**: Her oyuncuya otomatik atanan benzersiz renkler
 - **Power-up Sistemi**: 7 farklı power-up türü
-  - 🚀 **Speed**: Hızlandırıcı (**Mavi** - (0, 0, 255))
-  - 🛡️ **Shield**: Zırh koruması (**Siyah** - (0, 0, 0))
-  - 👻 **Invisible**: Görünmezlik (**Gri** - (128, 128, 128))
-  - 🔄 **Reverse**: Ters kontrol (**Beyaz** - (255, 255, 255))
-  - ❄️ **Freeze**: Rakibi dondurma (**Açık Mavi** - (0, 200, 255))
-  - 🐉 **Giant**: Dev yılan (**Turuncu** - (255, 128, 0))
-  - 🧲 **Magnet**: Magnet çekimi (**Mor** - (180, 0, 255))
 - **Engel Sistemi**: 4 farklı engel türü
-  - 🧱 **Wall**: Normal duvar
-  - 🌱 **Slow**: Yavaşlatıcı çimen
-  - ☠️ **Poison**: Zehirli engel
-  - 🕳️ **Hidden Wall**: Gizli duvar
 - **Portal Sistemi**: Oyuncuları farklı konumlara ışınlayan portallar
 - **Altın Elma**: Özel güçlü yiyecek
 - **Puan Sistemi**: Oyuncu skorları takibi
@@ -33,7 +22,7 @@
 
 ### Gereksinimler
 - Python 3.7+
-- websockets kütüphanesi
+- Flask, Flask-SocketIO, eventlet
 
 ### Yerel Kurulum
 
@@ -67,11 +56,11 @@ Bu proje Render platformunda yayınlanmıştır. Canlı demo için:
 
 ```
 Snake_GameWEB/
-├── server.py          # Ana WebSocket sunucu
+├── server.py          # Ana Flask-SocketIO sunucu
 ├── common.py          # Ortak sabitler ve yardımcı fonksiyonlar
-├── web_client.html    # Frontend HTML/JS dosyası
+├── web_client.html    # Frontend HTML/JS dosyası (Socket.IO istemcisi ile)
 ├── requirements.txt   # Python bağımlılıkları
-├── assets/           # Oyun görselleri
+├── assets/            # Oyun görselleri
 │   ├── Background.jpg
 │   ├── elma.png
 │   ├── golden_apple.png
@@ -86,20 +75,19 @@ Snake_GameWEB/
 ## 🎯 Oyun Kontrolleri
 
 - **WASD** veya **Ok Tuşları**: Yılanı yönlendirme
-- **Space**: Oyunu yeniden başlatma (oyun sonunda)
-- **Enter**: Hazır durumuna geçme
+- **Enter**: Hazır durumuna geçme veya yeniden başlatma
 
 ## 🔧 Teknik Detaylar
 
 ### Backend (Python)
-- **WebSocket Sunucu**: `websockets` kütüphanesi
+- **WebSocket Sunucu**: Flask-SocketIO
 - **Oyun Döngüsü**: 20 FPS (0.05 saniye tick rate)
 - **Oyun Alanı**: 60x35 hücre
 - **Maksimum Oyuncu**: 8
 
 ### Frontend (HTML5/JavaScript)
 - **Canvas API**: Oyun grafikleri
-- **WebSocket Client**: Sunucu iletişimi
+- **Socket.IO Client**: Sunucu iletişimi
 - **Responsive Design**: Modern CSS
 - **Asset Loading**: Dinamik görsel yükleme
 
@@ -127,7 +115,6 @@ game_state = {
 - **Port**: 8000 (otomatik)
 
 ### Environment Variables
-Render'da aşağıdaki environment variable'ları ayarlayın:
 - `PORT`: Render tarafından otomatik atanır
 - `HOST`: `0.0.0.0` (tüm IP'lerden erişim)
 
@@ -145,7 +132,7 @@ Proje aşağıdaki görsel varlıkları içerir:
 
 ## 🔄 Oyun Döngüsü
 
-1. **Bağlantı**: Oyuncu WebSocket ile sunucuya bağlanır
+1. **Bağlantı**: Oyuncu Socket.IO ile sunucuya bağlanır
 2. **Hazırlık**: Oyuncu nickname girer ve hazır durumuna geçer
 3. **Oyun Başlangıcı**: Tüm oyuncular hazır olduğunda oyun başlar
 4. **Oyun Döngüsü**: 20 FPS ile sürekli güncelleme
@@ -186,4 +173,4 @@ Proje hakkında sorularınız için issue açabilir veya pull request gönderebi
 
 ---
 
-**🎮 İyi Oyunlar!** 🐍 
+🎮 İyi Oyunlar! 🐍 
