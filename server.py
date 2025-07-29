@@ -680,9 +680,13 @@ def game_loop():
                         move_snake(client_id)
         for sid, client_id in list(clients.items()):
             state_copy = copy.deepcopy(game_state)
+            # Geri sayım süresi her zaman set edilmeli
+            if game_timer is not None and not waiting_for_restart:
+                state_copy["time_left"] = max(0, int(GAME_DURATION - (now - game_timer)))
+            else:
+                state_copy["time_left"] = 0
             state_copy["winner_id"] = winner_id
             state_copy["waiting_for_restart"] = waiting_for_restart
-            state_copy["time_left"] = max(0, int(GAME_DURATION - (now - game_timer))) if game_timer and not waiting_for_restart else 0
             state_copy["powerup_timers"] = {}
             for cid2 in state_copy["snakes"].keys():
                 timers = {}

@@ -491,10 +491,17 @@
         }
         overlay.innerHTML = '';
         const img = document.createElement('img');
-        img.src = assets.eagle.src;
+        img.src = assets.eagle && assets.eagle.src ? assets.eagle.src : 'assets/eagle_500kg.png';
+        img.alt = 'Eagle Easter Egg';
         img.style.width = '220px';
+        img.style.maxWidth = '90vw';
+        img.style.maxHeight = '90vh';
         overlay.appendChild(img);
         overlay.style.display = 'flex';
+        overlay.style.visibility = 'visible';
+        overlay.style.opacity = '1';
+        // Debug için log
+        console.log('Eagle overlay gösterildi', img.src);
     }
 
     // Oyuncu yeniden başlatınca eagle overlay'i kapat
