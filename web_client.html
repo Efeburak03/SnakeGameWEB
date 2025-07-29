@@ -244,6 +244,28 @@
                 }
             }
         }
+        // İzler (trails)
+        if (gameState.trails) {
+            for (const [pid, trail] of Object.entries(gameState.trails)) {
+                // Yılanın rengini bul
+                let color = 'yellow';
+                if (gameState.colors && gameState.colors[pid]) {
+                    const c = gameState.colors[pid];
+                    color = `rgba(${c[0]},${c[1]},${c[2]},0.5)`; // yarı saydam
+                } else if (pid === myId) {
+                    color = 'rgba(0,255,0,0.5)';
+                } else {
+                    color = 'rgba(255,255,0,0.5)';
+                }
+                ctx.save();
+                ctx.globalAlpha = 0.5;
+                ctx.fillStyle = color;
+                for (const seg of trail) {
+                    ctx.fillRect(seg[0]*CELL_SIZE, seg[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                }
+                ctx.restore();
+            }
+        }
         // Engeller (yılanlardan sonra çiz)
         if (gameState.obstacles) {
             for (const obs of gameState.obstacles) {

@@ -79,6 +79,7 @@ game_state = {
     "portals": [],
     "powerups": [],
     "active_powerups": {},
+    "trails": {},  # İz bırakıcı power-up için: {client_id: [(x, y), ...]}
 }
 
 def get_all_empty_cells():
@@ -168,8 +169,8 @@ def reset_snake(client_id):
         game_state["obstacles"] = place_obstacles()  # Sadece ilk oyuncu girince engelleri yerleştir
         game_state["portals"] = place_portals()      # Sadece ilk oyuncu girince portalları yerleştir
 
-# --- Power-up etkisi yardımcıları ---
-POWERUP_DURATIONS = {"speed": 10, "shield": 10, "invisible": 10, "reverse": 5, "freeze": 5, "giant": 10}
+# --- Power-up süreleri ---
+POWERUP_DURATIONS = {"speed": 10, "shield": 10, "invisible": 10, "reverse": 5, "freeze": 5, "giant": 10, "trail": 10}
 
 def has_powerup(cid, ptype):
     now = time.time()
@@ -187,10 +188,16 @@ def get_powerup_timeleft(cid, ptype):
 
 def clear_expired_powerups():
     now = time.time()
-    for cid in list(game_state.get("active_powerups", {})):
-        game_state["active_powerups"][cid] = [p for p in game_state["active_powerups"][cid] if now - p["tick"] < POWERUP_DURATIONS.get(p["type"], 10)]
-        if not game_state["active_powerups"][cid]:
-            del game_state["active_powerups"][cid]
+    expired = []
+    for cid, powers in list(game_state.get("active_powerups", {}).items()):
+        for p in list(powers):
+            if now - p["tick"] >= POWERUP_DURATIONS.get(p["type"], 10):
+                expired.append((cid, p["type"]))
+    for cid, ptype in expired:
+        game_state["active_powerups"][cid] = [p for p in game_state["active_powerups"][cid] if p["type"] != ptype]
+        # Eğer biten power-up trail ise izleri de sil
+        if ptype == "trail" and cid in game_state["trails"]:
+            del game_state["trails"][cid]
 
 def eliminate_snake(client_id):
     game_state["active"][client_id] = False
@@ -508,6 +515,28 @@ def move_snake(client_id):
     if len(snake) > MAX_SNAKE_LENGTH:
         snake = snake[:MAX_SNAKE_LENGTH]
     game_state["snakes"][client_id] = snake
+    # --- TRAIL POWER-UP GÜNCELLEME ---
+    # Eğer oyuncuda trail power-up varsa, iz güncelle
+    if has_powerup(client_id, "trail"):
+        trail = game_state["trails"].setdefault(client_id, [])
+        # Yılanın son bloğu iz olarak eklenir
+        if len(snake) > 0:
+            trail.append(snake[-1])
+        # İz uzunluğu 4'ü geçmesin
+        if len(trail) > 4:
+            trail = trail[-4:]
+        game_state["trails"][client_id] = trail
+    else:
+        # Power-up yoksa izleri temizle
+        if client_id in game_state["trails"]:
+            del game_state["trails"][client_id]
+    # --- İZ ÇARPIŞMA KONTROLÜ ---
+    # Kendi izine veya başkasının izine çarparsa elenir
+    head = snake[0]
+    for trail_owner, trail_blocks in game_state["trails"].items():
+        if head in trail_blocks:
+            eliminate_snake(client_id)
+            return
 
 move_queue = []
 clients = {}  # websocket: client_id
