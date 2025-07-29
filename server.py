@@ -12,9 +12,17 @@ BOARD_HEIGHT = 35 # 700/20 = 35 satır
 START_LENGTH = 3
 TICK_RATE = 0.05  # saniye, 30 FPS
 
-# Power-up türleri
+# Power-up türleri ve renkleri:
+#   speed      : Mavi        (0, 0, 255)
+#   shield     : Siyah       (0, 0, 0)
+#   invisible  : Gri         (128, 128, 128)
+#   reverse    : Beyaz       (255, 255, 255)
+#   freeze     : Açık Mavi   (0, 200, 255)
+#   giant      : Turuncu     (255, 128, 0)
+#   magnet     : Mor         (180, 0, 255)
+# POWERUP_TYPES artık common.py'den geliyor
+
 def random_powerup(snakes, foods, obstacles, portals, powerups):
-    # POWERUP_TYPES artık common.py'den geliyor
     occupied = set()
     for snake in snakes.values():
         occupied.update(snake)
