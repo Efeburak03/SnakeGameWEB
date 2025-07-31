@@ -526,17 +526,17 @@
                 if (obs.type === 'slow' && assets.grass) ctx.drawImage(assets.grass, ox*CELL_SIZE - offset, oy*CELL_SIZE - offset, size, size);
                 else if (obs.type === 'poison' && assets.box) ctx.drawImage(assets.box, ox*CELL_SIZE - offset, oy*CELL_SIZE - offset, size, size);
                 else if (obs.type === 'hidden_wall') {
-                    // Gizli duvarlar hiç görünmemeli
-                    // let show = false;
-                    // if (gameState.snakes && myId && gameState.snakes[myId] && gameState.snakes[myId].length > 0) {
-                    //     const [hx, hy] = gameState.snakes[myId][0];
-                    //     const dist = Math.abs(hx - ox) + Math.abs(hy - oy);
-                    //     if (dist <= 4) show = true;
-                    // }
-                    // if (show) {
-                    // ctx.fillStyle = '#555';
-                    // ctx.fillRect(ox*CELL_SIZE, oy*CELL_SIZE, CELL_SIZE, CELL_SIZE);
-                    // }
+                    // Gizli duvarlar yılanın başının 4 blok yakınında görünür
+                    let show = false;
+                    if (gameState.snakes && myId && gameState.snakes[myId] && gameState.snakes[myId].length > 0) {
+                        const [hx, hy] = gameState.snakes[myId][0];
+                        const dist = Math.abs(hx - ox) + Math.abs(hy - oy);
+                        if (dist <= 4) show = true;
+                    }
+                    if (show) {
+                        ctx.fillStyle = '#555';
+                        ctx.fillRect(ox*CELL_SIZE, oy*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                    }
                 }
             }
         }
