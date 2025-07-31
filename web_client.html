@@ -1161,9 +1161,7 @@
                         ctx.fillStyle = '#555';
                         ctx.fillRect(ox*CELL_SIZE, oy*CELL_SIZE, CELL_SIZE, CELL_SIZE);
                     }
-                } else {
-                    ctx.fillStyle = '#555';
-                    ctx.fillRect(ox*CELL_SIZE, oy*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                // Wall tipi engeller kaldırıldı, sadece çalı ve gizli duvarlar çiziliyor
                 }
             }
         }

@@ -27,13 +27,12 @@ class TimeAttackGame:
         self.config = TIME_ATTACK_CONFIG["difficulties"][difficulty]
         
         # Oyun durumu
-        # Başlangıç yılanı 3 blok uzunluğunda olsun
-        center_x = board_width//2
-        center_y = board_height//2
+        # Rastgele güvenli başlangıç pozisyonu bul
+        start_pos = self._find_safe_start_position()
         initial_snake = [
-            (center_x, center_y),      # Baş
-            (center_x-1, center_y),    # İkinci blok
-            (center_x-2, center_y)     # Üçüncü blok
+            start_pos,                    # Baş
+            (start_pos[0]-1, start_pos[1]),    # İkinci blok
+            (start_pos[0]-2, start_pos[1])     # Üçüncü blok
         ]
         
         self.game_state = {
@@ -59,6 +58,27 @@ class TimeAttackGame:
         self._place_obstacles()
         self._place_portals()
         time_attack_games[client_id] = self.game_state
+    
+    def _find_safe_start_position(self):
+        """Güvenli başlangıç pozisyonu bul"""
+        # Kenarlardan uzak pozisyonlar (en az 5 hücre içeride)
+        safe_margin = 5
+        safe_x_range = range(safe_margin, self.board_width - safe_margin)
+        safe_y_range = range(safe_margin, self.board_height - safe_margin)
+        
+        # Rastgele pozisyonlar dene
+        for _ in range(50):  # 50 deneme
+            x = random.choice(safe_x_range)
+            y = random.choice(safe_y_range)
+            
+            # Bu pozisyon ve sağındaki 2 hücrenin boş olduğunu kontrol et
+            positions = [(x, y), (x-1, y), (x-2, y)]
+            if all(0 <= px < self.board_width and 0 <= py < self.board_height 
+                   for px, py in positions):
+                return (x, y)
+        
+        # Eğer güvenli pozisyon bulunamazsa, merkeze yakın bir yer
+        return (self.board_width//2, self.board_height//2)
     
     def _place_food(self):
         """Yemleri yerleştir"""
@@ -258,8 +278,9 @@ class TimeAttackGame:
     def eliminate_snake(self):
         """Yılanı ele"""
         if TIME_ATTACK_CONFIG["respawn_allowed"]:
-            # Canlanma
-            self.game_state["snake"] = [(self.board_width//2, self.board_height//2)]
+            # Canlanma - rastgele güvenli pozisyonda
+            start_pos = self._find_safe_start_position()
+            self.game_state["snake"] = [start_pos]
             self.game_state["direction"] = "RIGHT"
             self.game_state["respawn_count"] += 1
             print(f"[DEBUG] {self.client_id} canlandı! Canlanma sayısı: {self.game_state['respawn_count']}")
@@ -331,7 +352,9 @@ class TimeAttackGame:
         if not self.game_state["game_active"]:
             return
         
-        self.game_state["snake"] = [(self.board_width//2, self.board_height//2)]
+        # Rastgele güvenli pozisyonda canlan
+        start_pos = self._find_safe_start_position()
+        self.game_state["snake"] = [start_pos]
         self.game_state["direction"] = "RIGHT"
         self.game_state["respawn_count"] += 1
         print(f"[DEBUG] {self.client_id} manuel canlanma! Canlanma sayısı: {self.game_state['respawn_count']}")
