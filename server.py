@@ -919,6 +919,7 @@ def on_easteregg(data):
 def on_start_time_attack(data):
     client_id = data.get('client_id')
     difficulty = data.get('difficulty')
+    sid = request.sid  # sid'yi burada tanımla
     
     # Client ID kontrolü
     if not client_id or client_id == 'null' or client_id == '':

@@ -624,13 +624,24 @@
         canvas.width = CELL_SIZE * BOARD_WIDTH;
         canvas.height = CELL_SIZE * BOARD_HEIGHT;
         
+        console.log('[DEBUG] resizeGameCanvas: Window boyutları:', w, 'x', h);
+        console.log('[DEBUG] resizeGameCanvas: CELL_SIZE:', CELL_SIZE);
+        console.log('[DEBUG] resizeGameCanvas: Canvas boyutları:', canvas.width, 'x', canvas.height);
+        
         // Eğer oyun başladıysa çiz
         if (started) {
+            console.log('[DEBUG] resizeGameCanvas: Oyun başladı, çizim yapılıyor');
             if (currentGameMode === 'timeAttack' && timeAttackState) {
+                console.log('[DEBUG] resizeGameCanvas: Time Attack modu çiziliyor');
                 drawTimeAttack();
             } else if (gameState) {
+                console.log('[DEBUG] resizeGameCanvas: Klasik mod çiziliyor');
                 draw();
+            } else {
+                console.log('[DEBUG] resizeGameCanvas: Game state yok');
             }
+        } else {
+            console.log('[DEBUG] resizeGameCanvas: Oyun henüz başlamadı');
         }
     }
     window.addEventListener('resize', resizeGameCanvas);
@@ -714,6 +725,8 @@
         
         // Canvas'ı boyutlandır
         resizeGameCanvas();
+        console.log('[DEBUG] startGameMode: Canvas boyutlandırıldı');
+        console.log('[DEBUG] startGameMode: Canvas boyutları:', canvas.width, 'x', canvas.height);
         
         // Bağlantıyı kur
         connect();
@@ -1047,38 +1060,61 @@
     
     function drawTimeAttack() {
         console.log('[DEBUG] drawTimeAttack çağrıldı, timeAttackState:', timeAttackState);
-        if (!timeAttackState) return;
+        console.log('[DEBUG] Canvas boyutları:', canvas.width, 'x', canvas.height);
+        console.log('[DEBUG] CELL_SIZE:', CELL_SIZE);
+        
+        if (!timeAttackState) {
+            console.log('[DEBUG] timeAttackState yok, çıkıyor');
+            return;
+        }
         
         // Canvas'ı temizle
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        console.log('[DEBUG] drawTimeAttack: Canvas temizlendi');
         
         // Arka plan
         if (assets.bg) {
+            console.log('[DEBUG] drawTimeAttack: Arka plan çiziliyor');
             const pattern = ctx.createPattern(assets.bg, 'repeat');
             ctx.save();
             ctx.fillStyle = pattern;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.restore();
+        } else {
+            console.log('[DEBUG] drawTimeAttack: Arka plan asset yok, siyah arka plan');
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
         
         // Yılan
         if (timeAttackState.snake) {
+            console.log('[DEBUG] drawTimeAttack: Yılan çiziliyor, uzunluk:', timeAttackState.snake.length);
             ctx.fillStyle = 'lime';
             for (const [i, seg] of timeAttackState.snake.entries()) {
-                ctx.fillRect(seg[0]*CELL_SIZE, seg[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                const x = seg[0] * CELL_SIZE;
+                const y = seg[1] * CELL_SIZE;
+                ctx.fillRect(x, y, CELL_SIZE, CELL_SIZE);
+                console.log('[DEBUG] drawTimeAttack: Yılan segmenti çizildi:', seg, 'pozisyon:', x, y);
             }
+        } else {
+            console.log('[DEBUG] drawTimeAttack: Yılan yok');
         }
         
         // Yemler
         if (timeAttackState.food) {
+            console.log('[DEBUG] drawTimeAttack: Yemler çiziliyor, sayı:', timeAttackState.food.length);
             for (const food of timeAttackState.food) {
                 if (assets.apple) {
                     ctx.drawImage(assets.apple, food[0]*CELL_SIZE, food[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                    console.log('[DEBUG] drawTimeAttack: Elma asset ile çizildi:', food);
                 } else {
                     ctx.fillStyle = 'red';
                     ctx.fillRect(food[0]*CELL_SIZE, food[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                    console.log('[DEBUG] drawTimeAttack: Kırmızı kare ile yem çizildi:', food);
                 }
             }
+        } else {
+            console.log('[DEBUG] drawTimeAttack: Yem yok');
         }
         
         // Altın elma
