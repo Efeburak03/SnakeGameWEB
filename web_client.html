@@ -448,6 +448,10 @@
         
         socket.on('time_attack_state', (state) => {
             console.log('[DEBUG] Time Attack state geldi:', state);
+            console.log('[DEBUG] Power-up sayısı:', state.powerups ? state.powerups.length : 0);
+            if (state.powerups && state.powerups.length > 0) {
+                console.log('[DEBUG] Power-up\'lar:', state.powerups);
+            }
             timeAttackState = state;
             drawTimeAttack();
         });
@@ -1142,11 +1146,46 @@
         
         // Power-up'lar
         if (timeAttackState.powerups) {
+            console.log('[DEBUG] drawTimeAttack: Power-up\'lar çiziliyor, sayı:', timeAttackState.powerups.length);
             for (const powerup of timeAttackState.powerups) {
                 const [px, py] = powerup.pos;
-                ctx.fillStyle = '#00f';
+                const powerupColors = {
+                    'shield': '#000',      // Siyah
+                    'speed': '#00f',       // Mavi
+                    'reverse': '#fff',     // Beyaz
+                    'magnet': '#800080'    // Mor
+                };
+                
+                // Power-up arka planı
+                ctx.fillStyle = powerupColors[powerup.type] || '#00f';
                 ctx.fillRect(px*CELL_SIZE, py*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                
+                // Power-up kenarlığı
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(px*CELL_SIZE, py*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                
+                // Power-up tipini yaz
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 14px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(powerup.type.charAt(0).toUpperCase(), 
+                           px*CELL_SIZE + CELL_SIZE/2, 
+                           py*CELL_SIZE + CELL_SIZE/2);
+                
+                // Yanıp sönen efekt
+                const time = Date.now() / 1000;
+                const alpha = 0.5 + 0.5 * Math.sin(time * 3);
+                ctx.globalAlpha = alpha;
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(px*CELL_SIZE + 2, py*CELL_SIZE + 2, CELL_SIZE - 4, CELL_SIZE - 4);
+                ctx.globalAlpha = 1.0;
+                
+                console.log('[DEBUG] drawTimeAttack: Power-up çizildi:', powerup.type, 'pozisyon:', px, py);
             }
+        } else {
+            console.log('[DEBUG] drawTimeAttack: Power-up yok');
         }
         
         updateTimeAttackUI();

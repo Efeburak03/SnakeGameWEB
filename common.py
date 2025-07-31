@@ -55,15 +55,17 @@ INITIAL_FOOD_COUNT = 4
 
 # Time Attack modu sabitleri
 TIME_ATTACK_CONSTANTS = {
+    "INITIAL_SNAKE_LENGTH": 3,        # Time Attack'ta başlangıç yılan uzunluğu
     "MAX_SNAKE_LENGTH": 10,           # Time Attack'ta maksimum yılan uzunluğu
     "FOOD_COUNT": 2,                  # Time Attack'ta maksimum yem sayısı
     "MAX_POWERUPS": 2,                # Time Attack'ta maksimum power-up sayısı
     "GOLDEN_FOOD_CHANCE": 0.05,       # Altın elma çıkma olasılığı (%5)
-    "POWERUP_SPAWN_CHANCE": 0.01,     # Power-up çıkma olasılığı (%1)
+    "POWERUP_SPAWN_CHANCE": 0.02,     # Power-up çıkma olasılığı (%2) - artırıldı
     "FOOD_BONUS_TIME": 5,             # Yem yendiğinde +5 saniye
     "GOLDEN_FOOD_BONUS_TIME": 15,     # Altın elma yendiğinde +15 saniye
     "POWERUP_BONUS_TIME": 3,          # Power-up alındığında +3 saniye
     "POWERUP_DURATION": 10,           # Power-up süresi (saniye)
+    "MOVE_SPEED": 2,                  # Yılan hareket hızı (her X tick'te bir hareket)
 }
 
 # Time Attack zorluk seviyeleri

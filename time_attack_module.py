@@ -27,8 +27,17 @@ class TimeAttackGame:
         self.config = TIME_ATTACK_CONFIG["difficulties"][difficulty]
         
         # Oyun durumu
+        # Başlangıç yılanı 3 blok uzunluğunda olsun
+        center_x = board_width//2
+        center_y = board_height//2
+        initial_snake = [
+            (center_x, center_y),      # Baş
+            (center_x-1, center_y),    # İkinci blok
+            (center_x-2, center_y)     # Üçüncü blok
+        ]
+        
         self.game_state = {
-            "snake": [(board_width//2, board_height//2)],
+            "snake": initial_snake,
             "direction": "RIGHT",
             "food": [],
             "golden_food": None,

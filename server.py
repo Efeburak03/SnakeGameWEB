@@ -705,6 +705,9 @@ def game_loop():
         for client_id in list(time_attack_module.time_attack_games.keys()):
             ta_game_state = time_attack_module.time_attack_games[client_id]
             if ta_game_state["game_active"]:
+                # Yılan hız kontrolü - her 2 tick'te bir hareket etsin
+                if tick_count % time_attack_module.TIME_ATTACK_CONSTANTS["MOVE_SPEED"] != 0:
+                    continue
                 # Yılan hareketi
                 head = ta_game_state["snake"][0]
                 direction = ta_game_state["direction"]
@@ -724,16 +727,28 @@ def game_loop():
                 # Sınır kontrolü
                 if (new_head[0] < 0 or new_head[0] >= BOARD_WIDTH or 
                     new_head[1] < 0 or new_head[1] >= BOARD_HEIGHT):
-                    # Canlanma
-                    ta_game_state["snake"] = [(BOARD_WIDTH//2, BOARD_HEIGHT//2)]
+                    # Canlanma - 3 blok uzunluğunda yılan
+                    center_x = BOARD_WIDTH//2
+                    center_y = BOARD_HEIGHT//2
+                    ta_game_state["snake"] = [
+                        (center_x, center_y),
+                        (center_x-1, center_y),
+                        (center_x-2, center_y)
+                    ]
                     ta_game_state["direction"] = "RIGHT"
                     ta_game_state["respawn_count"] += 1
                     continue
                 
                 # Kendine çarpma kontrolü
                 if new_head in ta_game_state["snake"]:
-                    # Canlanma
-                    ta_game_state["snake"] = [(BOARD_WIDTH//2, BOARD_HEIGHT//2)]
+                    # Canlanma - 3 blok uzunluğunda yılan
+                    center_x = BOARD_WIDTH//2
+                    center_y = BOARD_HEIGHT//2
+                    ta_game_state["snake"] = [
+                        (center_x, center_y),
+                        (center_x-1, center_y),
+                        (center_x-2, center_y)
+                    ]
                     ta_game_state["direction"] = "RIGHT"
                     ta_game_state["respawn_count"] += 1
                     continue
@@ -741,8 +756,14 @@ def game_loop():
                 # Engel kontrolü
                 for obs in ta_game_state["obstacles"]:
                     if new_head == tuple(obs["pos"]):
-                        # Canlanma
-                        ta_game_state["snake"] = [(BOARD_WIDTH//2, BOARD_HEIGHT//2)]
+                        # Canlanma - 3 blok uzunluğunda yılan
+                        center_x = BOARD_WIDTH//2
+                        center_y = BOARD_HEIGHT//2
+                        ta_game_state["snake"] = [
+                            (center_x, center_y),
+                            (center_x-1, center_y),
+                            (center_x-2, center_y)
+                        ]
                         ta_game_state["direction"] = "RIGHT"
                         ta_game_state["respawn_count"] += 1
                         continue
@@ -815,7 +836,7 @@ def game_loop():
                 
                 # Power-up olasılığı
                 if (len(ta_game_state["powerups"]) < time_attack_module.TIME_ATTACK_CONFIG["max_powerups"] and 
-                    random.random() < 0.01):  # %1 olasılık
+                    random.random() < time_attack_module.TIME_ATTACK_CONSTANTS["POWERUP_SPAWN_CHANCE"]):  # %5 olasılık
                     powerup_type = random.choice(time_attack_module.TIME_ATTACK_CONFIG["allowed_powerups"])
                     occupied = set()
                     occupied.update(ta_game_state["snake"])
@@ -829,6 +850,14 @@ def game_loop():
                     if empty:
                         powerup_pos = random.choice(empty)
                         ta_game_state["powerups"].append({"pos": powerup_pos, "type": powerup_type})
+                        print(f"[DEBUG] Time Attack power-up oluşturuldu: {powerup_type} pozisyon: {powerup_pos}")
+                    else:
+                        print(f"[DEBUG] Time Attack power-up için boş alan bulunamadı")
+                else:
+                    if len(ta_game_state["powerups"]) >= time_attack_module.TIME_ATTACK_CONFIG["max_powerups"]:
+                        print(f"[DEBUG] Time Attack maksimum power-up sayısına ulaşıldı: {len(ta_game_state['powerups'])}")
+                    elif random.random() >= time_attack_module.TIME_ATTACK_CONSTANTS["POWERUP_SPAWN_CHANCE"]:
+                        print(f"[DEBUG] Time Attack power-up olasılığı düşük: {random.random():.3f} >= {time_attack_module.TIME_ATTACK_CONSTANTS['POWERUP_SPAWN_CHANCE']}")
         
         # State'leri gönder
         for sid, client_id in list(clients.items()):
@@ -861,6 +890,10 @@ def game_loop():
             if client_id in time_attack_module.time_attack_games:
                 ta_state = copy.deepcopy(time_attack_module.time_attack_games[client_id])
                 print(f"[DEBUG] Time Attack state gönderiliyor: {client_id}")
+                print(f"[DEBUG] Power-up sayısı: {len(ta_state.get('powerups', []))}")
+                if ta_state.get('powerups'):
+                    for i, pu in enumerate(ta_state['powerups']):
+                        print(f"[DEBUG] Power-up {i}: {pu['type']} pozisyon: {pu['pos']}")
                 socketio.emit('time_attack_state', ta_state, room=sid)
         
         tick_count += 1
