@@ -703,9 +703,132 @@ def game_loop():
         
         # Time Attack yılanlarını hareket ettir
         for client_id in list(time_attack_module.time_attack_games.keys()):
-            game = time_attack_module.get_time_attack_game(client_id)
-            if game and game.game_state["game_active"]:
-                game.move_snake()
+            game_state = time_attack_module.time_attack_games[client_id]
+            if game_state["game_active"]:
+                # Yılan hareketi
+                head = game_state["snake"][0]
+                direction = game_state["direction"]
+                
+                # Yeni baş pozisyonu
+                if direction == "UP":
+                    new_head = (head[0], head[1] - 1)
+                elif direction == "DOWN":
+                    new_head = (head[0], head[1] + 1)
+                elif direction == "LEFT":
+                    new_head = (head[0] - 1, head[1])
+                elif direction == "RIGHT":
+                    new_head = (head[0] + 1, head[1])
+                else:
+                    continue
+                
+                # Sınır kontrolü
+                if (new_head[0] < 0 or new_head[0] >= BOARD_WIDTH or 
+                    new_head[1] < 0 or new_head[1] >= BOARD_HEIGHT):
+                    # Canlanma
+                    game_state["snake"] = [(BOARD_WIDTH//2, BOARD_HEIGHT//2)]
+                    game_state["direction"] = "RIGHT"
+                    game_state["respawn_count"] += 1
+                    continue
+                
+                # Kendine çarpma kontrolü
+                if new_head in game_state["snake"]:
+                    # Canlanma
+                    game_state["snake"] = [(BOARD_WIDTH//2, BOARD_HEIGHT//2)]
+                    game_state["direction"] = "RIGHT"
+                    game_state["respawn_count"] += 1
+                    continue
+                
+                # Engel kontrolü
+                for obs in game_state["obstacles"]:
+                    if new_head == tuple(obs["pos"]):
+                        # Canlanma
+                        game_state["snake"] = [(BOARD_WIDTH//2, BOARD_HEIGHT//2)]
+                        game_state["direction"] = "RIGHT"
+                        game_state["respawn_count"] += 1
+                        continue
+                
+                # Yem kontrolü
+                food_eaten = False
+                for i, food_pos in enumerate(game_state["food"]):
+                    if new_head == food_pos:
+                        game_state["score"] += 10
+                        game_state["time_left"] += 5  # +5 saniye bonus
+                        game_state["food"].pop(i)
+                        food_eaten = True
+                        break
+                
+                # Altın elma kontrolü
+                if game_state["golden_food"] and new_head == game_state["golden_food"]:
+                    game_state["score"] += 50
+                    game_state["time_left"] += 15  # +15 saniye bonus
+                    game_state["golden_food"] = None
+                
+                # Power-up kontrolü
+                for i, powerup in enumerate(game_state["powerups"]):
+                    if new_head == tuple(powerup["pos"]):
+                        # Power-up aktivasyonu
+                        if client_id not in game_state["active_powerups"]:
+                            game_state["active_powerups"][client_id] = {}
+                        game_state["active_powerups"][client_id][powerup["type"]] = time.time() + 10
+                        game_state["powerups"].pop(i)
+                        game_state["time_left"] += 3  # +3 saniye bonus
+                        break
+                
+                # Yılanı güncelle
+                game_state["snake"].insert(0, new_head)
+                if not food_eaten:
+                    game_state["snake"].pop()
+                
+                # Yılan uzunluğu kontrolü
+                if len(game_state["snake"]) > 10:  # MAX_SNAKE_LENGTH
+                    game_state["snake"] = game_state["snake"][:10]
+                
+                # Yeni yem ekle
+                if food_eaten and len(game_state["food"]) < time_attack_module.TIME_ATTACK_CONFIG["food_count"]:
+                    # Rastgele yem pozisyonu
+                    occupied = set()
+                    occupied.update(game_state["snake"])
+                    occupied.update(game_state["food"])
+                    for obs in game_state["obstacles"]:
+                        occupied.add(tuple(obs["pos"]))
+                    for pu in game_state["powerups"]:
+                        occupied.add(tuple(pu["pos"]))
+                    
+                    empty = [(x, y) for x in range(BOARD_WIDTH) for y in range(BOARD_HEIGHT) if (x, y) not in occupied]
+                    if empty:
+                        new_food = random.choice(empty)
+                        game_state["food"].append(new_food)
+                
+                # Altın elma olasılığı
+                if random.random() < time_attack_module.TIME_ATTACK_CONFIG["golden_food_chance"] and not game_state["golden_food"]:
+                    occupied = set()
+                    occupied.update(game_state["snake"])
+                    occupied.update(game_state["food"])
+                    for obs in game_state["obstacles"]:
+                        occupied.add(tuple(obs["pos"]))
+                    for pu in game_state["powerups"]:
+                        occupied.add(tuple(pu["pos"]))
+                    
+                    empty = [(x, y) for x in range(BOARD_WIDTH) for y in range(BOARD_HEIGHT) if (x, y) not in occupied]
+                    if empty:
+                        game_state["golden_food"] = random.choice(empty)
+                
+                # Power-up olasılığı
+                if (len(game_state["powerups"]) < time_attack_module.TIME_ATTACK_CONFIG["max_powerups"] and 
+                    random.random() < 0.01):  # %1 olasılık
+                    powerup_type = random.choice(time_attack_module.TIME_ATTACK_CONFIG["allowed_powerups"])
+                    occupied = set()
+                    occupied.update(game_state["snake"])
+                    occupied.update(game_state["food"])
+                    for obs in game_state["obstacles"]:
+                        occupied.add(tuple(obs["pos"]))
+                    for pu in game_state["powerups"]:
+                        occupied.add(tuple(pu["pos"]))
+                    
+                    empty = [(x, y) for x in range(BOARD_WIDTH) for y in range(BOARD_HEIGHT) if (x, y) not in occupied]
+                    if empty:
+                        powerup_pos = random.choice(empty)
+                        game_state["powerups"].append({"pos": powerup_pos, "type": powerup_type})
         
         # State'leri gönder
         for sid, client_id in list(clients.items()):
@@ -815,17 +938,40 @@ def on_time_attack_move(data):
     client_id = data.get('client_id')
     direction = data.get('direction')
     
-    game = time_attack_module.get_time_attack_game(client_id)
-    if game:
-        game.set_direction(direction)
+    if client_id not in time_attack_module.time_attack_games:
+        return
+    
+    game_state = time_attack_module.time_attack_games[client_id]
+    
+    # Ters kontrol power-up kontrolü
+    if client_id in game_state.get("active_powerups", {}) and "reverse" in game_state["active_powerups"][client_id]:
+        OPP = {"UP":"DOWN","DOWN":"UP","LEFT":"RIGHT","RIGHT":"LEFT"}
+        direction = OPP.get(direction, direction)
+    
+    # Yön kontrolü
+    current_dir = game_state["direction"]
+    OPPOSITE_DIRECTIONS = {"UP": "DOWN", "DOWN": "UP", "LEFT": "RIGHT", "RIGHT": "LEFT"}
+    if OPPOSITE_DIRECTIONS.get(current_dir) == direction:
+        return
+    
+    game_state["direction"] = direction
 
 @socketio.on('time_attack_respawn')
 def on_time_attack_respawn(data):
     client_id = data.get('client_id')
     
-    game = time_attack_module.get_time_attack_game(client_id)
-    if game:
-        game.manual_respawn()
+    if client_id not in time_attack_module.time_attack_games:
+        return
+    
+    game_state = time_attack_module.time_attack_games[client_id]
+    if not game_state["game_active"]:
+        return
+    
+    # Canlanma
+    game_state["snake"] = [(BOARD_WIDTH//2, BOARD_HEIGHT//2)]
+    game_state["direction"] = "RIGHT"
+    game_state["respawn_count"] += 1
+    print(f"[DEBUG] {client_id} manuel canlanma! Canlanma sayısı: {game_state['respawn_count']}")
 
 @socketio.on('disconnect')
 def on_disconnect():

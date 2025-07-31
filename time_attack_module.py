@@ -265,7 +265,10 @@ def create_time_attack_game(client_id, difficulty, board_width, board_height):
 
 def get_time_attack_game(client_id):
     """Time Attack oyununu getir"""
-    return time_attack_games.get(client_id)
+    if client_id in time_attack_games:
+        # Game state'i döndür, class instance'ı değil
+        return time_attack_games[client_id]
+    return None
 
 def remove_time_attack_game(client_id):
     """Time Attack oyununu kaldır"""

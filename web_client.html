@@ -212,25 +212,69 @@
         }
         
         /* Mod ve Zorluk Seçimi Stilleri */
+        #mode-ui, #difficulty-ui {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: fixed;
+            inset: 0;
+            z-index: 10;
+            background: url('assets/Background.jpg') center center/cover no-repeat;
+        }
+        #mode-ui::before, #difficulty-ui::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(34,34,34,0.55);
+            backdrop-filter: blur(6px);
+            z-index: -1;
+        }
+        #mode-ui h1, #difficulty-ui h1 {
+            margin-bottom: 32px;
+            font-size: 2.8em;
+            font-weight: 900;
+            letter-spacing: 2px;
+            color: #fff;
+            text-shadow: 0 2px 12px #000a;
+        }
+        .mode-buttons, .difficulty-buttons {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
         .mode-btn, .difficulty-btn {
-            margin: 5px;
-            padding: 10px 20px;
-            font-size: 1.1em;
-            border-radius: 8px;
+            padding: 20px 30px;
+            font-size: 1.2em;
+            border-radius: 12px;
             border: 2px solid #444;
             background: rgba(255,255,255,0.1);
             color: #fff;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.3s;
+            text-align: center;
+            min-width: 150px;
+        }
+        .mode-btn h3, .difficulty-btn h3 {
+            margin: 0 0 10px 0;
+            font-size: 1.3em;
+            font-weight: bold;
+        }
+        .mode-btn p, .difficulty-btn p {
+            margin: 0;
+            font-size: 0.9em;
+            opacity: 0.8;
         }
         .mode-btn:hover, .difficulty-btn:hover {
             background: rgba(255,255,255,0.2);
             border-color: #4caf50;
+            transform: translateY(-2px);
         }
         .mode-btn.active, .difficulty-btn.active {
             background: #4caf50;
             border-color: #4caf50;
             color: #fff;
+            transform: translateY(-2px);
         }
         
         /* Time Attack UI */
@@ -265,27 +309,50 @@
     </style>
 </head>
 <body>
+    <!-- Kullanıcı Adı Ekranı -->
     <div id="ui">
         <h1>Snake Game</h1>
         <div class="error-msg" id="ui-error"></div>
         <input id="nicknameInput" type="text" maxlength="16" placeholder="Kullanıcı adı" />
-        
-        <!-- Mod Seçimi -->
-        <div id="mode-selection" style="display:none; margin: 20px 0;">
-            <h3 style="color: #fff; margin-bottom: 15px;">Oyun Modu Seçin</h3>
-            <button class="mode-btn" data-mode="classic">Klasik Mod</button>
-            <button class="mode-btn" data-mode="timeAttack">Time Attack</button>
+        <button id="startBtn">Devam Et</button>
+    </div>
+    
+    <!-- Mod Seçimi Ekranı -->
+    <div id="mode-ui" style="display:none;">
+        <h1>Oyun Modu Seçin</h1>
+        <div class="error-msg" id="mode-error"></div>
+        <div class="mode-buttons">
+            <button class="mode-btn" data-mode="classic">
+                <h3>Klasik Mod</h3>
+                <p>Çok oyunculu rekabet</p>
+            </button>
+            <button class="mode-btn" data-mode="timeAttack">
+                <h3>Time Attack</h3>
+                <p>Solo zaman yarışı</p>
+            </button>
         </div>
-        
-        <!-- Zorluk Seçimi -->
-        <div id="difficulty-selection" style="display:none; margin: 20px 0;">
-            <h3 style="color: #fff; margin-bottom: 15px;">Zorluk Seviyesi</h3>
-            <button class="difficulty-btn" data-difficulty="easy">Kolay (2 dk)</button>
-            <button class="difficulty-btn" data-difficulty="medium">Orta (1.5 dk)</button>
-            <button class="difficulty-btn" data-difficulty="hard">Zor (1 dk)</button>
+        <button id="modeStartBtn" style="display:none;">Oyunu Başlat</button>
+    </div>
+    
+    <!-- Zorluk Seçimi Ekranı -->
+    <div id="difficulty-ui" style="display:none;">
+        <h1>Zorluk Seviyesi</h1>
+        <div class="error-msg" id="difficulty-error"></div>
+        <div class="difficulty-buttons">
+            <button class="difficulty-btn" data-difficulty="easy">
+                <h3>Kolay</h3>
+                <p>2 dakika</p>
+            </button>
+            <button class="difficulty-btn" data-difficulty="medium">
+                <h3>Orta</h3>
+                <p>1.5 dakika</p>
+            </button>
+            <button class="difficulty-btn" data-difficulty="hard">
+                <h3>Zor</h3>
+                <p>1 dakika</p>
+            </button>
         </div>
-        
-        <button id="startBtn">Başla</button>
+        <button id="difficultyStartBtn" style="display:none;">Oyunu Başlat</button>
     </div>
     <div id="top-usernames" style="display:none;"></div>
     <div id="game-container" style="display:none; width:100vw; height:100vh;">
@@ -587,32 +654,46 @@
             return;
         }
         
-        // Mod seçimi göster
-        document.getElementById('mode-selection').style.display = 'block';
-        document.getElementById('startBtn').textContent = 'Oyunu Başlat';
+        // Mod seçimi ekranına geç
+        document.getElementById('ui').style.display = 'none';
+        document.getElementById('mode-ui').style.display = 'flex';
     }
     
-    function joinGame() {
+    function selectMode() {
         const modeSelection = document.querySelector('.mode-btn.active');
-        const difficultySelection = document.querySelector('.difficulty-btn.active');
         
         if (!modeSelection) {
-            document.getElementById('ui-error').textContent = 'Lütfen bir oyun modu seçin!';
+            document.getElementById('mode-error').textContent = 'Lütfen bir oyun modu seçin!';
             return;
         }
         
         currentGameMode = modeSelection.dataset.mode;
         
-        if (currentGameMode === 'timeAttack' && !difficultySelection) {
-            document.getElementById('ui-error').textContent = 'Lütfen bir zorluk seviyesi seçin!';
+        if (currentGameMode === 'timeAttack') {
+            // Zorluk seçimi ekranına geç
+            document.getElementById('mode-ui').style.display = 'none';
+            document.getElementById('difficulty-ui').style.display = 'flex';
+        } else {
+            // Klasik mod için direkt oyunu başlat
+            startGameMode();
+        }
+    }
+    
+    function selectDifficulty() {
+        const difficultySelection = document.querySelector('.difficulty-btn.active');
+        
+        if (!difficultySelection) {
+            document.getElementById('difficulty-error').textContent = 'Lütfen bir zorluk seviyesi seçin!';
             return;
         }
         
-        if (currentGameMode === 'timeAttack') {
-            currentDifficulty = difficultySelection.dataset.difficulty;
-        }
-        
-        document.getElementById('ui').style.display = 'none';
+        currentDifficulty = difficultySelection.dataset.difficulty;
+        startGameMode();
+    }
+    
+    function startGameMode() {
+        document.getElementById('mode-ui').style.display = 'none';
+        document.getElementById('difficulty-ui').style.display = 'none';
         document.getElementById('game-container').style.display = 'flex';
         document.getElementById('top-usernames').style.display = 'flex';
         started = true;
@@ -694,13 +775,7 @@
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                
-                // Time Attack seçilirse zorluk seçimini göster
-                if (btn.dataset.mode === 'timeAttack') {
-                    document.getElementById('difficulty-selection').style.display = 'block';
-                } else {
-                    document.getElementById('difficulty-selection').style.display = 'none';
-                }
+                document.getElementById('modeStartBtn').style.display = 'inline-block';
             });
         });
         
@@ -709,17 +784,18 @@
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.difficulty-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
+                document.getElementById('difficultyStartBtn').style.display = 'inline-block';
             });
         });
         
-        // Başlat butonu
-        document.getElementById('startBtn').addEventListener('click', () => {
-            if (document.getElementById('mode-selection').style.display === 'block') {
-                joinGame();
-            } else {
-                startGame();
-            }
-        });
+        // Kullanıcı adı ekranı başlat butonu
+        document.getElementById('startBtn').addEventListener('click', startGame);
+        
+        // Mod seçimi başlat butonu
+        document.getElementById('modeStartBtn').addEventListener('click', selectMode);
+        
+        // Zorluk seçimi başlat butonu
+        document.getElementById('difficultyStartBtn').addEventListener('click', selectDifficulty);
     });
 
     // Eagle easter egg görseli için asset yükle
