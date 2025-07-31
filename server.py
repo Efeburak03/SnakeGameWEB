@@ -7,6 +7,9 @@ from flask import Flask, send_from_directory, request
 from flask_socketio import SocketIO, emit, disconnect
 from common import MSG_MOVE, MSG_STATE, MSG_RESTART, create_state_message, MAX_PLAYERS, get_snake_color, OBSTACLE_TYPES, POWERUP_TYPES, INITIAL_FOOD_COUNT
 
+# Time Attack modülünü import et
+import time_attack_module
+
 BOARD_WIDTH = 60   # Enine daha geniş
 BOARD_HEIGHT = 35 # 700/20 = 35 satır
 START_LENGTH = 3
@@ -621,6 +624,11 @@ def game_loop():
     winner_id = None
     game_started = False
     while True:
+        # Time Attack modülünü güncelle
+        time_attack_module.update_all_time_attack_games()
+        time_attack_module.clear_expired_powerups_all()
+        
+        # Klasik mod güncellemeleri
         clear_expired_powerups()
         new_queue = []
         now = time.time()
@@ -692,7 +700,16 @@ def game_loop():
                 else:
                     if tick_count % 2 == 0:
                         move_snake(client_id)
+        
+        # Time Attack yılanlarını hareket ettir
+        for client_id in list(time_attack_module.time_attack_games.keys()):
+            game = time_attack_module.get_time_attack_game(client_id)
+            if game and game.game_state["game_active"]:
+                game.move_snake()
+        
+        # State'leri gönder
         for sid, client_id in list(clients.items()):
+            # Klasik mod state'i
             state_copy = copy.deepcopy(game_state)
             # Geri sayım süresi her zaman set edilmeli
             if game_timer is not None and not waiting_for_restart:
@@ -716,6 +733,12 @@ def game_loop():
                 if has_powerup(cid2, "invisible") and cid2 != client_id:
                     state_copy["snakes"][cid2] = []
             socketio.emit('state', state_copy, room=sid)
+            
+            # Time Attack state'i
+            if client_id in time_attack_module.time_attack_games:
+                ta_state = copy.deepcopy(time_attack_module.time_attack_games[client_id])
+                socketio.emit('time_attack_state', ta_state, room=sid)
+        
         tick_count += 1
         socketio.sleep(TICK_RATE)
 
@@ -767,11 +790,49 @@ def on_easteregg(data):
     for cid in list(game_state["snakes"].keys()):
         eliminate_snake(cid)
 
+# --- Time Attack Event Handler'ları ---
+@socketio.on('start_time_attack')
+def on_start_time_attack(data):
+    client_id = data.get('client_id')
+    difficulty = data.get('difficulty')
+    
+    # Client ID kontrolü
+    if not client_id or client_id == 'null' or client_id == '':
+        emit('error', {"message": "Geçersiz kullanıcı adı!"})
+        return
+    
+    if difficulty not in time_attack_module.TIME_ATTACK_CONFIG["difficulties"]:
+        emit('error', {"message": "Geçersiz zorluk seviyesi!"})
+        return
+    
+    # Time Attack oyunu oluştur
+    time_attack_module.create_time_attack_game(client_id, difficulty, BOARD_WIDTH, BOARD_HEIGHT)
+    print(f"[DEBUG] {client_id} Time Attack başlattı: {difficulty}")
+    emit('time_attack_started', {"difficulty": difficulty, "time": time_attack_module.TIME_ATTACK_CONFIG["difficulties"][difficulty]["time"]})
+
+@socketio.on('time_attack_move')
+def on_time_attack_move(data):
+    client_id = data.get('client_id')
+    direction = data.get('direction')
+    
+    game = time_attack_module.get_time_attack_game(client_id)
+    if game:
+        game.set_direction(direction)
+
+@socketio.on('time_attack_respawn')
+def on_time_attack_respawn(data):
+    client_id = data.get('client_id')
+    
+    game = time_attack_module.get_time_attack_game(client_id)
+    if game:
+        game.manual_respawn()
+
 @socketio.on('disconnect')
 def on_disconnect():
     sid = request.sid
     client_id = clients.get(sid)
     if client_id:
+        # Klasik mod temizliği
         game_state["snakes"].pop(client_id, None)
         game_state["directions"].pop(client_id, None)
         game_state["active"].pop(client_id, None)
@@ -779,6 +840,10 @@ def on_disconnect():
         game_state["scores"].pop(client_id, None)
         if "active_powerups" in game_state:
             game_state["active_powerups"].pop(client_id, None)
+        
+        # Time Attack temizliği
+        time_attack_module.remove_time_attack_game(client_id)
+    
     clients.pop(sid, None)
 
 # --- Oyun döngüsünü başlat ---

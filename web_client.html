@@ -210,6 +210,58 @@
             font-size: 2em;
             text-align: center;
         }
+        
+        /* Mod ve Zorluk Seçimi Stilleri */
+        .mode-btn, .difficulty-btn {
+            margin: 5px;
+            padding: 10px 20px;
+            font-size: 1.1em;
+            border-radius: 8px;
+            border: 2px solid #444;
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .mode-btn:hover, .difficulty-btn:hover {
+            background: rgba(255,255,255,0.2);
+            border-color: #4caf50;
+        }
+        .mode-btn.active, .difficulty-btn.active {
+            background: #4caf50;
+            border-color: #4caf50;
+            color: #fff;
+        }
+        
+        /* Time Attack UI */
+        #time-attack-ui {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.8);
+            color: #fff;
+            padding: 15px;
+            border-radius: 10px;
+            z-index: 1000;
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }
+        #time-attack-ui h3 {
+            margin: 0 0 10px 0;
+            font-size: 1.2em;
+        }
+        #time-attack-ui div {
+            margin: 5px 0;
+            font-size: 1em;
+        }
+        #time-attack-ui button {
+            margin-top: 10px;
+            padding: 8px 16px;
+            background: #4caf50;
+            border: none;
+            border-radius: 5px;
+            color: #fff;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -217,6 +269,22 @@
         <h1>Snake Game</h1>
         <div class="error-msg" id="ui-error"></div>
         <input id="nicknameInput" type="text" maxlength="16" placeholder="Kullanıcı adı" />
+        
+        <!-- Mod Seçimi -->
+        <div id="mode-selection" style="display:none; margin: 20px 0;">
+            <h3 style="color: #fff; margin-bottom: 15px;">Oyun Modu Seçin</h3>
+            <button class="mode-btn" data-mode="classic">Klasik Mod</button>
+            <button class="mode-btn" data-mode="timeAttack">Time Attack</button>
+        </div>
+        
+        <!-- Zorluk Seçimi -->
+        <div id="difficulty-selection" style="display:none; margin: 20px 0;">
+            <h3 style="color: #fff; margin-bottom: 15px;">Zorluk Seviyesi</h3>
+            <button class="difficulty-btn" data-difficulty="easy">Kolay (2 dk)</button>
+            <button class="difficulty-btn" data-difficulty="medium">Orta (1.5 dk)</button>
+            <button class="difficulty-btn" data-difficulty="hard">Zor (1 dk)</button>
+        </div>
+        
         <button id="startBtn">Başla</button>
     </div>
     <div id="top-usernames" style="display:none;"></div>
@@ -255,6 +323,11 @@
     let currentDirection = null; // Başlangıçta null
     let nickname = '';
     let assets = {};
+    
+    // Time Attack değişkenleri
+    let timeAttackState = null;
+    let currentGameMode = null;
+    let currentDifficulty = null;
 
     // --- Görselleri yükle ---
     const assetFiles = {
@@ -280,7 +353,11 @@
     function connect() {
         socket = io();
         socket.on('connect', () => {
-            socket.emit('join', {client_id: nickname});
+            if (currentGameMode === 'timeAttack') {
+                socket.emit('start_time_attack', {client_id: nickname, difficulty: currentDifficulty});
+            } else {
+                socket.emit('join', {client_id: nickname});
+            }
         });
         socket.on('state', (state) => {
             console.log('[DEBUG] Gelen state:', state);
@@ -289,6 +366,18 @@
             draw();
             updateTopUsernames();
             updateRestartButton();
+        });
+        
+        // Time Attack event listener'ları
+        socket.on('time_attack_started', (data) => {
+            currentGameMode = 'timeAttack';
+            currentDifficulty = data.difficulty;
+            showTimeAttackUI();
+        });
+        
+        socket.on('time_attack_state', (state) => {
+            timeAttackState = state;
+            drawTimeAttack();
         });
         socket.on('error', (err) => {
             const errorDiv = document.getElementById('ui-error');
@@ -497,6 +586,32 @@
             input.classList.add('error');
             return;
         }
+        
+        // Mod seçimi göster
+        document.getElementById('mode-selection').style.display = 'block';
+        document.getElementById('startBtn').textContent = 'Oyunu Başlat';
+    }
+    
+    function joinGame() {
+        const modeSelection = document.querySelector('.mode-btn.active');
+        const difficultySelection = document.querySelector('.difficulty-btn.active');
+        
+        if (!modeSelection) {
+            document.getElementById('ui-error').textContent = 'Lütfen bir oyun modu seçin!';
+            return;
+        }
+        
+        currentGameMode = modeSelection.dataset.mode;
+        
+        if (currentGameMode === 'timeAttack' && !difficultySelection) {
+            document.getElementById('ui-error').textContent = 'Lütfen bir zorluk seviyesi seçin!';
+            return;
+        }
+        
+        if (currentGameMode === 'timeAttack') {
+            currentDifficulty = difficultySelection.dataset.difficulty;
+        }
+        
         document.getElementById('ui').style.display = 'none';
         document.getElementById('game-container').style.display = 'flex';
         document.getElementById('top-usernames').style.display = 'flex';
@@ -516,21 +631,38 @@
             e.preventDefault();
         }
         if (e.repeat) return; // Sadece ilk basışta çalışsın, basılı tutunca ilerlemesin
-        if (e.key === 'ArrowUp') sendMove('UP');
-        else if (e.key === 'ArrowDown') sendMove('DOWN');
-        else if (e.key === 'ArrowLeft') sendMove('LEFT');
-        else if (e.key === 'ArrowRight') sendMove('RIGHT');
-        else if (e.key === 'Enter') {
-            hideEagleEggScreen();
-            if (gameState && gameState.active && !gameState.active[myId]) {
-                socket.emit('restart', {client_id: myId});
-            } else if (gameState && gameState.waiting_for_restart) {
-                if (!readySent) {
-                    socket.emit('ready', {client_id: myId});
-                    readySent = true;
+        
+        // Time Attack modu için
+        if (currentGameMode === 'timeAttack') {
+            if (e.key === 'ArrowUp') sendTimeAttackMove('UP');
+            else if (e.key === 'ArrowDown') sendTimeAttackMove('DOWN');
+            else if (e.key === 'ArrowLeft') sendTimeAttackMove('LEFT');
+            else if (e.key === 'ArrowRight') sendTimeAttackMove('RIGHT');
+            else if (e.key === 'Enter') {
+                if (socket && socket.connected) {
+                    socket.emit('time_attack_respawn', {client_id: myId});
+                }
+            }
+        } else {
+            // Klasik mod için
+            if (e.key === 'ArrowUp') sendMove('UP');
+            else if (e.key === 'ArrowDown') sendMove('DOWN');
+            else if (e.key === 'ArrowLeft') sendMove('LEFT');
+            else if (e.key === 'ArrowRight') sendMove('RIGHT');
+            else if (e.key === 'Enter') {
+                hideEagleEggScreen();
+                if (gameState && gameState.active && !gameState.active[myId]) {
+                    socket.emit('restart', {client_id: myId});
+                } else if (gameState && gameState.waiting_for_restart) {
+                    if (!readySent) {
+                        socket.emit('ready', {client_id: myId});
+                        readySent = true;
+                    }
                 }
             }
         }
+        
+        // Easter egg kontrolü (her iki modda da çalışır)
         if (e.key === easterEggSequence[easterEggProgress]) {
             easterEggProgress++;
             if (easterEggProgress === easterEggSequence.length) {
@@ -554,6 +686,41 @@
         socket.emit('move', {client_id: myId, direction: dir});
         currentDirection = dir;
     }
+    
+    // Mod ve zorluk seçimi event listener'ları
+    document.addEventListener('DOMContentLoaded', () => {
+        // Mod seçimi
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                // Time Attack seçilirse zorluk seçimini göster
+                if (btn.dataset.mode === 'timeAttack') {
+                    document.getElementById('difficulty-selection').style.display = 'block';
+                } else {
+                    document.getElementById('difficulty-selection').style.display = 'none';
+                }
+            });
+        });
+        
+        // Zorluk seçimi
+        document.querySelectorAll('.difficulty-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.difficulty-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            });
+        });
+        
+        // Başlat butonu
+        document.getElementById('startBtn').addEventListener('click', () => {
+            if (document.getElementById('mode-selection').style.display === 'block') {
+                joinGame();
+            } else {
+                startGame();
+            }
+        });
+    });
 
     // Eagle easter egg görseli için asset yükle
     assets.eagle = new Image();
@@ -686,10 +853,38 @@
         const right = document.getElementById('btn-right');
         const restart = document.getElementById('btn-restart');
         if (!up) return;
-        up.addEventListener('touchstart', e => { e.preventDefault(); sendMove('UP'); });
-        down.addEventListener('touchstart', e => { e.preventDefault(); sendMove('DOWN'); });
-        left.addEventListener('touchstart', e => { e.preventDefault(); sendMove('LEFT'); });
-        right.addEventListener('touchstart', e => { e.preventDefault(); sendMove('RIGHT'); });
+        up.addEventListener('touchstart', e => { 
+            e.preventDefault(); 
+            if (currentGameMode === 'timeAttack') {
+                sendTimeAttackMove('UP');
+            } else {
+                sendMove('UP');
+            }
+        });
+        down.addEventListener('touchstart', e => { 
+            e.preventDefault(); 
+            if (currentGameMode === 'timeAttack') {
+                sendTimeAttackMove('DOWN');
+            } else {
+                sendMove('DOWN');
+            }
+        });
+        left.addEventListener('touchstart', e => { 
+            e.preventDefault(); 
+            if (currentGameMode === 'timeAttack') {
+                sendTimeAttackMove('LEFT');
+            } else {
+                sendMove('LEFT');
+            }
+        });
+        right.addEventListener('touchstart', e => { 
+            e.preventDefault(); 
+            if (currentGameMode === 'timeAttack') {
+                sendTimeAttackMove('RIGHT');
+            } else {
+                sendMove('RIGHT');
+            }
+        });
         if (restart) {
             restart.addEventListener('touchstart', e => {
                 e.preventDefault();
@@ -730,6 +925,184 @@
     window.addEventListener('orientationchange', checkOrientation);
     window.addEventListener('DOMContentLoaded', checkOrientation);
 
+    // Time Attack fonksiyonları
+    function showTimeAttackUI() {
+        const existingUI = document.getElementById('time-attack-ui');
+        if (existingUI) {
+            existingUI.remove();
+        }
+        
+        const ui = document.createElement('div');
+        ui.id = 'time-attack-ui';
+        ui.innerHTML = `
+            <h3>Time Attack</h3>
+            <div id="time-display">Süre: <span id="time-left">--</span></div>
+            <div id="score-display">Skor: <span id="score">0</span></div>
+            <div id="respawn-display">Canlanma: <span id="respawn-count">0</span></div>
+            <span id="difficulty-display">Zorluk: --</span>
+            <button id="respawn-btn">Canlan</button>
+        `;
+        document.body.appendChild(ui);
+        
+        // Canlanma butonu event listener
+        document.getElementById('respawn-btn').addEventListener('click', () => {
+            if (socket && socket.connected) {
+                socket.emit('time_attack_respawn', {client_id: myId});
+            }
+        });
+    }
+    
+    function drawTimeAttack() {
+        if (!timeAttackState) return;
+        
+        // Canvas'ı temizle
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Arka plan
+        if (assets.bg) {
+            const pattern = ctx.createPattern(assets.bg, 'repeat');
+            ctx.save();
+            ctx.fillStyle = pattern;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.restore();
+        }
+        
+        // Yılan
+        if (timeAttackState.snake) {
+            ctx.fillStyle = 'lime';
+            for (const [i, seg] of timeAttackState.snake.entries()) {
+                ctx.fillRect(seg[0]*CELL_SIZE, seg[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+            }
+        }
+        
+        // Yemler
+        if (timeAttackState.food) {
+            for (const food of timeAttackState.food) {
+                if (assets.apple) {
+                    ctx.drawImage(assets.apple, food[0]*CELL_SIZE, food[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                } else {
+                    ctx.fillStyle = 'red';
+                    ctx.fillRect(food[0]*CELL_SIZE, food[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                }
+            }
+        }
+        
+        // Altın elma
+        if (timeAttackState.golden_food) {
+            if (assets.golden) {
+                ctx.drawImage(assets.golden, timeAttackState.golden_food[0]*CELL_SIZE, timeAttackState.golden_food[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+            } else {
+                ctx.fillStyle = 'gold';
+                ctx.fillRect(timeAttackState.golden_food[0]*CELL_SIZE, timeAttackState.golden_food[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+            }
+        }
+        
+        // Engeller
+        if (timeAttackState.obstacles) {
+            for (const obs of timeAttackState.obstacles) {
+                const [ox, oy] = obs.pos;
+                if (obs.type === 'grass' && assets.grass) {
+                    ctx.drawImage(assets.grass, ox*CELL_SIZE, oy*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                } else {
+                    ctx.fillStyle = '#555';
+                    ctx.fillRect(ox*CELL_SIZE, oy*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                }
+            }
+        }
+        
+        // Power-up'lar
+        if (timeAttackState.powerups) {
+            for (const powerup of timeAttackState.powerups) {
+                const [px, py] = powerup.pos;
+                ctx.fillStyle = '#00f';
+                ctx.fillRect(px*CELL_SIZE, py*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+            }
+        }
+        
+        updateTimeAttackUI();
+    }
+    
+    function updateTimeAttackUI() {
+        if (!timeAttackState) return;
+        
+        const timeLeft = document.getElementById('time-left');
+        const score = document.getElementById('score');
+        const respawnCount = document.getElementById('respawn-count');
+        const difficultyDisplay = document.getElementById('difficulty-display');
+        
+        if (timeLeft) timeLeft.textContent = `${Math.floor(timeAttackState.time_left)}s`;
+        if (score) score.textContent = timeAttackState.score;
+        if (respawnCount) respawnCount.textContent = timeAttackState.respawn_count;
+        if (difficultyDisplay) {
+            const difficultyNames = {
+                'easy': 'Kolay',
+                'medium': 'Orta',
+                'hard': 'Zor'
+            };
+            difficultyDisplay.textContent = `Zorluk: ${difficultyNames[timeAttackState.difficulty] || '--'}`;
+        }
+        
+        // Oyun bittiyse sonuç göster
+        if (!timeAttackState.game_active) {
+            showTimeAttackResult();
+        }
+    }
+    
+    function showTimeAttackResult() {
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        `;
+        
+        modal.innerHTML = `
+            <div style="background: #333; padding: 30px; border-radius: 15px; text-align: center; color: #fff;">
+                <h2>SÜRE BİTTİ!</h2>
+                <p>Son Oyun Skoru: ${timeAttackState.score}</p>
+                <p>En Yüksek Skor: ${timeAttackState.high_score}</p>
+                <button id="play-again-btn" style="margin: 10px; padding: 10px 20px; background: #4caf50; border: none; border-radius: 5px; color: #fff; cursor: pointer;">Tekrar Oyna</button>
+                <button id="back-to-menu-btn" style="margin: 10px; padding: 10px 20px; background: #666; border: none; border-radius: 5px; color: #fff; cursor: pointer;">Ana Menü</button>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        document.getElementById('play-again-btn').addEventListener('click', () => {
+            modal.remove();
+            // Yeni Time Attack oyunu başlat
+            if (socket && socket.connected) {
+                socket.emit('start_time_attack', {client_id: myId, difficulty: currentDifficulty});
+            }
+        });
+        
+        document.getElementById('back-to-menu-btn').addEventListener('click', () => {
+            modal.remove();
+            // Ana menüye dön
+            document.getElementById('ui').style.display = 'flex';
+            document.getElementById('game-container').style.display = 'none';
+            document.getElementById('top-usernames').style.display = 'none';
+            const timeAttackUI = document.getElementById('time-attack-ui');
+            if (timeAttackUI) timeAttackUI.remove();
+            currentGameMode = null;
+            currentDifficulty = null;
+            timeAttackState = null;
+        });
+    }
+    
+    function sendTimeAttackMove(direction) {
+        if (socket && socket.connected) {
+            socket.emit('time_attack_move', {client_id: myId, direction: direction});
+        }
+    }
+    
     // Oyun state güncellendiğinde restart butonunu göster/gizle
     function updateRestartButton() {
         const restart = document.getElementById('btn-restart');
