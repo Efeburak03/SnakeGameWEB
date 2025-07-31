@@ -115,10 +115,9 @@ def place_obstacles():
     for _ in range(7):  # Kutu (poison)
         pos = empty[idx]; idx += 1
         obstacles.append({"pos": pos, "type": "poison"})
-    # Gizli duvarlar kaldırıldı
-    # for _ in range(7):  # Gizli duvar
-    #     pos = empty[idx]; idx += 1
-    #     obstacles.append({"pos": pos, "type": "hidden_wall"})
+    for _ in range(7):  # Gizli duvar
+        pos = empty[idx]; idx += 1
+        obstacles.append({"pos": pos, "type": "hidden_wall"})
     return obstacles
 
 def place_portals():

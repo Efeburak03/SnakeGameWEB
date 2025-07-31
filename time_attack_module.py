@@ -72,7 +72,7 @@ class TimeAttackGame:
         obstacle_count = int(base_obstacles * self.config["obstacle_multiplier"])
         
         # Engel türleri - klasik moddaki gibi
-        obstacle_types = ["slow", "poison", "wall"]
+        obstacle_types = ["slow", "poison", "wall", "hidden_wall"]
         
         for _ in range(obstacle_count):
             occupied = set()
@@ -182,6 +182,10 @@ class TimeAttackGame:
                         return
                 elif obs["type"] == "wall":
                     # Normal duvarlar elenme yapar
+                    self.eliminate_snake()
+                    return
+                elif obs["type"] == "hidden_wall":
+                    # Gizli duvarlar elenme yapar
                     self.eliminate_snake()
                     return
                 else:
