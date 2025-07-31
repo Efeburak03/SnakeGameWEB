@@ -51,4 +51,50 @@ POWERUP_TYPES = [
 ]
 
 # Oyun başında elma sayısı
-INITIAL_FOOD_COUNT = 4 
+INITIAL_FOOD_COUNT = 4
+
+# Time Attack modu sabitleri
+TIME_ATTACK_CONSTANTS = {
+    "MAX_SNAKE_LENGTH": 10,           # Time Attack'ta maksimum yılan uzunluğu
+    "FOOD_COUNT": 2,                  # Time Attack'ta maksimum yem sayısı
+    "MAX_POWERUPS": 2,                # Time Attack'ta maksimum power-up sayısı
+    "GOLDEN_FOOD_CHANCE": 0.05,       # Altın elma çıkma olasılığı (%5)
+    "POWERUP_SPAWN_CHANCE": 0.01,     # Power-up çıkma olasılığı (%1)
+    "FOOD_BONUS_TIME": 5,             # Yem yendiğinde +5 saniye
+    "GOLDEN_FOOD_BONUS_TIME": 15,     # Altın elma yendiğinde +15 saniye
+    "POWERUP_BONUS_TIME": 3,          # Power-up alındığında +3 saniye
+    "POWERUP_DURATION": 10,           # Power-up süresi (saniye)
+}
+
+# Time Attack zorluk seviyeleri
+TIME_ATTACK_DIFFICULTIES = {
+    "easy": {
+        "time": 120,                   # 2 dakika
+        "name": "Kolay",
+        "obstacle_multiplier": 1.2,    # Engel çoğaltma faktörü
+        "description": "2 dakika süre"
+    },
+    "medium": {
+        "time": 90,                    # 1.5 dakika
+        "name": "Orta", 
+        "obstacle_multiplier": 1.5,
+        "description": "1.5 dakika süre"
+    },
+    "hard": {
+        "time": 60,                    # 1 dakika
+        "name": "Zor",
+        "obstacle_multiplier": 2.0,
+        "description": "1 dakika süre"
+    }
+}
+
+# Time Attack'ta izin verilen power-up'lar
+TIME_ATTACK_ALLOWED_POWERUPS = ["shield", "speed", "reverse", "magnet"]
+
+# Time Attack oyun durumu anahtarları
+TIME_ATTACK_STATE_KEYS = [
+    "snake", "direction", "food", "golden_food", "obstacles", 
+    "powerups", "active_powerups", "score", "time_left", 
+    "difficulty", "start_time", "game_active", "high_score", 
+    "respawn_count"
+] 

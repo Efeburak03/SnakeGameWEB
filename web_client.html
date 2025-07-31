@@ -430,7 +430,11 @@
             console.log('[DEBUG] Gelen state:', state);
             gameState = state;
             if (!myId) myId = nickname;
-            draw();
+            if (currentGameMode === 'timeAttack') {
+                drawTimeAttack();
+            } else {
+                draw();
+            }
             updateTopUsernames();
             updateRestartButton();
         });
@@ -443,6 +447,7 @@
         });
         
         socket.on('time_attack_state', (state) => {
+            console.log('[DEBUG] Time Attack state geldi:', state);
             timeAttackState = state;
             drawTimeAttack();
         });
@@ -618,7 +623,15 @@
         CELL_SIZE = Math.floor(Math.min(w / BOARD_WIDTH, h / BOARD_HEIGHT));
         canvas.width = CELL_SIZE * BOARD_WIDTH;
         canvas.height = CELL_SIZE * BOARD_HEIGHT;
-        draw();
+        
+        // Eğer oyun başladıysa çiz
+        if (started) {
+            if (currentGameMode === 'timeAttack' && timeAttackState) {
+                drawTimeAttack();
+            } else if (gameState) {
+                draw();
+            }
+        }
     }
     window.addEventListener('resize', resizeGameCanvas);
     window.addEventListener('orientationchange', resizeGameCanvas);
@@ -698,8 +711,12 @@
         document.getElementById('top-usernames').style.display = 'flex';
         started = true;
         currentDirection = null;
+        
+        // Canvas'ı boyutlandır
+        resizeGameCanvas();
+        
+        // Bağlantıyı kur
         connect();
-        draw();
     }
 
     // Easter egg: yukarı, sağ, aşağı, aşağı, aşağı kombinasyonu
@@ -1029,6 +1046,7 @@
     }
     
     function drawTimeAttack() {
+        console.log('[DEBUG] drawTimeAttack çağrıldı, timeAttackState:', timeAttackState);
         if (!timeAttackState) return;
         
         // Canvas'ı temizle

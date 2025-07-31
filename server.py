@@ -752,7 +752,7 @@ def game_loop():
                 for i, food_pos in enumerate(game_state["food"]):
                     if new_head == food_pos:
                         game_state["score"] += 10
-                        game_state["time_left"] += 5  # +5 saniye bonus
+                        game_state["time_left"] += time_attack_module.TIME_ATTACK_CONSTANTS["FOOD_BONUS_TIME"]
                         game_state["food"].pop(i)
                         food_eaten = True
                         break
@@ -760,7 +760,7 @@ def game_loop():
                 # Altın elma kontrolü
                 if game_state["golden_food"] and new_head == game_state["golden_food"]:
                     game_state["score"] += 50
-                    game_state["time_left"] += 15  # +15 saniye bonus
+                    game_state["time_left"] += time_attack_module.TIME_ATTACK_CONSTANTS["GOLDEN_FOOD_BONUS_TIME"]
                     game_state["golden_food"] = None
                 
                 # Power-up kontrolü
@@ -769,9 +769,9 @@ def game_loop():
                         # Power-up aktivasyonu
                         if client_id not in game_state["active_powerups"]:
                             game_state["active_powerups"][client_id] = {}
-                        game_state["active_powerups"][client_id][powerup["type"]] = time.time() + 10
+                        game_state["active_powerups"][client_id][powerup["type"]] = time.time() + time_attack_module.TIME_ATTACK_CONSTANTS["POWERUP_DURATION"]
                         game_state["powerups"].pop(i)
-                        game_state["time_left"] += 3  # +3 saniye bonus
+                        game_state["time_left"] += time_attack_module.TIME_ATTACK_CONSTANTS["POWERUP_BONUS_TIME"]
                         break
                 
                 # Yılanı güncelle
@@ -780,8 +780,8 @@ def game_loop():
                     game_state["snake"].pop()
                 
                 # Yılan uzunluğu kontrolü
-                if len(game_state["snake"]) > 10:  # MAX_SNAKE_LENGTH
-                    game_state["snake"] = game_state["snake"][:10]
+                if len(game_state["snake"]) > time_attack_module.TIME_ATTACK_CONSTANTS["MAX_SNAKE_LENGTH"]:
+                    game_state["snake"] = game_state["snake"][:time_attack_module.TIME_ATTACK_CONSTANTS["MAX_SNAKE_LENGTH"]]
                 
                 # Yeni yem ekle
                 if food_eaten and len(game_state["food"]) < time_attack_module.TIME_ATTACK_CONFIG["food_count"]:
@@ -860,6 +860,7 @@ def game_loop():
             # Time Attack state'i
             if client_id in time_attack_module.time_attack_games:
                 ta_state = copy.deepcopy(time_attack_module.time_attack_games[client_id])
+                print(f"[DEBUG] Time Attack state gönderiliyor: {client_id}")
                 socketio.emit('time_attack_state', ta_state, room=sid)
         
         tick_count += 1
@@ -930,7 +931,9 @@ def on_start_time_attack(data):
     
     # Time Attack oyunu oluştur
     time_attack_module.create_time_attack_game(client_id, difficulty, BOARD_WIDTH, BOARD_HEIGHT)
+    clients[sid] = client_id  # clients dictionary'sine ekle
     print(f"[DEBUG] {client_id} Time Attack başlattı: {difficulty}")
+    print(f"[DEBUG] Time Attack games: {list(time_attack_module.time_attack_games.keys())}")
     emit('time_attack_started', {"difficulty": difficulty, "time": time_attack_module.TIME_ATTACK_CONFIG["difficulties"][difficulty]["time"]})
 
 @socketio.on('time_attack_move')

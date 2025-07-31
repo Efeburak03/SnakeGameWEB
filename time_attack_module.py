@@ -3,17 +3,15 @@ import random
 import time
 import copy
 
-# Time Attack konfigürasyonu
+# Time Attack konfigürasyonu (common.py'dan alınacak)
+from common import TIME_ATTACK_DIFFICULTIES, TIME_ATTACK_CONSTANTS, TIME_ATTACK_ALLOWED_POWERUPS
+
 TIME_ATTACK_CONFIG = {
-    "difficulties": {
-        "easy": {"time": 120, "name": "Kolay", "obstacle_multiplier": 1.2},
-        "medium": {"time": 90, "name": "Orta", "obstacle_multiplier": 1.5},
-        "hard": {"time": 60, "name": "Zor", "obstacle_multiplier": 2.0}
-    },
-    "food_count": 2,
-    "max_powerups": 2,
-    "golden_food_chance": 0.05,  # %5 olasılık
-    "allowed_powerups": ["shield", "speed", "reverse", "magnet"],
+    "difficulties": TIME_ATTACK_DIFFICULTIES,
+    "food_count": TIME_ATTACK_CONSTANTS["FOOD_COUNT"],
+    "max_powerups": TIME_ATTACK_CONSTANTS["MAX_POWERUPS"],
+    "golden_food_chance": TIME_ATTACK_CONSTANTS["GOLDEN_FOOD_CHANCE"],
+    "allowed_powerups": TIME_ATTACK_ALLOWED_POWERUPS,
     "respawn_allowed": True
 }
 
@@ -133,7 +131,7 @@ class TimeAttackGame:
         for i, food_pos in enumerate(self.game_state["food"]):
             if new_head == food_pos:
                 self.game_state["score"] += 10
-                self.game_state["time_left"] += 5  # +5 saniye bonus
+                self.game_state["time_left"] += TIME_ATTACK_CONSTANTS["FOOD_BONUS_TIME"]
                 self.game_state["food"].pop(i)
                 food_eaten = True
                 break
@@ -141,7 +139,7 @@ class TimeAttackGame:
         # Altın elma kontrolü
         if self.game_state["golden_food"] and new_head == self.game_state["golden_food"]:
             self.game_state["score"] += 50
-            self.game_state["time_left"] += 15  # +15 saniye bonus
+            self.game_state["time_left"] += TIME_ATTACK_CONSTANTS["GOLDEN_FOOD_BONUS_TIME"]
             self.game_state["golden_food"] = None
         
         # Power-up kontrolü
@@ -149,7 +147,7 @@ class TimeAttackGame:
             if new_head == tuple(powerup["pos"]):
                 self.activate_powerup(powerup["type"])
                 self.game_state["powerups"].pop(i)
-                self.game_state["time_left"] += 3  # +3 saniye bonus
+                self.game_state["time_left"] += TIME_ATTACK_CONSTANTS["POWERUP_BONUS_TIME"]
                 break
         
         # Yılanı güncelle
@@ -158,8 +156,8 @@ class TimeAttackGame:
             self.game_state["snake"].pop()
         
         # Yılan uzunluğu kontrolü
-        if len(self.game_state["snake"]) > 10:  # MAX_SNAKE_LENGTH
-            self.game_state["snake"] = self.game_state["snake"][:10]
+        if len(self.game_state["snake"]) > TIME_ATTACK_CONSTANTS["MAX_SNAKE_LENGTH"]:
+            self.game_state["snake"] = self.game_state["snake"][:TIME_ATTACK_CONSTANTS["MAX_SNAKE_LENGTH"]]
         
         # Yeni yem ekle
         if food_eaten and len(self.game_state["food"]) < TIME_ATTACK_CONFIG["food_count"]:
@@ -195,7 +193,7 @@ class TimeAttackGame:
         if self.client_id not in self.game_state["active_powerups"]:
             self.game_state["active_powerups"][self.client_id] = {}
         
-        self.game_state["active_powerups"][self.client_id][powerup_type] = time.time() + 10
+        self.game_state["active_powerups"][self.client_id][powerup_type] = time.time() + TIME_ATTACK_CONSTANTS["POWERUP_DURATION"]
     
     def has_powerup(self, powerup_type):
         """Power-up kontrolü"""
