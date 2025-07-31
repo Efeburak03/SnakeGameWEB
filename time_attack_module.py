@@ -42,6 +42,7 @@ class TimeAttackGame:
             "food": [],
             "golden_food": None,
             "obstacles": [],
+            "portals": [],
             "powerups": [],
             "active_powerups": {},
             "score": 0,
@@ -56,6 +57,7 @@ class TimeAttackGame:
         # Oyunu başlat
         self._place_food()
         self._place_obstacles()
+        self._place_portals()
         time_attack_games[client_id] = self.game_state
     
     def _place_food(self):
@@ -85,6 +87,38 @@ class TimeAttackGame:
                 pos = random.choice(empty)
                 obstacle_type = random.choice(obstacle_types)
                 self.game_state["obstacles"].append({"pos": pos, "type": obstacle_type})
+    
+    def _place_portals(self):
+        """Portalları yerleştir"""
+        # Boş hücreleri bul
+        occupied = set()
+        occupied.update(self.game_state["snake"])
+        occupied.update(self.game_state["food"])
+        for obs in self.game_state["obstacles"]:
+            occupied.add(tuple(obs["pos"]))
+        
+        empty = [(x, y) for x in range(self.board_width) for y in range(self.board_height) 
+                if (x, y) not in occupied]
+        
+        if len(empty) < 2:
+            return
+        
+        # Minimum Manhattan mesafesi
+        min_dist = 8
+        tries = 20
+        
+        for _ in range(tries):
+            a = random.choice(empty)
+            far_cells = [cell for cell in empty if abs(cell[0]-a[0]) + abs(cell[1]-a[1]) >= min_dist]
+            if far_cells:
+                b = random.choice(far_cells)
+                self.game_state["portals"] = [(a, b)]
+                return
+        
+        # Eğer yeterince uzak hücre bulunamazsa, en uzak olanı seç
+        a = random.choice(empty)
+        b = max(empty, key=lambda cell: abs(cell[0]-a[0]) + abs(cell[1]-a[1]))
+        self.game_state["portals"] = [(a, b)]
     
     def _random_food(self):
         """Rastgele yem pozisyonu"""
@@ -138,6 +172,18 @@ class TimeAttackGame:
             if new_head == tuple(obs["pos"]):
                 self.eliminate_snake()
                 return
+        
+        # Portal kontrolü
+        if self.game_state.get("portals"):
+            for portal in self.game_state["portals"]:
+                if new_head == portal[0]:
+                    # Portal A'dan B'ye ışınla
+                    self.game_state["snake"][0] = portal[1]
+                    break
+                elif new_head == portal[1]:
+                    # Portal B'den A'ya ışınla
+                    self.game_state["snake"][0] = portal[0]
+                    break
         
         # Yem kontrolü
         food_eaten = False

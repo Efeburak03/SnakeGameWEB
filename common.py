@@ -64,7 +64,7 @@ TIME_ATTACK_CONSTANTS = {
     "FOOD_BONUS_TIME": 5,             # Yem yendiğinde +5 saniye
     "GOLDEN_FOOD_BONUS_TIME": 15,     # Altın elma yendiğinde +15 saniye
     "POWERUP_BONUS_TIME": 3,          # Power-up alındığında +3 saniye
-    "POWERUP_DURATION": 10,           # Power-up süresi (saniye)
+    "POWERUP_DURATION": 10,           # Power-up süresi (saniye) - tüm power-up'lar için 10 saniye
     "MOVE_SPEED": 2,                  # Yılan hareket hızı (her X tick'te bir hareket)
 }
 

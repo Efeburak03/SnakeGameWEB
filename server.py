@@ -727,46 +727,40 @@ def game_loop():
                 # Sınır kontrolü
                 if (new_head[0] < 0 or new_head[0] >= BOARD_WIDTH or 
                     new_head[1] < 0 or new_head[1] >= BOARD_HEIGHT):
-                    # Canlanma - 3 blok uzunluğunda yılan
-                    center_x = BOARD_WIDTH//2
-                    center_y = BOARD_HEIGHT//2
-                    ta_game_state["snake"] = [
-                        (center_x, center_y),
-                        (center_x-1, center_y),
-                        (center_x-2, center_y)
-                    ]
-                    ta_game_state["direction"] = "RIGHT"
-                    ta_game_state["respawn_count"] += 1
+                    # Yılanı durdur, manuel canlanma beklesin
+                    ta_game_state["game_active"] = False
                     continue
                 
                 # Kendine çarpma kontrolü
                 if new_head in ta_game_state["snake"]:
-                    # Canlanma - 3 blok uzunluğunda yılan
-                    center_x = BOARD_WIDTH//2
-                    center_y = BOARD_HEIGHT//2
-                    ta_game_state["snake"] = [
-                        (center_x, center_y),
-                        (center_x-1, center_y),
-                        (center_x-2, center_y)
-                    ]
-                    ta_game_state["direction"] = "RIGHT"
-                    ta_game_state["respawn_count"] += 1
+                    # Yılanı durdur, manuel canlanma beklesin
+                    ta_game_state["game_active"] = False
                     continue
                 
                 # Engel kontrolü
                 for obs in ta_game_state["obstacles"]:
                     if new_head == tuple(obs["pos"]):
-                        # Canlanma - 3 blok uzunluğunda yılan
-                        center_x = BOARD_WIDTH//2
-                        center_y = BOARD_HEIGHT//2
-                        ta_game_state["snake"] = [
-                            (center_x, center_y),
-                            (center_x-1, center_y),
-                            (center_x-2, center_y)
-                        ]
-                        ta_game_state["direction"] = "RIGHT"
-                        ta_game_state["respawn_count"] += 1
-                        continue
+                        # Gizli duvar kontrolü
+                        if obs["type"] == "hidden_wall":
+                            # Gizli duvar - yılanı durdur, manuel canlanma beklesin
+                            ta_game_state["game_active"] = False
+                            continue
+                        elif obs["type"] == "grass":
+                            # Normal çalı - yılanı durdur, manuel canlanma beklesin
+                            ta_game_state["game_active"] = False
+                            continue
+                
+                # Portal kontrolü
+                if ta_game_state.get("portals"):
+                    for portal in ta_game_state["portals"]:
+                        if new_head == portal[0]:
+                            # Portal A'dan B'ye ışınla
+                            ta_game_state["snake"][0] = portal[1]
+                            break
+                        elif new_head == portal[1]:
+                            # Portal B'den A'ya ışınla
+                            ta_game_state["snake"][0] = portal[0]
+                            break
                 
                 # Yem kontrolü
                 food_eaten = False
@@ -1001,8 +995,6 @@ def on_time_attack_respawn(data):
         return
     
     game_state = time_attack_module.time_attack_games[client_id]
-    if not game_state["game_active"]:
-        return
     
     # Canlanma - 3 blok uzunluğunda yılan
     center_x = BOARD_WIDTH//2
@@ -1014,6 +1006,7 @@ def on_time_attack_respawn(data):
     ]
     game_state["direction"] = "RIGHT"
     game_state["respawn_count"] += 1
+    game_state["game_active"] = True  # Oyunu tekrar aktif hale getir
     print(f"[DEBUG] {client_id} manuel canlanma! Canlanma sayısı: {game_state['respawn_count']}")
 
 @socketio.on('disconnect')

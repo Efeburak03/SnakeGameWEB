@@ -756,6 +756,8 @@
             else if (e.key === 'Enter') {
                 if (socket && socket.connected) {
                     socket.emit('time_attack_respawn', {client_id: myId});
+                    // Canlanma mesajını gizle
+                    hideRespawnMessage();
                 }
             }
         } else {
@@ -1152,6 +1154,32 @@
             }
         }
         
+        // Portallar
+        if (timeAttackState.portals) {
+            for (const portal of timeAttackState.portals) {
+                const [px1, py1] = portal[0];
+                const [px2, py2] = portal[1];
+                
+                // Portal A
+                ctx.fillStyle = 'rgba(255, 0, 255, 0.7)';
+                ctx.beginPath();
+                ctx.arc(px1*CELL_SIZE + CELL_SIZE/2, py1*CELL_SIZE + CELL_SIZE/2, CELL_SIZE/2, 0, 2*Math.PI);
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(255, 0, 255, 1)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // Portal B
+                ctx.fillStyle = 'rgba(0, 255, 255, 0.7)';
+                ctx.beginPath();
+                ctx.arc(px2*CELL_SIZE + CELL_SIZE/2, py2*CELL_SIZE + CELL_SIZE/2, CELL_SIZE/2, 0, 2*Math.PI);
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(0, 255, 255, 1)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+        }
+        
         // Power-up'lar
         if (timeAttackState.powerups) {
             console.log('[DEBUG] drawTimeAttack: Power-up\'lar çiziliyor, sayı:', timeAttackState.powerups.length);
@@ -1223,13 +1251,58 @@
             difficultyDisplay.textContent = `Zorluk: ${difficultyNames[timeAttackState.difficulty] || '--'}`;
         }
         
-        // Oyun bittiyse sonuç göster
+        // Oyun durduysa canlanma mesajı göster
         if (!timeAttackState.game_active) {
-            showTimeAttackResult();
+            // Süre bittiyse sonuç göster
+            if (timeAttackState.time_left <= 0) {
+                showTimeAttackResult();
+            } else {
+                // Yılan elendi, canlanma mesajı göster
+                showRespawnMessage();
+            }
+        }
+    }
+    
+    function showRespawnMessage() {
+        // Eğer zaten canlanma mesajı varsa gösterme
+        if (document.getElementById('respawn-message')) return;
+        
+        const message = document.createElement('div');
+        message.id = 'respawn-message';
+        message.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.9);
+            color: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            z-index: 1000;
+            font-size: 18px;
+        `;
+        
+        message.innerHTML = `
+            <h3>Yılan Elendi!</h3>
+            <p>Canlanmak için <strong>ENTER</strong> tuşuna basın</p>
+            <p>Kalan Süre: ${Math.floor(timeAttackState.time_left)}s</p>
+        `;
+        
+        document.body.appendChild(message);
+    }
+    
+    function hideRespawnMessage() {
+        const message = document.getElementById('respawn-message');
+        if (message) {
+            message.remove();
         }
     }
     
     function showTimeAttackResult() {
+        // Canlanma mesajını gizle
+        hideRespawnMessage();
+        
         const modal = document.createElement('div');
         modal.style.cssText = `
             position: fixed;
