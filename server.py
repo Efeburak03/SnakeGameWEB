@@ -182,6 +182,25 @@ def has_powerup(cid, ptype):
             return True
     return False
 
+def has_powerup_time_attack(cid, ptype, ta_game_state):
+    now = time.time()
+    for p in ta_game_state.get("active_powerups", {}).get(cid, []):
+        if p["type"] == ptype and now - p["tick"] < time_attack_module.TIME_ATTACK_CONSTANTS["POWERUP_DURATION"]:
+            return True
+    return False
+
+def clear_expired_time_attack_powerups():
+    now = time.time()
+    for client_id in list(time_attack_module.time_attack_games.keys()):
+        ta_game_state = time_attack_module.time_attack_games[client_id]
+        if client_id in ta_game_state.get("active_powerups", {}):
+            expired = []
+            for p in ta_game_state["active_powerups"][client_id]:
+                if now - p["tick"] >= time_attack_module.TIME_ATTACK_CONSTANTS["POWERUP_DURATION"]:
+                    expired.append(p["type"])
+            for ptype in expired:
+                ta_game_state["active_powerups"][client_id] = [p for p in ta_game_state["active_powerups"][client_id] if p["type"] != ptype]
+
 def get_powerup_timeleft(cid, ptype):
     now = time.time()
     for p in game_state.get("active_powerups", {}).get(cid, []):
@@ -626,7 +645,7 @@ def game_loop():
     while True:
         # Time Attack modülünü güncelle
         time_attack_module.update_all_time_attack_games()
-        time_attack_module.clear_expired_powerups_all()
+        clear_expired_time_attack_powerups()
         
         # Klasik mod güncellemeleri
         clear_expired_powerups()
@@ -705,9 +724,14 @@ def game_loop():
         for client_id in list(time_attack_module.time_attack_games.keys()):
             ta_game_state = time_attack_module.time_attack_games[client_id]
             if ta_game_state["game_active"]:
-                # Yılan hız kontrolü - her 2 tick'te bir hareket etsin
-                if tick_count % time_attack_module.TIME_ATTACK_CONSTANTS["MOVE_SPEED"] != 0:
-                    continue
+                # Yılan hız kontrolü - klasik moddaki gibi
+                if has_powerup_time_attack(client_id, "speed", ta_game_state):
+                    # Speed power-up varsa her tick'te hareket et
+                    pass
+                else:
+                    # Speed power-up yoksa her 2 tick'te bir hareket et
+                    if tick_count % 2 != 0:
+                        continue
                 # Yılan hareketi
                 head = ta_game_state["snake"][0]
                 direction = ta_game_state["direction"]
@@ -724,42 +748,64 @@ def game_loop():
                 else:
                     continue
                 
-                # Sınır kontrolü
-                if (new_head[0] < 0 or new_head[0] >= BOARD_WIDTH or 
-                    new_head[1] < 0 or new_head[1] >= BOARD_HEIGHT):
-                    # Yılanı durdur, manuel canlanma beklesin
-                    ta_game_state["game_active"] = False
-                    continue
+                # Çarpışma kontrolü (zırh etkisi ve duvardan geçiş)
+                shielded = has_powerup_time_attack(client_id, "shield", ta_game_state)
+                out_of_bounds = not (0 <= new_head[0] < BOARD_WIDTH and 0 <= new_head[1] < BOARD_HEIGHT)
+                if out_of_bounds:
+                    if shielded:
+                        # Zırh varsa duvardan geç
+                        if client_id in ta_game_state["active_powerups"]:
+                            ta_game_state["active_powerups"][client_id] = [p for p in ta_game_state["active_powerups"][client_id] if p["type"] != "shield"]
+                        nx, ny = new_head
+                        if nx < 0:
+                            nx = BOARD_WIDTH - 1
+                        elif nx >= BOARD_WIDTH:
+                            nx = 0
+                        if ny < 0:
+                            ny = BOARD_HEIGHT - 1
+                        elif ny >= BOARD_HEIGHT:
+                            ny = 0
+                        new_head = (nx, ny)
+                    else:
+                        # Zırh yoksa elen
+                        ta_game_state["game_active"] = False
+                        continue
                 
                 # Kendine çarpma kontrolü
                 if new_head in ta_game_state["snake"]:
-                    # Yılanı durdur, manuel canlanma beklesin
-                    ta_game_state["game_active"] = False
-                    continue
+                    if shielded:
+                        # Zırh varsa zırhı kullan ve devam et
+                        if client_id in ta_game_state["active_powerups"]:
+                            ta_game_state["active_powerups"][client_id] = [p for p in ta_game_state["active_powerups"][client_id] if p["type"] != "shield"]
+                    else:
+                        # Zırh yoksa elen
+                        ta_game_state["game_active"] = False
+                        continue
                 
                 # Engel kontrolü
-                for obs in ta_game_state["obstacles"]:
-                    if new_head == tuple(obs["pos"]):
-                        # Gizli duvar kontrolü
-                        if obs["type"] == "hidden_wall":
-                            # Gizli duvar - yılanı durdur, manuel canlanma beklesin
-                            ta_game_state["game_active"] = False
-                            continue
-                        elif obs["type"] == "grass":
-                            # Normal çalı - yılanı durdur, manuel canlanma beklesin
-                            ta_game_state["game_active"] = False
-                            continue
+                shielded = has_powerup_time_attack(client_id, "shield", ta_game_state)
+                if not shielded:
+                    for obs in ta_game_state["obstacles"]:
+                        if new_head == tuple(obs["pos"]):
+                            if obs["type"] == "hidden_wall":
+                                # Gizli duvar - elen
+                                ta_game_state["game_active"] = False
+                                continue
+                            elif obs["type"] == "grass":
+                                # Normal çalı - elen
+                                ta_game_state["game_active"] = False
+                                continue
                 
                 # Portal kontrolü
                 if ta_game_state.get("portals"):
                     for portal in ta_game_state["portals"]:
                         if new_head == portal[0]:
                             # Portal A'dan B'ye ışınla
-                            ta_game_state["snake"][0] = portal[1]
+                            new_head = portal[1]
                             break
                         elif new_head == portal[1]:
                             # Portal B'den A'ya ışınla
-                            ta_game_state["snake"][0] = portal[0]
+                            new_head = portal[0]
                             break
                 
                 # Yem kontrolü
@@ -783,8 +829,8 @@ def game_loop():
                     if new_head == tuple(powerup["pos"]):
                         # Power-up aktivasyonu
                         if client_id not in ta_game_state["active_powerups"]:
-                            ta_game_state["active_powerups"][client_id] = {}
-                        ta_game_state["active_powerups"][client_id][powerup["type"]] = time.time() + time_attack_module.TIME_ATTACK_CONSTANTS["POWERUP_DURATION"]
+                            ta_game_state["active_powerups"][client_id] = []
+                        ta_game_state["active_powerups"][client_id].append({"type": powerup["type"], "tick": time.time()})
                         ta_game_state["powerups"].pop(i)
                         ta_game_state["time_left"] += time_attack_module.TIME_ATTACK_CONSTANTS["POWERUP_BONUS_TIME"]
                         break
@@ -975,7 +1021,7 @@ def on_time_attack_move(data):
     game_state = time_attack_module.time_attack_games[client_id]
     
     # Ters kontrol power-up kontrolü
-    if client_id in game_state.get("active_powerups", {}) and "reverse" in game_state["active_powerups"][client_id]:
+    if has_powerup_time_attack(client_id, "reverse", game_state):
         OPP = {"UP":"DOWN","DOWN":"UP","LEFT":"RIGHT","RIGHT":"LEFT"}
         direction = OPP.get(direction, direction)
     
