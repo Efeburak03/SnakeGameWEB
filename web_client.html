@@ -1137,6 +1137,14 @@
                 const [ox, oy] = obs.pos;
                 if (obs.type === 'grass' && assets.grass) {
                     ctx.drawImage(assets.grass, ox*CELL_SIZE, oy*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                } else if (obs.type === 'hidden_wall') {
+                    // Gizli duvar - yarı saydam gri
+                    ctx.fillStyle = 'rgba(128, 128, 128, 0.5)';
+                    ctx.fillRect(ox*CELL_SIZE, oy*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                    // Kenarlık
+                    ctx.strokeStyle = 'rgba(80, 80, 80, 0.8)';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(ox*CELL_SIZE, oy*CELL_SIZE, CELL_SIZE, CELL_SIZE);
                 } else {
                     ctx.fillStyle = '#555';
                     ctx.fillRect(ox*CELL_SIZE, oy*CELL_SIZE, CELL_SIZE, CELL_SIZE);
@@ -1156,14 +1164,16 @@
                     'magnet': '#800080'    // Mor
                 };
                 
-                // Power-up arka planı
+                // Power-up yuvarlak arka planı
+                ctx.beginPath();
+                ctx.arc(px*CELL_SIZE + CELL_SIZE/2, py*CELL_SIZE + CELL_SIZE/2, CELL_SIZE/2 - 2, 0, 2*Math.PI);
                 ctx.fillStyle = powerupColors[powerup.type] || '#00f';
-                ctx.fillRect(px*CELL_SIZE, py*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                ctx.fill();
                 
-                // Power-up kenarlığı
+                // Power-up yuvarlak kenarlığı
                 ctx.strokeStyle = '#fff';
                 ctx.lineWidth = 2;
-                ctx.strokeRect(px*CELL_SIZE, py*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                ctx.stroke();
                 
                 // Power-up tipini yaz
                 ctx.fillStyle = '#fff';
@@ -1174,12 +1184,14 @@
                            px*CELL_SIZE + CELL_SIZE/2, 
                            py*CELL_SIZE + CELL_SIZE/2);
                 
-                // Yanıp sönen efekt
+                // Yanıp sönen efekt - yuvarlak
                 const time = Date.now() / 1000;
                 const alpha = 0.5 + 0.5 * Math.sin(time * 3);
                 ctx.globalAlpha = alpha;
+                ctx.beginPath();
+                ctx.arc(px*CELL_SIZE + CELL_SIZE/2, py*CELL_SIZE + CELL_SIZE/2, CELL_SIZE/3, 0, 2*Math.PI);
                 ctx.fillStyle = '#fff';
-                ctx.fillRect(px*CELL_SIZE + 2, py*CELL_SIZE + 2, CELL_SIZE - 4, CELL_SIZE - 4);
+                ctx.fill();
                 ctx.globalAlpha = 1.0;
                 
                 console.log('[DEBUG] drawTimeAttack: Power-up çizildi:', powerup.type, 'pozisyon:', px, py);

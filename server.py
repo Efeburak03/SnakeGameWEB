@@ -1004,8 +1004,14 @@ def on_time_attack_respawn(data):
     if not game_state["game_active"]:
         return
     
-    # Canlanma
-    game_state["snake"] = [(BOARD_WIDTH//2, BOARD_HEIGHT//2)]
+    # Canlanma - 3 blok uzunluğunda yılan
+    center_x = BOARD_WIDTH//2
+    center_y = BOARD_HEIGHT//2
+    game_state["snake"] = [
+        (center_x, center_y),
+        (center_x-1, center_y),
+        (center_x-2, center_y)
+    ]
     game_state["direction"] = "RIGHT"
     game_state["respawn_count"] += 1
     print(f"[DEBUG] {client_id} manuel canlanma! Canlanma sayısı: {game_state['respawn_count']}")

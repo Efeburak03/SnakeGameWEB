@@ -69,6 +69,9 @@ class TimeAttackGame:
         base_obstacles = 8
         obstacle_count = int(base_obstacles * self.config["obstacle_multiplier"])
         
+        # Engel türleri
+        obstacle_types = ["grass", "hidden_wall"]
+        
         for _ in range(obstacle_count):
             occupied = set()
             occupied.update(self.game_state["snake"])
@@ -80,7 +83,8 @@ class TimeAttackGame:
                     if (x, y) not in occupied]
             if empty:
                 pos = random.choice(empty)
-                self.game_state["obstacles"].append({"pos": pos, "type": "grass"})
+                obstacle_type = random.choice(obstacle_types)
+                self.game_state["obstacles"].append({"pos": pos, "type": obstacle_type})
     
     def _random_food(self):
         """Rastgele yem pozisyonu"""

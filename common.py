@@ -57,7 +57,7 @@ INITIAL_FOOD_COUNT = 4
 TIME_ATTACK_CONSTANTS = {
     "INITIAL_SNAKE_LENGTH": 3,        # Time Attack'ta başlangıç yılan uzunluğu
     "MAX_SNAKE_LENGTH": 10,           # Time Attack'ta maksimum yılan uzunluğu
-    "FOOD_COUNT": 2,                  # Time Attack'ta maksimum yem sayısı
+    "FOOD_COUNT": 3,                  # Time Attack'ta maksimum yem sayısı
     "MAX_POWERUPS": 2,                # Time Attack'ta maksimum power-up sayısı
     "GOLDEN_FOOD_CHANCE": 0.05,       # Altın elma çıkma olasılığı (%5)
     "POWERUP_SPAWN_CHANCE": 0.02,     # Power-up çıkma olasılığı (%2) - artırıldı
@@ -73,19 +73,19 @@ TIME_ATTACK_DIFFICULTIES = {
     "easy": {
         "time": 120,                   # 2 dakika
         "name": "Kolay",
-        "obstacle_multiplier": 1.2,    # Engel çoğaltma faktörü
+        "obstacle_multiplier": 1.5,    # Engel çoğaltma faktörü artırıldı
         "description": "2 dakika süre"
     },
     "medium": {
         "time": 90,                    # 1.5 dakika
         "name": "Orta", 
-        "obstacle_multiplier": 1.5,
+        "obstacle_multiplier": 2.0,    # Engel çoğaltma faktörü artırıldı
         "description": "1.5 dakika süre"
     },
     "hard": {
         "time": 60,                    # 1 dakika
         "name": "Zor",
-        "obstacle_multiplier": 2.0,
+        "obstacle_multiplier": 2.5,    # Engel çoğaltma faktörü artırıldı
         "description": "1 dakika süre"
     }
 }
