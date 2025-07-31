@@ -515,7 +515,8 @@ def move_snake(client_id):
             else:
                 eliminate_snake(client_id)
                 return
-    if new_head in snake:
+    # Kendine çarpma kontrolü - yılanın kuyruğu hariç kontrol et
+    if new_head in snake[:-1]:  # Son eleman (kuyruk) hariç kontrol et
         if shielded:
             game_state["active_powerups"][client_id] = [p for p in game_state["active_powerups"][client_id] if p["type"] != "shield"]
         else:
@@ -776,8 +777,8 @@ def game_loop():
                         ta_game_state["game_active"] = False
                         continue
                 
-                # Kendine çarpma kontrolü
-                if new_head in ta_game_state["snake"]:
+                # Kendine çarpma kontrolü - yılanın kuyruğu hariç kontrol et
+                if new_head in ta_game_state["snake"][:-1]:  # Son eleman (kuyruk) hariç kontrol et
                     if shielded:
                         # Zırh varsa zırhı kullan ve devam et
                         if client_id in ta_game_state["active_powerups"]:
@@ -828,6 +829,46 @@ def game_loop():
                     ta_game_state["score"] += 50
                     ta_game_state["time_left"] += time_attack_module.TIME_ATTACK_CONSTANTS["GOLDEN_FOOD_BONUS_TIME"]
                     ta_game_state["golden_food"] = None
+                
+                # Magnet power-up etkisi
+                if has_powerup_time_attack(client_id, "magnet", ta_game_state) and len(ta_game_state["snake"]) > 0:
+                    head = ta_game_state["snake"][0]
+                    # En yakın yemi bul ve çek
+                    closest_food = None
+                    min_dist = float('inf')
+                    for food_pos in ta_game_state["food"]:
+                        dist = abs(head[0] - food_pos[0]) + abs(head[1] - food_pos[1])
+                        if dist < min_dist:
+                            min_dist = dist
+                            closest_food = food_pos
+                    
+                    # En yakın yemi yılanın başına doğru hareket ettir
+                    if closest_food and min_dist > 1:
+                        dx = 0
+                        dy = 0
+                        if closest_food[0] > head[0]:
+                            dx = -1
+                        elif closest_food[0] < head[0]:
+                            dx = 1
+                        if closest_food[1] > head[1]:
+                            dy = -1
+                        elif closest_food[1] < head[1]:
+                            dy = 1
+                        
+                        new_food_pos = (closest_food[0] + dx, closest_food[1] + dy)
+                        # Yeni pozisyonun boş olduğunu kontrol et
+                        occupied = set()
+                        occupied.update(ta_game_state["snake"])
+                        occupied.update(ta_game_state["food"])
+                        for obs in ta_game_state["obstacles"]:
+                            occupied.add(tuple(obs["pos"]))
+                        for pu in ta_game_state["powerups"]:
+                            occupied.add(tuple(pu["pos"]))
+                        
+                        if new_food_pos not in occupied and 0 <= new_food_pos[0] < BOARD_WIDTH and 0 <= new_food_pos[1] < BOARD_HEIGHT:
+                            # Yemi yeni pozisyona taşı
+                            food_index = ta_game_state["food"].index(closest_food)
+                            ta_game_state["food"][food_index] = new_food_pos
                 
                 # Power-up kontrolü
                 for i, powerup in enumerate(ta_game_state["powerups"]):
