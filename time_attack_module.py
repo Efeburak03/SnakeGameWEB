@@ -71,8 +71,8 @@ class TimeAttackGame:
         base_obstacles = 8
         obstacle_count = int(base_obstacles * self.config["obstacle_multiplier"])
         
-        # Engel türleri - klasik moddaki gibi
-        obstacle_types = ["slow", "poison", "wall", "hidden_wall"]
+        # Engel türleri - sadece çalı, zehir ve gizli duvar
+        obstacle_types = ["slow", "poison", "hidden_wall"]
         
         for _ in range(obstacle_count):
             occupied = set()
@@ -171,7 +171,7 @@ class TimeAttackGame:
         for obs in self.game_state["obstacles"]:
             if new_head == tuple(obs["pos"]):
                 if obs["type"] == "slow":
-                    # Çalı engelleri sadece yavaşlatma yapar, elenme yapmaz
+                    # Çalı engelleri sadece yavaşlatma yapar, elenme yapmaz (klasik moddaki gibi)
                     pass
                 elif obs["type"] == "poison":
                     # Zehir engelleri yılanı kısaltır
@@ -180,10 +180,11 @@ class TimeAttackGame:
                     else:
                         self.eliminate_snake()
                         return
-                elif obs["type"] == "wall":
-                    # Normal duvarlar elenme yapar
-                    self.eliminate_snake()
-                    return
+                # Wall tipi engeller kaldırıldı
+                # elif obs["type"] == "wall":
+                #     # Normal duvarlar elenme yapar
+                #     self.eliminate_snake()
+                #     return
                 elif obs["type"] == "hidden_wall":
                     # Gizli duvarlar elenme yapar
                     self.eliminate_snake()

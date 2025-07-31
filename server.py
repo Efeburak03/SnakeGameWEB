@@ -484,8 +484,9 @@ def move_snake(client_id):
                     eliminate_snake(client_id)
                     return
                 elif obs["type"] == "hidden_wall":
-                    # Gizli duvarlar artık çalışmıyor
-                    pass
+                    # Gizli duvarlar elenme yapar
+                    eliminate_snake(client_id)
+                    return
                 break
     # Çarpışma kontrolü (zırh etkisi ve duvardan geçiş)
     shielded = has_powerup(client_id, "shield")
