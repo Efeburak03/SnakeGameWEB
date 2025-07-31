@@ -88,13 +88,12 @@ class TimeAttackGame:
     
     def _place_obstacles(self):
         """Engelleri yerleştir"""
-        base_obstacles = 12  # Makul engel sayısı
-        obstacle_count = int(base_obstacles * self.config["obstacle_multiplier"])
+        # Sabit engel sayıları: 11 çalı, 9 kutu
+        slow_count = 11
+        poison_count = 9
         
-        # Engel türleri - sadece çalı, zehir ve gizli duvar
-        obstacle_types = ["slow", "poison", "hidden_wall"]
-        
-        for _ in range(obstacle_count):
+        # Çalı engelleri yerleştir
+        for _ in range(slow_count):
             occupied = set()
             occupied.update(self.game_state["snake"])
             occupied.update(self.game_state["food"])
@@ -105,8 +104,21 @@ class TimeAttackGame:
                     if (x, y) not in occupied]
             if empty:
                 pos = random.choice(empty)
-                obstacle_type = random.choice(obstacle_types)
-                self.game_state["obstacles"].append({"pos": pos, "type": obstacle_type})
+                self.game_state["obstacles"].append({"pos": pos, "type": "slow"})
+        
+        # Kutu engelleri yerleştir
+        for _ in range(poison_count):
+            occupied = set()
+            occupied.update(self.game_state["snake"])
+            occupied.update(self.game_state["food"])
+            for obs in self.game_state["obstacles"]:
+                occupied.add(tuple(obs["pos"]))
+            
+            empty = [(x, y) for x in range(self.board_width) for y in range(self.board_height) 
+                    if (x, y) not in occupied]
+            if empty:
+                pos = random.choice(empty)
+                self.game_state["obstacles"].append({"pos": pos, "type": "poison"})
     
     def _place_portals(self):
         """Portalları yerleştir"""
@@ -190,14 +202,20 @@ class TimeAttackGame:
         # Engel kontrolü - klasik moddaki gibi
         for obs in self.game_state["obstacles"]:
             if new_head == tuple(obs["pos"]):
+                print(f"[DEBUG] Time Attack: Engel çarpışması - Tip: {obs['type']}, Pozisyon: {obs['pos']}")
                 if obs["type"] == "slow":
-                    # Çalı engelleri sadece yavaşlatma yapar, elenme yapmaz (klasik moddaki gibi)
+                    # Çalı engelleri yavaşlatma yapar (klasik moddaki gibi)
+                    # Yavaşlatma etkisi için hareket hızını azalt
+                    # Bu etki client tarafında işlenecek
                     pass
                 elif obs["type"] == "poison":
                     # Zehir engelleri yılanı kısaltır
+                    print(f"[DEBUG] Time Attack: Zehir engeli! Yılan uzunluğu: {len(self.game_state['snake'])}")
                     if len(self.game_state["snake"]) > 1:
                         self.game_state["snake"].pop()
+                        print(f"[DEBUG] Time Attack: Yılan kısaltıldı, yeni uzunluk: {len(self.game_state['snake'])}")
                     else:
+                        print(f"[DEBUG] Time Attack: Yılan çok kısa, eleniyor!")
                         self.eliminate_snake()
                         return
                 # Wall tipi engeller kaldırıldı
