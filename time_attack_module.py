@@ -88,7 +88,7 @@ class TimeAttackGame:
     
     def _place_obstacles(self):
         """Engelleri yerleştir"""
-        base_obstacles = 8
+        base_obstacles = 12  # Makul engel sayısı
         obstacle_count = int(base_obstacles * self.config["obstacle_multiplier"])
         
         # Engel türleri - sadece çalı, zehir ve gizli duvar

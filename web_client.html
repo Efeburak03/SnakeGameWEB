@@ -1149,6 +1149,8 @@
                 const [ox, oy] = obs.pos;
                 if ((obs.type === 'grass' || obs.type === 'slow') && assets.grass) {
                     ctx.drawImage(assets.grass, ox*CELL_SIZE, oy*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                } else if (obs.type === 'poison' && assets.box) {
+                    ctx.drawImage(assets.box, ox*CELL_SIZE, oy*CELL_SIZE, CELL_SIZE, CELL_SIZE);
                 } else if (obs.type === 'hidden_wall') {
                     // Gizli duvarlar yılanın başının 4 blok yakınında görünür
                     let show = false;
