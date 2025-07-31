@@ -115,9 +115,10 @@ def place_obstacles():
     for _ in range(7):  # Kutu (poison)
         pos = empty[idx]; idx += 1
         obstacles.append({"pos": pos, "type": "poison"})
-    for _ in range(7):  # Gizli duvar
-        pos = empty[idx]; idx += 1
-        obstacles.append({"pos": pos, "type": "hidden_wall"})
+    # Gizli duvarlar kaldırıldı
+    # for _ in range(7):  # Gizli duvar
+    #     pos = empty[idx]; idx += 1
+    #     obstacles.append({"pos": pos, "type": "hidden_wall"})
     return obstacles
 
 def place_portals():
@@ -472,16 +473,21 @@ def move_snake(client_id):
         for obs in game_state.get("obstacles", []):
             if new_head == tuple(obs["pos"]):
                 if obs["type"] == "slow":
-                    time.sleep(0.2)
+                    # Çalı engelleri sadece yavaşlatma yapar, elenme yapmaz
+                    # time.sleep(0.2) oyunu donduruyor, bu yüzden kaldırdık
+                    pass
                 elif obs["type"] == "poison":
                     if len(snake) > 1:
                         snake.pop()
                     else:
                         eliminate_snake(client_id)
                         return
-                elif obs["type"] in ("wall", "hidden_wall"):
+                elif obs["type"] == "wall":
                     eliminate_snake(client_id)
                     return
+                elif obs["type"] == "hidden_wall":
+                    # Gizli duvarlar artık çalışmıyor
+                    pass
                 break
     # Çarpışma kontrolü (zırh etkisi ve duvardan geçiş)
     shielded = has_powerup(client_id, "shield")

@@ -71,8 +71,8 @@ class TimeAttackGame:
         base_obstacles = 8
         obstacle_count = int(base_obstacles * self.config["obstacle_multiplier"])
         
-        # Engel türleri
-        obstacle_types = ["grass", "hidden_wall"]
+        # Engel türleri - gizli duvarlar kaldırıldı
+        obstacle_types = ["grass"]
         
         for _ in range(obstacle_count):
             occupied = set()
@@ -170,8 +170,12 @@ class TimeAttackGame:
         # Engel kontrolü
         for obs in self.game_state["obstacles"]:
             if new_head == tuple(obs["pos"]):
-                self.eliminate_snake()
-                return
+                if obs["type"] == "grass":
+                    # Çalı engelleri sadece yavaşlatma yapar, elenme yapmaz
+                    pass
+                else:
+                    self.eliminate_snake()
+                    return
         
         # Portal kontrolü
         if self.game_state.get("portals"):
