@@ -109,7 +109,7 @@ def place_obstacles():
     empty = [(x, y) for x in range(BOARD_WIDTH) for y in range(BOARD_HEIGHT)]
     random.shuffle(empty)
     idx = 0
-    for _ in range(11):  # Çimen (slow)
+    for _ in range(15):  # Çimen (slow) - sayıyı artırdık
         pos = empty[idx]; idx += 1
         obstacles.append({"pos": pos, "type": "slow"})
     for _ in range(7):  # Kutu (poison)
@@ -973,6 +973,9 @@ def on_move(data):
 def on_restart(data):
     client_id = data.get('client_id')
     reset_snake(client_id)
+    # Oyun durumunu hemen güncelle
+    if client_id in game_state["active"]:
+        game_state["active"][client_id] = True
 
 @socketio.on('ready')
 def on_ready(data):

@@ -430,6 +430,8 @@
             console.log('[DEBUG] Gelen state:', state);
             gameState = state;
             if (!myId) myId = nickname;
+            // Oyun durumu değiştiğinde readySent'i sıfırla
+            readySent = false;
             if (currentGameMode === 'timeAttack') {
                 drawTimeAttack();
             } else {
@@ -453,6 +455,10 @@
                 console.log('[DEBUG] Power-up\'lar:', state.powerups);
             }
             timeAttackState = state;
+            // Eğer oyun aktifse canlanma mesajını gizle
+            if (state.game_active) {
+                hideRespawnMessage();
+            }
             drawTimeAttack();
         });
         socket.on('error', (err) => {
@@ -520,16 +526,17 @@
                 if (obs.type === 'slow' && assets.grass) ctx.drawImage(assets.grass, ox*CELL_SIZE - offset, oy*CELL_SIZE - offset, size, size);
                 else if (obs.type === 'poison' && assets.box) ctx.drawImage(assets.box, ox*CELL_SIZE - offset, oy*CELL_SIZE - offset, size, size);
                 else if (obs.type === 'hidden_wall') {
-                    let show = false;
-                    if (gameState.snakes && myId && gameState.snakes[myId] && gameState.snakes[myId].length > 0) {
-                        const [hx, hy] = gameState.snakes[myId][0];
-                        const dist = Math.abs(hx - ox) + Math.abs(hy - oy);
-                        if (dist <= 4) show = true;
-                    }
-                    if (show) {
-                    ctx.fillStyle = '#555';
-                    ctx.fillRect(ox*CELL_SIZE, oy*CELL_SIZE, CELL_SIZE, CELL_SIZE);
-                    }
+                    // Gizli duvarlar hiç görünmemeli
+                    // let show = false;
+                    // if (gameState.snakes && myId && gameState.snakes[myId] && gameState.snakes[myId].length > 0) {
+                    //     const [hx, hy] = gameState.snakes[myId][0];
+                    //     const dist = Math.abs(hx - ox) + Math.abs(hy - oy);
+                    //     if (dist <= 4) show = true;
+                    // }
+                    // if (show) {
+                    // ctx.fillStyle = '#555';
+                    // ctx.fillRect(ox*CELL_SIZE, oy*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                    // }
                 }
             }
         }
@@ -756,7 +763,7 @@
             else if (e.key === 'Enter') {
                 if (socket && socket.connected) {
                     socket.emit('time_attack_respawn', {client_id: myId});
-                    // Canlanma mesajını gizle
+                    // Canlanma mesajını hemen gizle
                     hideRespawnMessage();
                 }
             }
@@ -770,6 +777,9 @@
                 hideEagleEggScreen();
                 if (gameState && gameState.active && !gameState.active[myId]) {
                     socket.emit('restart', {client_id: myId});
+                    // Mesajı hemen gizle
+                    const msgDiv = document.getElementById('game-message');
+                    msgDiv.style.display = 'none';
                 } else if (gameState && gameState.waiting_for_restart) {
                     if (!readySent) {
                         socket.emit('ready', {client_id: myId});
