@@ -474,7 +474,6 @@ def move_snake(client_id):
             if new_head == tuple(obs["pos"]):
                 if obs["type"] == "slow":
                     # Çalı engelleri sadece yavaşlatma yapar, elenme yapmaz
-                    # time.sleep(0.2) oyunu donduruyor, bu yüzden kaldırdık
                     pass
                 elif obs["type"] == "poison":
                     if len(snake) > 1:
