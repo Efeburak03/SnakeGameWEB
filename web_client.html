@@ -1147,7 +1147,7 @@
         if (timeAttackState.obstacles) {
             for (const obs of timeAttackState.obstacles) {
                 const [ox, oy] = obs.pos;
-                if (obs.type === 'grass' && assets.grass) {
+                if ((obs.type === 'grass' || obs.type === 'slow') && assets.grass) {
                     ctx.drawImage(assets.grass, ox*CELL_SIZE, oy*CELL_SIZE, CELL_SIZE, CELL_SIZE);
                 } else if (obs.type === 'hidden_wall') {
                     // Gizli duvar - yarı saydam gri

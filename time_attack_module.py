@@ -71,8 +71,8 @@ class TimeAttackGame:
         base_obstacles = 8
         obstacle_count = int(base_obstacles * self.config["obstacle_multiplier"])
         
-        # Engel türleri - gizli duvarlar kaldırıldı
-        obstacle_types = ["grass"]
+        # Engel türleri - klasik oyundaki gibi slow tipi
+        obstacle_types = ["slow"]
         
         for _ in range(obstacle_count):
             occupied = set()
@@ -171,6 +171,10 @@ class TimeAttackGame:
         for obs in self.game_state["obstacles"]:
             if new_head == tuple(obs["pos"]):
                 if obs["type"] == "grass":
+                    # Çalı engelleri sadece yavaşlatma yapar, elenme yapmaz
+                    # Klasik oyundaki gibi slow tipi olarak işle
+                    pass
+                elif obs["type"] == "slow":
                     # Çalı engelleri sadece yavaşlatma yapar, elenme yapmaz
                     pass
                 else:
