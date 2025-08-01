@@ -140,14 +140,22 @@ class CTFGameState:
         if not player_team:
             return False
         
-        # Kendi bayrağını yakalayamaz
-        if player_team == RED_TEAM and flag_pos == self.flags[RED_TEAM]["pos"]:
+        # Hangi bayrağın pozisyonu olduğunu bul
+        flag_team = None
+        for team in TEAMS:
+            if self.flags[team]["pos"] == flag_pos:
+                flag_team = team
+                break
+        
+        if not flag_team:
             return False
-        if player_team == BLUE_TEAM and flag_pos == self.flags[BLUE_TEAM]["pos"]:
+        
+        # Kendi bayrağını yakalayamaz
+        if player_team == flag_team:
             return False
         
         # Bayrak zaten yakalanmış mı?
-        if self.flags[player_team]["captured"]:
+        if self.flags[flag_team]["captured"]:
             return False
         
         return True
@@ -189,6 +197,8 @@ class CTFGameState:
         if (self.flags[opponent_team]["carrier"] == player_id and 
             self.is_in_team_area(player_id, player_team)):
             
+            print(f"[DEBUG] {player_id} {opponent_team} bayrağını {player_team} alanına teslim etti!")
+            
             # Bayrağı teslim et
             self.flags[opponent_team]["captured"] = False
             self.flags[opponent_team]["carrier"] = None
@@ -198,6 +208,11 @@ class CTFGameState:
             self.individual_scores[player_id] += FLAG_DELIVERY_SCORE
             self.team_scores[player_team] += FLAG_DELIVERY_SCORE
             
+            # Oyunu yeniden başlat
+            self.reset_game()
+            self.start_game()
+            
+            # Server'a bildirim gönder (bu fonksiyon server tarafından çağrılır)
             return True
         
         return False
@@ -280,6 +295,7 @@ class CTFGameState:
         for team in TEAMS:
             flag_pos = self.flags[team]["pos"]
             if new_head == flag_pos and self.can_capture_flag(player_id, flag_pos):
+                print(f"[DEBUG] {player_id} {team} bayrağını yakaladı!")
                 self.capture_flag(player_id, team)
         
         return True

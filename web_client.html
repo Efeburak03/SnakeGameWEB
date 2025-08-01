@@ -706,6 +706,18 @@
             }
         });
         
+        socket.on('ctf_flag_delivered', (data) => {
+            console.log('[DEBUG] CTF bayrak teslim edildi:', data);
+            // Bayrak teslim edildiğinde bildirim göster
+            alert('Bayrak teslim edildi! Oyun yeniden başlatılıyor...');
+            // Kısa bir süre sonra oyunu yeniden başlat
+            setTimeout(() => {
+                if (socket && socket.connected) {
+                    socket.emit('ctf_restart', {client_id: myId});
+                }
+            }, 2000);
+        });
+        
         socket.on('error', (err) => {
             const errorDiv = document.getElementById('ui-error');
             errorDiv.textContent = err.message || 'Bağlantı hatası!';

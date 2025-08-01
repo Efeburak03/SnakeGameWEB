@@ -1013,6 +1013,11 @@ def game_loop():
                 
                 direction = capture_the_flag_module.ctf_game_state.directions[client_id]
                 capture_the_flag_module.ctf_game_state.move_snake(client_id, direction)
+                
+                # Bayrak teslim kontrolü
+                if capture_the_flag_module.ctf_game_state.deliver_flag(client_id):
+                    print(f"[DEBUG] {client_id} bayrak teslim etti!")
+                    socketio.emit('ctf_flag_delivered', {"message": "Bayrak teslim edildi!"}, broadcast=True)
         
         # CTF durumunu tüm oyunculara gönder
         if len(capture_the_flag_module.ctf_game_state.snakes) > 0:
@@ -1287,6 +1292,14 @@ def on_ctf_restart(data):
     
     # Tüm bağlı oyunculara oyunun yeniden başladığını bildir
     emit('ctf_game_restarted', {"message": "Oyun yeniden başlatıldı"}, broadcast=True)
+
+@socketio.on('ctf_flag_delivered')
+def on_ctf_flag_delivered(data):
+    """Bayrak teslim edildiğinde çağrılır"""
+    print(f"[DEBUG] Bayrak teslim edildi, oyun yeniden başlatılıyor")
+    
+    # Tüm bağlı oyunculara oyunun yeniden başladığını bildir
+    emit('ctf_flag_delivered', {"message": "Bayrak teslim edildi! Oyun yeniden başlatılıyor"}, broadcast=True)
 
 @socketio.on('disconnect')
 def on_disconnect():
