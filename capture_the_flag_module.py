@@ -162,6 +162,7 @@ class CTFGameState:
         if player_id not in self.active or not self.active[player_id]:
             return False
         
+        print(f"[DEBUG] {player_id} {flag_team} bayrağını yakalayabilir")
         return True
     
     def capture_flag(self, player_id, flag_team):
@@ -186,10 +187,10 @@ class CTFGameState:
         # Bayrağı düşür ve pozisyonunu güncelle
         self.flags[flag_team]["captured"] = False
         self.flags[flag_team]["dropped_pos"] = self.flags[flag_team]["pos"]
+        self.flags[flag_team]["pos"] = self.flags[flag_team]["dropped_pos"]  # Ana pozisyonu güncelle
         self.flags[flag_team]["carrier"] = None
         
-        # Düşen bayrağın pozisyonunu ayarla (düşen pozisyonda kalır)
-        # Bayrak artık düşen pozisyonda yakalanabilir
+        print(f"[DEBUG] {flag_team} bayrağı {self.flags[flag_team]['pos']} pozisyonuna düştü")
     
     def deliver_flag(self, player_id):
         """Bayrağı teslim eder"""
@@ -298,6 +299,7 @@ class CTFGameState:
         # Bayrak yakalama kontrolü
         for team in TEAMS:
             flag_pos = self.flags[team]["pos"]
+            print(f"[DEBUG] {player_id} yeni pozisyon: {new_head}, {team} bayrak pozisyonu: {flag_pos}, yakalanmış: {self.flags[team]['captured']}")
             if new_head == flag_pos and self.can_capture_flag(player_id, flag_pos):
                 print(f"[DEBUG] {player_id} {team} bayrağını yakaladı!")
                 self.capture_flag(player_id, team)
