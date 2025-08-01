@@ -15,7 +15,6 @@ import capture_the_flag_module
 
 BOARD_WIDTH = 60   # Enine daha geniş
 BOARD_HEIGHT = 35 # 700/20 = 35 satır
-START_LENGTH = 3
 TICK_RATE = 0.05  # saniye, 30 FPS
 
 # Power-up türleri ve renkleri:
@@ -148,7 +147,7 @@ def reset_snake(client_id):
     x = random.randint(2, BOARD_WIDTH-3)
     y = random.randint(6, BOARD_HEIGHT-1)  # Y koordinatı 6 ve üzeri, ilk 5 satırda doğmaz
     snake = [(x, y)]
-    for i in range(1, START_LENGTH):
+    for i in range(1, 3): # START_LENGTH yerine 3 kullanıldı
         snake.append((x, y+i))
     game_state["snakes"][client_id] = snake
     game_state["directions"][client_id] = "UP"
@@ -475,7 +474,7 @@ def move_snake(client_id):
                         game_state["active_powerups"].setdefault(other_id, []).append({"type": "frozen", "tick": time.time()})
             if pu["type"] == "giant":
                 snake = game_state["snakes"][client_id]
-                for _ in range(START_LENGTH):
+                for _ in range(3): # START_LENGTH yerine 3 kullanıldı
                     snake.append(snake[-1])
             game_state["powerups"].remove(pu)
     # --- PORTAL KONTROLÜ ---

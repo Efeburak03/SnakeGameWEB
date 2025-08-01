@@ -9,7 +9,7 @@ from common import MSG_MOVE, MSG_STATE, MSG_RESTART, create_state_message, MAX_P
 # CTF Oyun Sabitleri
 CTF_BOARD_WIDTH = 60
 CTF_BOARD_HEIGHT = 35
-CTF_START_LENGTH = 5
+CTF_START_LENGTH = 6
 CTF_TICK_RATE = 0.05
 CTF_RESPAWN_TIME = 5  # 5 saniye
 
@@ -406,21 +406,17 @@ class CTFGameState:
             spawn_pos = random.choice(RED_SPAWN_POSITIONS)
             start_x, start_y = spawn_pos
             # Kırmızı takım sağa doğru başlar
-            self.snakes[player_id] = [
-                (start_x, start_y),
-                (start_x-1, start_y),
-                (start_x-2, start_y)
-            ]
+            self.snakes[player_id] = [(start_x, start_y)]
+            for i in range(1, CTF_START_LENGTH):
+                self.snakes[player_id].append((start_x-i, start_y))
             self.directions[player_id] = "RIGHT"
         else:
             spawn_pos = random.choice(BLUE_SPAWN_POSITIONS)
             start_x, start_y = spawn_pos
             # Mavi takım sola doğru başlar
-            self.snakes[player_id] = [
-                (start_x, start_y),
-                (start_x+1, start_y),
-                (start_x+2, start_y)
-            ]
+            self.snakes[player_id] = [(start_x, start_y)]
+            for i in range(1, CTF_START_LENGTH):
+                self.snakes[player_id].append((start_x+i, start_y))
             self.directions[player_id] = "LEFT"
         
         self.active[player_id] = True

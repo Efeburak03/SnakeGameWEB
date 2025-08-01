@@ -1928,57 +1928,75 @@
                     // Kırmızı bayrak taşıyor mu?
                     if (ctfGameState.flags.red && ctfGameState.flags.red.captured && 
                         ctfGameState.flags.red.carrier === pid) {
-                        // Kırmızı bayrak taşıyan oyuncuya parıltı efekti
-                        const glowRadius = 8;
+                        // Zaman bazlı parıltı animasyonu
+                        const time = Date.now() / 1000;
+                        const pulseIntensity = 0.3 + 0.2 * Math.sin(time * 4); // 4 Hz pulse
                         
-                        // Parıltı efekti için gradient
-                        const gradient = ctx.createRadialGradient(
-                            head[0]*CELL_SIZE + CELL_SIZE/2, head[1]*CELL_SIZE + CELL_SIZE/2, 0,
-                            head[0]*CELL_SIZE + CELL_SIZE/2, head[1]*CELL_SIZE + CELL_SIZE/2, glowRadius
-                        );
-                        gradient.addColorStop(0, 'rgba(231, 76, 60, 0.8)');
-                        gradient.addColorStop(0.5, 'rgba(231, 76, 60, 0.4)');
-                        gradient.addColorStop(1, 'rgba(231, 76, 60, 0)');
-                        
-                        ctx.fillStyle = gradient;
-                        ctx.fillRect(
-                            head[0]*CELL_SIZE - glowRadius, 
-                            head[1]*CELL_SIZE - glowRadius, 
-                            CELL_SIZE + glowRadius*2, 
-                            CELL_SIZE + glowRadius*2
-                        );
+                        // Kırmızı bayrak taşıyan yılanın tüm segmentlerini parlat
+                        for (let i = 0; i < snake.length; i++) {
+                            const seg = snake[i];
+                            const glowRadius = 6 + 2 * pulseIntensity; // Dinamik parıltı yarıçapı
+                            
+                            // Her segment için parıltı efekti
+                            const gradient = ctx.createRadialGradient(
+                                seg[0]*CELL_SIZE + CELL_SIZE/2, seg[1]*CELL_SIZE + CELL_SIZE/2, 0,
+                                seg[0]*CELL_SIZE + CELL_SIZE/2, seg[1]*CELL_SIZE + CELL_SIZE/2, glowRadius
+                            );
+                            gradient.addColorStop(0, `rgba(231, 76, 60, ${0.9 + pulseIntensity * 0.1})`);
+                            gradient.addColorStop(0.6, `rgba(231, 76, 60, ${0.5 + pulseIntensity * 0.2})`);
+                            gradient.addColorStop(1, 'rgba(231, 76, 60, 0)');
+                            
+                            ctx.fillStyle = gradient;
+                            ctx.fillRect(
+                                seg[0]*CELL_SIZE - glowRadius, 
+                                seg[1]*CELL_SIZE - glowRadius, 
+                                CELL_SIZE + glowRadius*2, 
+                                CELL_SIZE + glowRadius*2
+                            );
+                        }
                         
                         // Yılanın kendisini daha parlak çiz
-                        ctx.fillStyle = '#ff6b6b';
-                        ctx.fillRect(head[0]*CELL_SIZE, head[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                        ctx.fillStyle = `rgba(255, 107, 107, ${0.8 + pulseIntensity * 0.2})`;
+                        for (const seg of snake) {
+                            ctx.fillRect(seg[0]*CELL_SIZE, seg[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                        }
                     }
                     
                     // Mavi bayrak taşıyor mu?
                     if (ctfGameState.flags.blue && ctfGameState.flags.blue.captured && 
                         ctfGameState.flags.blue.carrier === pid) {
-                        // Mavi bayrak taşıyan oyuncuya parıltı efekti
-                        const glowRadius = 8;
+                        // Zaman bazlı parıltı animasyonu
+                        const time = Date.now() / 1000;
+                        const pulseIntensity = 0.3 + 0.2 * Math.sin(time * 4); // 4 Hz pulse
                         
-                        // Parıltı efekti için gradient
-                        const gradient = ctx.createRadialGradient(
-                            head[0]*CELL_SIZE + CELL_SIZE/2, head[1]*CELL_SIZE + CELL_SIZE/2, 0,
-                            head[0]*CELL_SIZE + CELL_SIZE/2, head[1]*CELL_SIZE + CELL_SIZE/2, glowRadius
-                        );
-                        gradient.addColorStop(0, 'rgba(52, 152, 219, 0.8)');
-                        gradient.addColorStop(0.5, 'rgba(52, 152, 219, 0.4)');
-                        gradient.addColorStop(1, 'rgba(52, 152, 219, 0)');
-                        
-                        ctx.fillStyle = gradient;
-                        ctx.fillRect(
-                            head[0]*CELL_SIZE - glowRadius, 
-                            head[1]*CELL_SIZE - glowRadius, 
-                            CELL_SIZE + glowRadius*2, 
-                            CELL_SIZE + glowRadius*2
-                        );
+                        // Mavi bayrak taşıyan yılanın tüm segmentlerini parlat
+                        for (let i = 0; i < snake.length; i++) {
+                            const seg = snake[i];
+                            const glowRadius = 6 + 2 * pulseIntensity; // Dinamik parıltı yarıçapı
+                            
+                            // Her segment için parıltı efekti
+                            const gradient = ctx.createRadialGradient(
+                                seg[0]*CELL_SIZE + CELL_SIZE/2, seg[1]*CELL_SIZE + CELL_SIZE/2, 0,
+                                seg[0]*CELL_SIZE + CELL_SIZE/2, seg[1]*CELL_SIZE + CELL_SIZE/2, glowRadius
+                            );
+                            gradient.addColorStop(0, `rgba(52, 152, 219, ${0.9 + pulseIntensity * 0.1})`);
+                            gradient.addColorStop(0.6, `rgba(52, 152, 219, ${0.5 + pulseIntensity * 0.2})`);
+                            gradient.addColorStop(1, 'rgba(52, 152, 219, 0)');
+                            
+                            ctx.fillStyle = gradient;
+                            ctx.fillRect(
+                                seg[0]*CELL_SIZE - glowRadius, 
+                                seg[1]*CELL_SIZE - glowRadius, 
+                                CELL_SIZE + glowRadius*2, 
+                                CELL_SIZE + glowRadius*2
+                            );
+                        }
                         
                         // Yılanın kendisini daha parlak çiz
-                        ctx.fillStyle = '#74b9ff';
-                        ctx.fillRect(head[0]*CELL_SIZE, head[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                        ctx.fillStyle = `rgba(116, 185, 255, ${0.8 + pulseIntensity * 0.2})`;
+                        for (const seg of snake) {
+                            ctx.fillRect(seg[0]*CELL_SIZE, seg[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                        }
                     }
                 }
             }
