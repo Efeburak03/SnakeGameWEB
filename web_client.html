@@ -1798,8 +1798,6 @@
             <div id="ctf-team-display">Takım: <span id="ctf-team">--</span></div>
             <div id="ctf-player-score-display">Kişisel Skor: <span id="ctf-player-score">0</span></div>
             <div id="ctf-waiting-display" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.95); color: #fff; padding: 40px; border-radius: 20px; font-size: 36px; font-weight: bold; display: none; z-index: 9999; border: 4px solid #e74c3c; box-shadow: 0 0 30px rgba(231, 76, 60, 0.8); text-align: center; min-width: 300px;">Bekleme Süresi: <span id="ctf-waiting-time">0</span>s</div>
-            <div id="ctf-red-score-display" style="position: absolute; top: 10px; left: 10px; color: #e74c3c; font-weight: bold; font-size: 18px; background: rgba(0,0,0,0.7); padding: 8px 12px; border-radius: 5px;">Kırmızı: <span id="ctf-red-score">0</span></div>
-            <div id="ctf-blue-score-display" style="position: absolute; top: 10px; right: 10px; color: #3498db; font-weight: bold; font-size: 18px; background: rgba(0,0,0,0.7); padding: 8px 12px; border-radius: 5px;">Mavi: <span id="ctf-blue-score">0</span></div>
             <button id="ctf-respawn-btn" style="display:none;">Canlan (5s)</button>
         `;
         document.body.appendChild(ui);
@@ -1995,6 +1993,33 @@
             console.log('[DEBUG] drawCTF: Bayrak yok');
         }
         
+        // Takım puanlarını canvas'a çiz
+        if (ctfGameState.team_scores) {
+            // Kırmızı takım puanı - sol köşe
+            ctx.fillStyle = 'rgba(0,0,0,0.8)';
+            ctx.fillRect(10, 10, 120, 40);
+            ctx.strokeStyle = '#e74c3c';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(10, 10, 120, 40);
+            
+            ctx.fillStyle = '#e74c3c';
+            ctx.font = 'bold 16px Arial';
+            ctx.textAlign = 'left';
+            ctx.fillText(`Kırmızı: ${ctfGameState.team_scores.red || 0}`, 20, 35);
+            
+            // Mavi takım puanı - sağ köşe
+            ctx.fillStyle = 'rgba(0,0,0,0.8)';
+            ctx.fillRect(canvas.width - 130, 10, 120, 40);
+            ctx.strokeStyle = '#3498db';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(canvas.width - 130, 10, 120, 40);
+            
+            ctx.fillStyle = '#3498db';
+            ctx.font = 'bold 16px Arial';
+            ctx.textAlign = 'left';
+            ctx.fillText(`Mavi: ${ctfGameState.team_scores.blue || 0}`, canvas.width - 120, 35);
+        }
+        
         // UI güncelle
         updateCTFUI();
     }
@@ -2005,8 +2030,6 @@
         const timeLeft = document.getElementById('ctf-time-left');
         const teamDisplay = document.getElementById('ctf-team');
         const playerScore = document.getElementById('ctf-player-score');
-        const redScore = document.getElementById('ctf-red-score');
-        const blueScore = document.getElementById('ctf-blue-score');
         const respawnBtn = document.getElementById('ctf-respawn-btn');
         const waitingDisplay = document.getElementById('ctf-waiting-display');
         const waitingTime = document.getElementById('ctf-waiting-time');
@@ -2017,15 +2040,6 @@
         
         if (teamDisplay && ctfTeam) {
             teamDisplay.textContent = ctfTeam === 'red' ? 'Kırmızı' : 'Mavi';
-        }
-        
-        // Takım skorlarını güncelle
-        if (redScore && ctfGameState.team_scores) {
-            redScore.textContent = ctfGameState.team_scores.red || 0;
-        }
-        
-        if (blueScore && ctfGameState.team_scores) {
-            blueScore.textContent = ctfGameState.team_scores.blue || 0;
         }
         
         if (playerScore && ctfGameState.individual_scores && myId) {
