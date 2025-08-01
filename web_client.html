@@ -1797,7 +1797,7 @@
             <div id="ctf-time-display">Süre: <span id="ctf-time-left">300</span></div>
             <div id="ctf-team-display">Takım: <span id="ctf-team">--</span></div>
             <div id="ctf-player-score-display">Kişisel Skor: <span id="ctf-player-score">0</span></div>
-            <div id="ctf-waiting-display" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.95); color: #fff; padding: 40px; border-radius: 20px; font-size: 36px; font-weight: bold; display: none; z-index: 9999; border: 4px solid #e74c3c; box-shadow: 0 0 30px rgba(231, 76, 60, 0.8); text-align: center; min-width: 300px;">Bekleme Süresi: <span id="ctf-waiting-time">0</span>s</div>
+            <div id="ctf-waiting-display" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.95); color: #fff; padding: 40px; border-radius: 20px; font-size: 36px; font-weight: bold; display: none; z-index: 99999; border: 4px solid #e74c3c; box-shadow: 0 0 30px rgba(231, 76, 60, 0.8); text-align: center; min-width: 300px;">Bekleme Süresi: <span id="ctf-waiting-time">0</span>s</div>
             <button id="ctf-respawn-btn" style="display:none;">Canlan (5s)</button>
         `;
         document.body.appendChild(ui);
@@ -1995,29 +1995,32 @@
         
         // Takım puanlarını canvas'a çiz
         if (ctfGameState.team_scores) {
+            console.log('[DEBUG] Canvas boyutu:', canvas.width, 'x', canvas.height);
+            console.log('[DEBUG] Takım puanları:', ctfGameState.team_scores);
+            
             // Kırmızı takım puanı - sol köşe
             ctx.fillStyle = 'rgba(0,0,0,0.8)';
-            ctx.fillRect(10, 10, 120, 40);
+            ctx.fillRect(5, 5, 140, 35);
             ctx.strokeStyle = '#e74c3c';
             ctx.lineWidth = 2;
-            ctx.strokeRect(10, 10, 120, 40);
+            ctx.strokeRect(5, 5, 140, 35);
             
             ctx.fillStyle = '#e74c3c';
-            ctx.font = 'bold 16px Arial';
+            ctx.font = 'bold 14px Arial';
             ctx.textAlign = 'left';
-            ctx.fillText(`Kırmızı: ${ctfGameState.team_scores.red || 0}`, 20, 35);
+            ctx.fillText(`Kırmızı: ${ctfGameState.team_scores.red || 0}`, 15, 25);
             
             // Mavi takım puanı - sağ köşe
             ctx.fillStyle = 'rgba(0,0,0,0.8)';
-            ctx.fillRect(canvas.width - 130, 10, 120, 40);
+            ctx.fillRect(canvas.width - 145, 5, 140, 35);
             ctx.strokeStyle = '#3498db';
             ctx.lineWidth = 2;
-            ctx.strokeRect(canvas.width - 130, 10, 120, 40);
+            ctx.strokeRect(canvas.width - 145, 5, 140, 35);
             
             ctx.fillStyle = '#3498db';
-            ctx.font = 'bold 16px Arial';
+            ctx.font = 'bold 14px Arial';
             ctx.textAlign = 'left';
-            ctx.fillText(`Mavi: ${ctfGameState.team_scores.blue || 0}`, canvas.width - 120, 35);
+            ctx.fillText(`Mavi: ${ctfGameState.team_scores.blue || 0}`, canvas.width - 135, 25);
         }
         
         // UI güncelle
@@ -2058,15 +2061,25 @@
                     if (remainingTime > 0) {
                         waitingDisplay.style.display = 'block';
                         waitingTime.textContent = remainingTime.toFixed(1);
+                        console.log('[DEBUG] Bekleme süresi gösteriliyor:', remainingTime.toFixed(1));
                     } else {
                         waitingDisplay.style.display = 'none';
+                        console.log('[DEBUG] Bekleme süresi gizlendi (süre doldu)');
                     }
                 } else {
                     waitingDisplay.style.display = 'none';
+                    console.log('[DEBUG] Respawn timer yok');
                 }
             } else {
                 waitingDisplay.style.display = 'none';
+                console.log('[DEBUG] Oyuncu aktif, bekleme süresi gizli');
             }
+        } else {
+            console.log('[DEBUG] Bekleme süresi elementi bulunamadı:', {
+                waitingDisplay: !!waitingDisplay,
+                waitingTime: !!waitingTime,
+                myId: myId
+            });
         }
         
         // Bekleme süresi göstergesini her zaman güncelle (debug için)
@@ -2112,6 +2125,7 @@
             setInterval(() => {
                 if (ctfGameState) {
                     updateCTFUI();
+                    console.log('[DEBUG] CTF UI güncellendi');
                 }
             }, 16); // 16ms'de bir güncelle (60 FPS)
         }
