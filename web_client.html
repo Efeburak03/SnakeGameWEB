@@ -746,9 +746,7 @@
         
         socket.on('ctf_respawn_failed', (data) => {
             console.log('[DEBUG] CTF respawn failed:', data);
-            // Kalan süreyi göster
-            const remainingTime = data.remaining_time;
-            alert(`Henüz respawn olamazsın! ${remainingTime.toFixed(1)} saniye daha bekle.`);
+            // Alert kaldırıldı - sayaç zaten ekranda görünüyor
         });
     }
 
@@ -1800,10 +1798,9 @@
             <div id="ctf-team-display">Takım: <span id="ctf-team">--</span></div>
             <div id="ctf-player-score-display">Kişisel Skor: <span id="ctf-player-score">0</span></div>
             <div id="ctf-waiting-display" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.95); color: #fff; padding: 40px; border-radius: 20px; font-size: 36px; font-weight: bold; display: none; z-index: 9999; border: 4px solid #e74c3c; box-shadow: 0 0 30px rgba(231, 76, 60, 0.8); text-align: center; min-width: 300px;">Bekleme Süresi: <span id="ctf-waiting-time">0</span>s</div>
-            <div id="ctf-red-score-display" style="position: absolute; bottom: 10px; left: 10px; color: #e74c3c; font-weight: bold;">Kırmızı: <span id="ctf-red-score">0</span></div>
-            <div id="ctf-blue-score-display" style="position: absolute; bottom: 10px; right: 10px; color: #3498db; font-weight: bold;">Mavi: <span id="ctf-blue-score">0</span></div>
+            <div id="ctf-red-score-display" style="position: absolute; top: 10px; left: 10px; color: #e74c3c; font-weight: bold; font-size: 18px; background: rgba(0,0,0,0.7); padding: 8px 12px; border-radius: 5px;">Kırmızı: <span id="ctf-red-score">0</span></div>
+            <div id="ctf-blue-score-display" style="position: absolute; top: 10px; right: 10px; color: #3498db; font-weight: bold; font-size: 18px; background: rgba(0,0,0,0.7); padding: 8px 12px; border-radius: 5px;">Mavi: <span id="ctf-blue-score">0</span></div>
             <button id="ctf-respawn-btn" style="display:none;">Canlan (5s)</button>
-            <button id="ctf-test-waiting-btn" style="position: absolute; top: 10px; right: 10px; padding: 10px; background: #f39c12; color: #fff; border: none; border-radius: 5px; cursor: pointer;">Test Sayaç</button>
         `;
         document.body.appendChild(ui);
         
@@ -1812,12 +1809,6 @@
             if (socket && socket.connected) {
                 socket.emit('ctf_respawn', {client_id: myId});
             }
-        });
-        
-        // Test butonu event listener
-        document.getElementById('ctf-test-waiting-btn').addEventListener('click', () => {
-            console.log('[DEBUG] Test butonuna tıklandı');
-            testWaitingDisplay();
         });
     }
     
@@ -2043,50 +2034,34 @@
         
         // Bekleme süresi göstergesini kontrol et
         if (waitingDisplay && waitingTime && myId) {
-            console.log('[DEBUG] Bekleme süresi kontrolü:', {
-                myId: myId,
-                active: ctfGameState.active,
-                myActive: ctfGameState.active[myId],
-                respawnTimers: ctfGameState.respawn_timers,
-                myRespawnTimer: ctfGameState.respawn_timers?.[myId]
-            });
-            
             // Oyuncu aktif değilse bekleme süresini göster
             if (ctfGameState.active && !ctfGameState.active[myId]) {
-                console.log('[DEBUG] Oyuncu aktif değil, bekleme süresi kontrol ediliyor');
-                
                 if (ctfGameState.respawn_timers && ctfGameState.respawn_timers[myId]) {
                     const currentTime = Date.now() / 1000;
                     const respawnTime = ctfGameState.respawn_timers[myId];
                     const remainingTime = respawnTime - currentTime;
                     
-                    console.log('[DEBUG] Respawn timer hesaplaması:', {
-                        currentTime: currentTime,
-                        respawnTime: respawnTime,
-                        remainingTime: remainingTime
-                    });
-                    
                     if (remainingTime > 0) {
-                        console.log('[DEBUG] Bekleme süresi gösteriliyor:', remainingTime.toFixed(1));
                         waitingDisplay.style.display = 'block';
                         waitingTime.textContent = remainingTime.toFixed(1);
                     } else {
-                        console.log('[DEBUG] Bekleme süresi gizleniyor (süre doldu)');
                         waitingDisplay.style.display = 'none';
                     }
                 } else {
-                    console.log('[DEBUG] Respawn timer yok, bekleme süresi gizleniyor');
                     waitingDisplay.style.display = 'none';
                 }
             } else {
-                console.log('[DEBUG] Oyuncu aktif, bekleme süresi gizleniyor');
                 waitingDisplay.style.display = 'none';
             }
-        } else {
-            console.log('[DEBUG] Bekleme süresi elementi bulunamadı:', {
-                waitingDisplay: !!waitingDisplay,
-                waitingTime: !!waitingTime,
-                myId: myId
+        }
+        
+        // Bekleme süresi göstergesini her zaman güncelle (debug için)
+        if (waitingDisplay && waitingTime && myId && ctfGameState.active && !ctfGameState.active[myId]) {
+            console.log('[DEBUG] Bekleme süresi güncelleniyor:', {
+                myId: myId,
+                active: ctfGameState.active[myId],
+                respawnTimer: ctfGameState.respawn_timers?.[myId],
+                display: waitingDisplay.style.display
             });
         }
         
@@ -2124,7 +2099,7 @@
                 if (ctfGameState) {
                     updateCTFUI();
                 }
-            }, 50); // 50ms'de bir güncelle (20 FPS)
+            }, 16); // 16ms'de bir güncelle (60 FPS)
         }
     }
     
@@ -2229,31 +2204,7 @@
     // --- Tam ekran fonksiyonu ---
     // (Kaldırıldı)
 
-    // Test fonksiyonu - bekleme süresini manuel olarak göster
-    function testWaitingDisplay() {
-        console.log('[DEBUG] Test: Bekleme süresi test ediliyor');
-        const waitingDisplay = document.getElementById('ctf-waiting-display');
-        const waitingTime = document.getElementById('ctf-waiting-time');
-        
-        if (waitingDisplay && waitingTime) {
-            console.log('[DEBUG] Test: Elementler bulundu, gösteriliyor');
-            waitingDisplay.style.display = 'block';
-            waitingTime.textContent = '5.0';
-            
-            // 5 saniye sonra gizle
-            setTimeout(() => {
-                waitingDisplay.style.display = 'none';
-                console.log('[DEBUG] Test: Sayaç gizlendi');
-            }, 5000);
-        } else {
-            console.error('[DEBUG] Test: Elementler bulunamadı!');
-            console.error('waitingDisplay:', waitingDisplay);
-            console.error('waitingTime:', waitingTime);
-        }
-    }
-    
-    // Test için global fonksiyon
-    window.testWaitingDisplay = testWaitingDisplay;
+
     </script>
 </body>
 </html>
