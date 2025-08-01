@@ -1284,18 +1284,21 @@ def on_ctf_respawn(data):
     if not client_id:
         return
     
-    # Oyuncuyu hemen respawn et
+    # Oyuncuyu respawn et (5 saniye bekleme süresi kontrolü CTF modülünde yapılır)
     if client_id in capture_the_flag_module.ctf_game_state.respawn_timers:
-        # Respawn zamanını şu anki zamana ayarla (hemen respawn)
-        capture_the_flag_module.ctf_game_state.respawn_timers[client_id] = time.time()
         print(f"[DEBUG] {client_id} CTF'de manuel respawn istedi")
         
-        # Hemen respawn et
+        # Respawn dene (5 saniye bekleme süresi kontrolü yapılır)
         if capture_the_flag_module.ctf_game_state.respawn_player(client_id):
             print(f"[DEBUG] {client_id} CTF'de respawn edildi")
             emit('ctf_respawned', {"client_id": client_id})
         else:
-            print(f"[DEBUG] {client_id} CTF'de respawn edilemedi")
+            print(f"[DEBUG] {client_id} CTF'de henüz respawn olamaz (5 saniye bekleme süresi)")
+            # Kalan süreyi hesapla ve client'a bildir
+            current_time = time.time()
+            respawn_time = capture_the_flag_module.ctf_game_state.respawn_timers[client_id]
+            remaining_time = respawn_time - current_time
+            emit('ctf_respawn_failed', {"client_id": client_id, "remaining_time": remaining_time})
     else:
         print(f"[DEBUG] {client_id} CTF'de respawn timer'ı yok")
 

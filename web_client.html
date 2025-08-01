@@ -659,6 +659,7 @@
             console.log('[DEBUG] CTF başladı:', data);
             currentGameMode = 'captureTheFlag';
             showCTFUI();
+            startCTFUITimer(); // UI timer'ını başlat
         });
         
         socket.on('ctf_joined', (data) => {
@@ -741,6 +742,13 @@
         
         socket.on('disconnect', () => {
             setTimeout(connect, 1000);
+        });
+        
+        socket.on('ctf_respawn_failed', (data) => {
+            console.log('[DEBUG] CTF respawn failed:', data);
+            // Kalan süreyi göster
+            const remainingTime = data.remaining_time;
+            alert(`Henüz respawn olamazsın! ${remainingTime.toFixed(1)} saniye daha bekle.`);
         });
     }
 
@@ -1972,10 +1980,35 @@
             // Oyuncu aktif değilse respawn butonunu göster
             if (ctfGameState.active && !ctfGameState.active[myId]) {
                 respawnBtn.style.display = 'inline-block';
-                respawnBtn.textContent = 'Canlan (Enter)';
+                
+                // Kalan süreyi hesapla
+                if (ctfGameState.respawn_timers && ctfGameState.respawn_timers[myId]) {
+                    const currentTime = Date.now() / 1000; // JavaScript timestamp'i saniyeye çevir
+                    const respawnTime = ctfGameState.respawn_timers[myId];
+                    const remainingTime = respawnTime - currentTime;
+                    
+                    if (remainingTime > 0) {
+                        respawnBtn.textContent = `Canlan (${remainingTime.toFixed(1)}s)`;
+                    } else {
+                        respawnBtn.textContent = 'Canlan (Enter)';
+                    }
+                } else {
+                    respawnBtn.textContent = 'Canlan (Enter)';
+                }
             } else {
                 respawnBtn.style.display = 'none';
             }
+        }
+    }
+    
+    // CTF UI'ı daha sık güncelle (respawn countdown için)
+    function startCTFUITimer() {
+        if (currentGameMode === 'captureTheFlag') {
+            setInterval(() => {
+                if (ctfGameState) {
+                    updateCTFUI();
+                }
+            }, 100); // 100ms'de bir güncelle (10 FPS)
         }
     }
     

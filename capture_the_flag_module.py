@@ -208,8 +208,18 @@ class CTFGameState:
         if not opponent_team:
             return False
         
+        # Oyuncunun pozisyonunu kontrol et
+        if player_id not in self.snakes:
+            return False
+        
+        head = self.snakes[player_id][0]
+        in_team_area = self.is_in_team_area(player_id, player_team)
+        
+        print(f"[DEBUG] {player_id} pozisyon: {head}, takım: {player_team}, takım alanında: {in_team_area}")
+        print(f"[DEBUG] {opponent_team} bayrağını taşıyor mu: {self.flags[opponent_team]['carrier'] == player_id}")
+        
         if (self.flags[opponent_team]["carrier"] == player_id and 
-            self.is_in_team_area(player_id, player_team)):
+            in_team_area):
             
             print(f"[DEBUG] {player_id} {opponent_team} bayrağını {player_team} alanına teslim etti!")
             
@@ -259,9 +269,17 @@ class CTFGameState:
         head = self.snakes[player_id][0]
         
         if team == RED_TEAM:
-            return head[0] < CTF_BOARD_WIDTH // 2  # Sol yarı
+            # Kırmızı takım alanı: sol duvarın ortası (1, 15) - (5, 20)
+            return (head[0] >= RED_FLAG_AREA["x"] and 
+                   head[0] < RED_FLAG_AREA["x"] + RED_FLAG_AREA["width"] and
+                   head[1] >= RED_FLAG_AREA["y"] and 
+                   head[1] < RED_FLAG_AREA["y"] + RED_FLAG_AREA["height"])
         elif team == BLUE_TEAM:
-            return head[0] >= CTF_BOARD_WIDTH // 2  # Sağ yarı
+            # Mavi takım alanı: sağ duvarın ortası (55, 15) - (59, 20)
+            return (head[0] >= BLUE_FLAG_AREA["x"] and 
+                   head[0] < BLUE_FLAG_AREA["x"] + BLUE_FLAG_AREA["width"] and
+                   head[1] >= BLUE_FLAG_AREA["y"] and 
+                   head[1] < BLUE_FLAG_AREA["y"] + BLUE_FLAG_AREA["height"])
         
         return False
     
@@ -361,14 +379,22 @@ class CTFGameState:
         for team in TEAMS:
             if self.flags[team]["carrier"] == player_id:
                 self.drop_flag(team)
+        
+        print(f"[DEBUG] {player_id} elendi, {CTF_RESPAWN_TIME} saniye sonra manuel respawn mümkün")
     
     def respawn_player(self, player_id):
         """Oyuncuyu yeniden doğur"""
         if player_id not in self.respawn_timers:
             return False
         
-        # CTF'de manuel respawn için zaman kontrolü yok
-        # Sadece respawn_timers'da olup olmadığını kontrol et
+        # 5 saniye bekleme süresi kontrolü
+        current_time = time.time()
+        respawn_time = self.respawn_timers[player_id]
+        
+        if current_time < respawn_time:
+            remaining_time = respawn_time - current_time
+            print(f"[DEBUG] {player_id} henüz respawn olamaz, {remaining_time:.1f} saniye kaldı")
+            return False
         
         # Oyuncunun takımını bul
         player_team = self.get_player_team(player_id)
@@ -404,6 +430,7 @@ class CTFGameState:
         self.eliminated_snakes.pop(player_id, None)
         self.eliminated_directions.pop(player_id, None)
         
+        print(f"[DEBUG] {player_id} respawn edildi")
         return True
     
     def check_respawns(self):
