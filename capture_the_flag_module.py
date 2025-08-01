@@ -9,7 +9,7 @@ from common import MSG_MOVE, MSG_STATE, MSG_RESTART, create_state_message, MAX_P
 # CTF Oyun Sabitleri
 CTF_BOARD_WIDTH = 60
 CTF_BOARD_HEIGHT = 35
-CTF_START_LENGTH = 3
+CTF_START_LENGTH = 5
 CTF_TICK_RATE = 0.05
 CTF_RESPAWN_TIME = 5  # 5 saniye
 
@@ -143,7 +143,9 @@ class CTFGameState:
         # Hangi bayrağın pozisyonu olduğunu bul
         flag_team = None
         for team in TEAMS:
-            if self.flags[team]["pos"] == flag_pos:
+            # Bayrak pozisyonunu tuple formatına çevir
+            flag_pos_tuple = tuple(self.flags[team]["pos"])
+            if flag_pos_tuple == flag_pos:
                 flag_team = team
                 break
         
@@ -172,11 +174,14 @@ class CTFGameState:
         
         self.flags[flag_team]["captured"] = True
         self.flags[flag_team]["carrier"] = player_id
-        self.flags[flag_team]["pos"] = self.snakes[player_id][0]  # Yılanın başına taşır
+        # Yılanın başını list formatında sakla
+        head_pos = list(self.snakes[player_id][0])
+        self.flags[flag_team]["pos"] = head_pos
         
         # Skor ver
         self.individual_scores[player_id] += FLAG_CAPTURE_SCORE
         
+        print(f"[DEBUG] {player_id} {flag_team} bayrağını yakaladı ve {head_pos} pozisyonuna taşıdı")
         return True
     
     def drop_flag(self, flag_team):
@@ -217,10 +222,34 @@ class CTFGameState:
             self.individual_scores[player_id] += FLAG_DELIVERY_SCORE
             self.team_scores[player_team] += FLAG_DELIVERY_SCORE
             
-            # Server'a bildirim gönder (bu fonksiyon server tarafından çağrılır)
-            return True
+            # Round kazanıldı - oyunu yeniden başlat
+            print(f"[DEBUG] {player_team} takımı round'u kazandı! Oyun yeniden başlatılıyor...")
+            self.reset_round()
+            
+            # Server'a round kazanma bildirimi gönder
+            return {"round_won": True, "winning_team": player_team, "winning_player": player_id}
         
         return False
+    
+    def reset_round(self):
+        """Round sonunda oyunu yeniden başlatır"""
+        print("[DEBUG] Round yeniden başlatılıyor...")
+        
+        # Tüm oyuncuları yeniden spawn et
+        for player_id in list(self.snakes.keys()):
+            if player_id in self.active:
+                self.respawn_player(player_id)
+        
+        # Bayrakları başlangıç pozisyonlarına getir
+        self.flags[RED_TEAM]["pos"] = self.flags[RED_TEAM]["base_pos"]
+        self.flags[RED_TEAM]["captured"] = False
+        self.flags[RED_TEAM]["carrier"] = None
+        
+        self.flags[BLUE_TEAM]["pos"] = self.flags[BLUE_TEAM]["base_pos"]
+        self.flags[BLUE_TEAM]["captured"] = False
+        self.flags[BLUE_TEAM]["carrier"] = None
+        
+        print("[DEBUG] Round yeniden başlatıldı")
     
     def is_in_team_area(self, player_id, team):
         """Oyuncunun kendi takım alanında olup olmadığını kontrol eder"""
@@ -291,7 +320,9 @@ class CTFGameState:
             for team in TEAMS:
                 if (self.flags[team]["carrier"] == player_id and 
                     self.flags[team]["captured"]):
-                    self.flags[team]["pos"] = new_head
+                    # Yeni pozisyonu list formatında sakla
+                    self.flags[team]["pos"] = list(new_head)
+                    print(f"[DEBUG] {player_id} {team} bayrağını {list(new_head)} pozisyonuna taşıdı")
         
         # Bayrak teslim kontrolü
         self.deliver_flag(player_id)
@@ -299,8 +330,9 @@ class CTFGameState:
         # Bayrak yakalama kontrolü
         for team in TEAMS:
             flag_pos = self.flags[team]["pos"]
-            print(f"[DEBUG] {player_id} yeni pozisyon: {new_head}, {team} bayrak pozisyonu: {flag_pos}, yakalanmış: {self.flags[team]['captured']}")
-            if new_head == flag_pos and self.can_capture_flag(player_id, flag_pos):
+            flag_pos_tuple = tuple(flag_pos)
+            print(f"[DEBUG] {player_id} yeni pozisyon: {new_head}, {team} bayrak pozisyonu: {flag_pos_tuple}, yakalanmış: {self.flags[team]['captured']}")
+            if new_head == flag_pos_tuple and self.can_capture_flag(player_id, flag_pos_tuple):
                 print(f"[DEBUG] {player_id} {team} bayrağını yakaladı!")
                 self.capture_flag(player_id, team)
         

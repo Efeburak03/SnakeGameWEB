@@ -1015,9 +1015,22 @@ def game_loop():
                 capture_the_flag_module.ctf_game_state.move_snake(client_id, direction)
                 
                 # Bayrak teslim kontrolü
-                if capture_the_flag_module.ctf_game_state.deliver_flag(client_id):
-                    print(f"[DEBUG] {client_id} bayrak teslim etti!")
-                    socketio.emit('ctf_flag_delivered', {"message": "Bayrak teslim edildi!"}, broadcast=True)
+                deliver_result = capture_the_flag_module.ctf_game_state.deliver_flag(client_id)
+                if deliver_result:
+                    if isinstance(deliver_result, dict) and deliver_result.get("round_won"):
+                        # Round kazanıldı
+                        winning_team = deliver_result["winning_team"]
+                        winning_player = deliver_result["winning_player"]
+                        print(f"[DEBUG] {winning_team} takımı round'u kazandı! Oyuncu: {winning_player}")
+                        socketio.emit('ctf_round_won', {
+                            "winning_team": winning_team,
+                            "winning_player": winning_player,
+                            "message": f"{winning_team} takımı round'u kazandı!"
+                        }, broadcast=True)
+                    else:
+                        # Normal bayrak teslimi
+                        print(f"[DEBUG] {client_id} bayrak teslim etti!")
+                        socketio.emit('ctf_flag_delivered', {"message": "Bayrak teslim edildi!"}, broadcast=True)
         
         # CTF durumunu tüm oyunculara gönder
         if len(capture_the_flag_module.ctf_game_state.snakes) > 0:
