@@ -1002,6 +1002,32 @@ def game_loop():
                         print(f"[DEBUG] Power-up {i}: {pu['type']} pozisyon: {pu['pos']}")
                 socketio.emit('time_attack_state', ta_state, room=sid)
         
+        # CTF modunu güncelle
+        capture_the_flag_module.update_ctf_game()
+        
+        # CTF oyuncularını hareket ettir
+        for client_id in list(capture_the_flag_module.ctf_game_state.snakes.keys()):
+            if (client_id in capture_the_flag_module.ctf_game_state.directions and 
+                client_id in capture_the_flag_module.ctf_game_state.active and 
+                capture_the_flag_module.ctf_game_state.active[client_id]):
+                
+                direction = capture_the_flag_module.ctf_game_state.directions[client_id]
+                capture_the_flag_module.ctf_game_state.move_snake(client_id, direction)
+        
+        # CTF durumunu tüm oyunculara gönder
+        if len(capture_the_flag_module.ctf_game_state.snakes) > 0:
+            ctf_state = capture_the_flag_module.get_ctf_game_state()
+            socketio.emit('ctf_state', ctf_state)
+            
+            # Oyun bitti mi kontrol et
+            if capture_the_flag_module.ctf_game_state.game_phase == "finished":
+                winner = capture_the_flag_module.ctf_game_state.get_winner()
+                socketio.emit('ctf_game_over', {
+                    "winner": winner,
+                    "team_scores": capture_the_flag_module.ctf_game_state.team_scores,
+                    "individual_scores": capture_the_flag_module.ctf_game_state.individual_scores
+                })
+        
         tick_count += 1
         socketio.sleep(TICK_RATE)
 
@@ -1162,11 +1188,15 @@ def on_ctf_join(data):
         # Otomatik takım ataması
         team = capture_the_flag_module.ctf_game_state.assign_team(client_id)
     
-    # Yılan oluştur
+    # Yılan oluştur - takım bazlı spawn pozisyonları
     if team == capture_the_flag_module.RED_TEAM:
-        start_x, start_y = 10, 17  # Sol taraf
+        # Kırmızı takım için rastgele spawn pozisyonu
+        spawn_pos = random.choice(capture_the_flag_module.RED_SPAWN_POSITIONS)
+        start_x, start_y = spawn_pos
     else:
-        start_x, start_y = 50, 17  # Sağ taraf
+        # Mavi takım için rastgele spawn pozisyonu
+        spawn_pos = random.choice(capture_the_flag_module.BLUE_SPAWN_POSITIONS)
+        start_x, start_y = spawn_pos
     
     capture_the_flag_module.ctf_game_state.snakes[client_id] = [
         (start_x, start_y),
@@ -1178,6 +1208,11 @@ def on_ctf_join(data):
     capture_the_flag_module.ctf_game_state.active[client_id] = True
     
     print(f"[DEBUG] {client_id} CTF'ye katıldı, takım: {team}")
+    
+    # İlk oyuncu katıldığında oyunu başlat
+    if len(capture_the_flag_module.ctf_game_state.snakes) == 1:
+        capture_the_flag_module.start_ctf_game()
+    
     emit('ctf_joined', {
         "team": team,
         "position": [start_x, start_y],

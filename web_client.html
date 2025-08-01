@@ -1658,29 +1658,34 @@
         // Canvas'ı temizle
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        // Arka plan
-        if (assets.bg) {
-            const pattern = ctx.createPattern(assets.bg, 'repeat');
-            ctx.save();
-            ctx.fillStyle = pattern;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.restore();
-        } else {
-            ctx.fillStyle = '#000';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-        }
+        // Gri arka plan
+        ctx.fillStyle = '#808080'; // Düz gri
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
         
-        // Takım alanlarını çiz (şeffaf)
-        const leftArea = canvas.width * 0.4; // Sol taraf %40
-        const rightArea = canvas.width * 0.6; // Sağ taraf %60
+        // Beyaz çerçeve çiz
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(0, 0, canvas.width, canvas.height);
         
-        // Kırmızı takım alanı (sol taraf)
-        ctx.fillStyle = 'rgba(231, 76, 60, 0.1)'; // Şeffaf kırmızı
-        ctx.fillRect(0, 0, leftArea, canvas.height);
+        // Ortadaki beyaz çizgi (takım alanlarını ayıran)
+        const centerX = canvas.width / 2;
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(centerX, 0);
+        ctx.lineTo(centerX, canvas.height);
+        ctx.stroke();
         
-        // Mavi takım alanı (sağ taraf)
-        ctx.fillStyle = 'rgba(52, 152, 219, 0.1)'; // Şeffaf mavi
-        ctx.fillRect(rightArea, 0, canvas.width - rightArea, canvas.height);
+        // Bayrak alanlarını çiz
+        const cellSize = CELL_SIZE;
+        
+        // Kırmızı bayrak alanı (sol duvarın ortası)
+        ctx.fillStyle = 'rgba(231, 76, 60, 0.3)'; // Şeffaf kırmızı
+        ctx.fillRect(1 * cellSize, 15 * cellSize, 4 * cellSize, 5 * cellSize);
+        
+        // Mavi bayrak alanı (sağ duvarın ortası)
+        ctx.fillStyle = 'rgba(52, 152, 219, 0.3)'; // Şeffaf mavi
+        ctx.fillRect(55 * cellSize, 15 * cellSize, 4 * cellSize, 5 * cellSize);
         
         // Yılanları çiz
         if (ctfGameState.snakes) {
@@ -1724,17 +1729,7 @@
             }
         }
         
-        // Yemleri çiz
-        if (ctfGameState.food) {
-            for (const food of ctfGameState.food) {
-                if (assets.apple) {
-                    ctx.drawImage(assets.apple, food[0]*CELL_SIZE, food[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
-                } else {
-                    ctx.fillStyle = 'red';
-                    ctx.fillRect(food[0]*CELL_SIZE, food[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
-                }
-            }
-        }
+
         
         // UI güncelle
         updateCTFUI();

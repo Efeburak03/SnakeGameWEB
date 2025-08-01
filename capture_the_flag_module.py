@@ -17,15 +17,40 @@ RED_TEAM = "red"
 BLUE_TEAM = "blue"
 TEAMS = [RED_TEAM, BLUE_TEAM]
 
-# Bayrak Pozisyonları
-RED_FLAG_POS = (5, 5)
-BLUE_FLAG_POS = (55, 30)
+# Bayrak Bölgeleri (5x4 alan)
+# Kırmızı takım: Sol duvarın ortası
+RED_FLAG_AREA = {
+    "x": 1,  # Sol duvar
+    "y": 15,  # Ortaya yakın (35/2 - 2)
+    "width": 4,
+    "height": 5
+}
+
+# Mavi takım: Sağ duvarın ortası  
+BLUE_FLAG_AREA = {
+    "x": 55,  # Sağ duvar (60-5)
+    "y": 15,  # Ortaya yakın
+    "width": 4,
+    "height": 5
+}
+
+# Takım Doğuş Noktaları
+RED_SPAWN_POSITIONS = [
+    (10, 10), (10, 15), (10, 20), (10, 25),
+    (15, 10), (15, 15), (15, 20), (15, 25),
+    (20, 10), (20, 15), (20, 20), (20, 25)
+]
+
+BLUE_SPAWN_POSITIONS = [
+    (40, 10), (40, 15), (40, 20), (40, 25),
+    (45, 10), (45, 15), (45, 20), (45, 25),
+    (50, 10), (50, 15), (50, 20), (50, 25)
+]
 
 # Skor Sistemi
 FLAG_CAPTURE_SCORE = 10
 FLAG_DELIVERY_SCORE = 15
 KILL_SCORE = 5
-DEFENSE_SCORE = 2
 
 class CTFGameState:
     def __init__(self):
@@ -45,32 +70,28 @@ class CTFGameState:
         self.snakes = {}
         self.directions = {}
         self.colors = {}
+        
+        # Bayraklar - her takımın kendi alanında
         self.flags = {
             RED_TEAM: {
-                "pos": list(RED_FLAG_POS),
+                "pos": [RED_FLAG_AREA["x"] + 2, RED_FLAG_AREA["y"] + 2],  # Alanın ortası
                 "captured": False,
                 "carrier": None,
                 "dropped_pos": None,
-                "base_pos": list(RED_FLAG_POS)
+                "base_pos": [RED_FLAG_AREA["x"] + 2, RED_FLAG_AREA["y"] + 2]
             },
             BLUE_TEAM: {
-                "pos": list(BLUE_FLAG_POS),
+                "pos": [BLUE_FLAG_AREA["x"] + 2, BLUE_FLAG_AREA["y"] + 2],  # Alanın ortası
                 "captured": False,
                 "carrier": None,
                 "dropped_pos": None,
-                "base_pos": list(BLUE_FLAG_POS)
+                "base_pos": [BLUE_FLAG_AREA["x"] + 2, BLUE_FLAG_AREA["y"] + 2]
             }
         }
+        
         self.game_time = 300  # 5 dakika
         self.game_phase = "preparation"  # preparation, active, finished
         self.start_time = None
-        self.food = []
-        self.obstacles = []
-        self.portals = []
-        self.powerups = []
-        self.active_powerups = {}
-        self.trails = {}
-        self.scores = {}
         self.active = {}
         
     def assign_team(self, player_id):
@@ -107,7 +128,10 @@ class CTFGameState:
         return team1 and team2 and team1 == team2
     
     def can_capture_flag(self, player_id, flag_pos):
-        """Oyuncunun bayrak yakalayıp yakalayamayacağını kontrol eder"""
+        """Oyuncunun bayrağı yakalayıp yakalayamayacağını kontrol eder"""
+        if player_id not in self.snakes:
+            return False
+        
         player_team = self.get_player_team(player_id)
         if not player_team:
             return False
@@ -118,202 +142,169 @@ class CTFGameState:
         if player_team == BLUE_TEAM and flag_pos == self.flags[BLUE_TEAM]["pos"]:
             return False
         
+        # Bayrak zaten yakalanmış mı?
+        if self.flags[player_team]["captured"]:
+            return False
+        
         return True
     
     def capture_flag(self, player_id, flag_team):
-        """Bayrak yakalama işlemi"""
-        if self.flags[flag_team]["captured"]:
+        """Bayrağı yakalar"""
+        if flag_team not in TEAMS:
             return False
         
         self.flags[flag_team]["captured"] = True
         self.flags[flag_team]["carrier"] = player_id
+        self.flags[flag_team]["pos"] = self.snakes[player_id][0]  # Yılanın başına taşır
+        
+        # Skor ver
         self.individual_scores[player_id] += FLAG_CAPTURE_SCORE
         
         return True
     
     def drop_flag(self, flag_team):
-        """Bayrak düşürme işlemi"""
-        if not self.flags[flag_team]["captured"]:
+        """Bayrağı düşürür"""
+        if flag_team not in TEAMS:
             return
         
-        # Bayrak taşıyıcısının son pozisyonuna düşür
-        carrier_id = self.flags[flag_team]["carrier"]
-        if carrier_id in self.snakes:
-            last_pos = self.snakes[carrier_id][-1] if self.snakes[carrier_id] else self.flags[flag_team]["base_pos"]
-            self.flags[flag_team]["dropped_pos"] = list(last_pos)
-            self.flags[flag_team]["pos"] = list(last_pos)
-        
         self.flags[flag_team]["captured"] = False
+        self.flags[flag_team]["dropped_pos"] = self.flags[flag_team]["pos"]
         self.flags[flag_team]["carrier"] = None
     
     def deliver_flag(self, player_id):
-        """Bayrak teslim etme işlemi"""
+        """Bayrağı teslim eder"""
         player_team = self.get_player_team(player_id)
         if not player_team:
             return False
         
-        # Karşı takımın bayrağını taşıyor mu?
+        # Karşı takımın bayrağını mı taşıyor?
         opponent_team = self.get_opponent_team(player_id)
-        if not self.flags[opponent_team]["captured"] or self.flags[opponent_team]["carrier"] != player_id:
+        if not opponent_team:
             return False
         
-        # Kendi üssünde mi?
-        player_pos = self.snakes[player_id][0] if self.snakes[player_id] else None
-        if not player_pos:
-            return False
-        
-        # Üs kontrolü (basit: takım bölgesinde olup olmadığı)
-        if player_team == RED_TEAM and player_pos[0] < 30:
-            # Kırmızı takım sol tarafta
-            self.team_scores[player_team] += FLAG_DELIVERY_SCORE
-            self.individual_scores[player_id] += FLAG_DELIVERY_SCORE
+        if (self.flags[opponent_team]["carrier"] == player_id and 
+            self.is_in_team_area(player_id, player_team)):
+            
+            # Bayrağı teslim et
             self.flags[opponent_team]["captured"] = False
             self.flags[opponent_team]["carrier"] = None
             self.flags[opponent_team]["pos"] = self.flags[opponent_team]["base_pos"]
-            return True
-        elif player_team == BLUE_TEAM and player_pos[0] >= 30:
-            # Mavi takım sağ tarafta
-            self.team_scores[player_team] += FLAG_DELIVERY_SCORE
+            
+            # Skor ver
             self.individual_scores[player_id] += FLAG_DELIVERY_SCORE
-            self.flags[opponent_team]["captured"] = False
-            self.flags[opponent_team]["carrier"] = None
-            self.flags[opponent_team]["pos"] = self.flags[opponent_team]["base_pos"]
+            self.team_scores[player_team] += FLAG_DELIVERY_SCORE
+            
             return True
+        
+        return False
+    
+    def is_in_team_area(self, player_id, team):
+        """Oyuncunun kendi takım alanında olup olmadığını kontrol eder"""
+        if player_id not in self.snakes:
+            return False
+        
+        head = self.snakes[player_id][0]
+        
+        if team == RED_TEAM:
+            return head[0] < CTF_BOARD_WIDTH // 2  # Sol yarı
+        elif team == BLUE_TEAM:
+            return head[0] >= CTF_BOARD_WIDTH // 2  # Sağ yarı
         
         return False
     
     def check_collision(self, player_id, new_head):
-        """Çarpışma kontrolü - CTF kurallarına göre"""
-        player_team = self.get_player_team(player_id)
-        if not player_team:
-            return True
-        
-        # Duvar kontrolü
-        if (new_head[0] < 0 or new_head[0] >= CTF_BOARD_WIDTH or 
+        """Çarpışma kontrolü"""
+        # Duvar çarpışması
+        if (new_head[0] < 0 or new_head[0] >= CTF_BOARD_WIDTH or
             new_head[1] < 0 or new_head[1] >= CTF_BOARD_HEIGHT):
             return True
         
-        # Diğer oyuncularla çarpışma
+        # Diğer yılanlarla çarpışma
         for other_id, snake in self.snakes.items():
-            if other_id == player_id:
-                continue
-            
-            # Takım arkadaşı kontrolü
-            if self.is_teammate(player_id, other_id):
-                # Takım arkadaşına çarpmak = ölüm
+            if other_id != player_id and other_id in self.active and self.active[other_id]:
                 if new_head in snake:
                     return True
-            else:
-                # Karşı takımla çarpışma = ölüm
-                if new_head in snake:
-                    # Karşı takım oyuncusunu öldür
-                    self.individual_scores[player_id] += KILL_SCORE
-                    return False  # Kendisi ölmez, karşı takım ölür
         
-        # Kendi vücuduna çarpma
-        if new_head in self.snakes[player_id]:
-            return True
+        # Kendi yılanıyla çarpışma
+        if player_id in self.snakes:
+            if new_head in self.snakes[player_id][1:]:  # Baş hariç
+                return True
         
         return False
     
     def move_snake(self, player_id, direction):
-        """Yılan hareketi - CTF kurallarına göre"""
-        if player_id not in self.snakes or not self.snakes[player_id]:
-            return
+        """Yılanı hareket ettirir"""
+        if player_id not in self.snakes or player_id not in self.directions:
+            return False
         
         snake = self.snakes[player_id]
         head = snake[0]
         
         # Yeni baş pozisyonu
-        if direction == "up":
+        if direction == "UP":
             new_head = (head[0], head[1] - 1)
-        elif direction == "down":
+        elif direction == "DOWN":
             new_head = (head[0], head[1] + 1)
-        elif direction == "left":
+        elif direction == "LEFT":
             new_head = (head[0] - 1, head[1])
-        elif direction == "right":
+        elif direction == "RIGHT":
             new_head = (head[0] + 1, head[1])
         else:
-            return
+            return False
         
         # Çarpışma kontrolü
         if self.check_collision(player_id, new_head):
             self.eliminate_player(player_id)
-            return
-        
-        # Bayrak taşıma kontrolü
-        flag_carrier = None
-        for team in TEAMS:
-            if (self.flags[team]["captured"] and 
-                self.flags[team]["carrier"] == player_id):
-                flag_carrier = team
-                break
-        
-        # Bayrak taşıyorsa yavaş hareket
-        if flag_carrier:
-            # Bayrak taşıyan oyuncu yavaş hareket eder
-            # Bu örnekte basit bir yavaşlatma
-            pass
+            return False
         
         # Yılanı hareket ettir
         snake.insert(0, new_head)
+        snake.pop()  # Kuyruğu kaldır
+        
+        # Bayrak taşıyorsa bayrağı da hareket ettir
+        player_team = self.get_player_team(player_id)
+        if player_team:
+            for team in TEAMS:
+                if (self.flags[team]["carrier"] == player_id and 
+                    self.flags[team]["captured"]):
+                    self.flags[team]["pos"] = new_head
+        
+        # Bayrak teslim kontrolü
+        self.deliver_flag(player_id)
         
         # Bayrak yakalama kontrolü
         for team in TEAMS:
-            if (not self.flags[team]["captured"] and 
-                new_head == tuple(self.flags[team]["pos"]) and
-                self.can_capture_flag(player_id, self.flags[team]["pos"])):
+            flag_pos = self.flags[team]["pos"]
+            if new_head == flag_pos and self.can_capture_flag(player_id, flag_pos):
                 self.capture_flag(player_id, team)
         
-        # Bayrak teslim etme kontrolü
-        self.deliver_flag(player_id)
-        
-        # Yemi yeme kontrolü (basit)
-        if new_head in self.food:
-            self.food.remove(new_head)
-            # Yılan büyür (kuyruk kesilmez)
-        else:
-            # Kuyruk kesilir
-            snake.pop()
+        return True
     
     def eliminate_player(self, player_id):
-        """Oyuncuyu oyundan çıkarır"""
+        """Oyuncuyu eleme"""
+        if player_id not in self.active:
+            return
+        
+        self.active[player_id] = False
+        
         # Taşıdığı bayrağı düşür
         for team in TEAMS:
-            if (self.flags[team]["captured"] and 
-                self.flags[team]["carrier"] == player_id):
+            if self.flags[team]["carrier"] == player_id:
                 self.drop_flag(team)
-        
-        # Oyuncuyu kaldır
-        if player_id in self.snakes:
-            del self.snakes[player_id]
-        if player_id in self.directions:
-            del self.directions[player_id]
-        if player_id in self.colors:
-            del self.colors[player_id]
-        if player_id in self.active:
-            del self.active[player_id]
-        
-        # Takımdan çıkar
-        for team in TEAMS:
-            if player_id in self.teams[team]:
-                self.teams[team].remove(player_id)
     
     def get_game_state(self):
         """Oyun durumunu döndürür"""
         return {
             "snakes": self.snakes,
+            "directions": self.directions,
             "colors": self.colors,
-            "food": self.food,
-            "obstacles": self.obstacles,
-            "portals": self.portals,
-            "powerups": self.powerups,
-            "scores": self.individual_scores,
-            "teams": self.teams,
-            "team_scores": self.team_scores,
+            "active": self.active,
             "flags": self.flags,
+            "team_scores": self.team_scores,
+            "individual_scores": self.individual_scores,
             "game_time": self.game_time,
-            "game_phase": self.game_phase
+            "game_phase": self.game_phase,
+            "teams": self.teams
         }
     
     def start_game(self):
@@ -325,52 +316,7 @@ class CTFGameState:
         """Oyun süresini günceller"""
         if self.start_time:
             elapsed = time.time() - self.start_time
-            self.game_time = max(0, 300 - elapsed)
+            self.game_time = max(0, 300 - int(elapsed))
             
             if self.game_time <= 0:
-                self.game_phase = "finished"
-    
-    def get_winner(self):
-        """Kazanan takımı döndürür"""
-        if self.team_scores[RED_TEAM] > self.team_scores[BLUE_TEAM]:
-            return RED_TEAM
-        elif self.team_scores[BLUE_TEAM] > self.team_scores[RED_TEAM]:
-            return BLUE_TEAM
-        else:
-            return "tie"
-
-# Global CTF oyun durumu
-ctf_game_state = CTFGameState()
-
-def reset_ctf_game():
-    """CTF oyununu sıfırlar"""
-    global ctf_game_state
-    ctf_game_state.reset_game()
-
-def start_ctf_game():
-    """CTF oyununu başlatır"""
-    global ctf_game_state
-    ctf_game_state.start_game()
-
-def get_ctf_game_state():
-    """CTF oyun durumunu döndürür"""
-    global ctf_game_state
-    return ctf_game_state.get_game_state()
-
-def update_ctf_game():
-    """CTF oyununu günceller"""
-    global ctf_game_state
-    ctf_game_state.update_game_time()
-    
-    # Tüm oyuncuları hareket ettir
-    for player_id in list(ctf_game_state.snakes.keys()):
-        if player_id in ctf_game_state.directions:
-            direction = ctf_game_state.directions[player_id]
-            ctf_game_state.move_snake(player_id, direction)
-    
-    # Oyun bitişi kontrolü
-    if ctf_game_state.game_phase == "finished":
-        winner = ctf_game_state.get_winner()
-        return {"winner": winner, "game_over": True}
-    
-    return {"game_over": False} 
+                self.game_phase = "finished" 
