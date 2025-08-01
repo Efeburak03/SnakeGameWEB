@@ -1166,7 +1166,12 @@ def on_start_capture_the_flag(data):
     capture_the_flag_module.start_ctf_game()
     clients[sid] = client_id
     print(f"[DEBUG] {client_id} Capture the Flag başlattı")
+    
+    # Oyun başladığını bildir
     emit('capture_the_flag_started', {"game_time": 300})
+    
+    # Tüm bağlı oyunculara oyunun yeniden başladığını bildir
+    emit('ctf_game_restarted', {"message": "Oyun yeniden başlatıldı"}, broadcast=True)
 
 @socketio.on('ctf_join')
 def on_ctf_join(data):
@@ -1193,17 +1198,25 @@ def on_ctf_join(data):
         # Kırmızı takım için rastgele spawn pozisyonu
         spawn_pos = random.choice(capture_the_flag_module.RED_SPAWN_POSITIONS)
         start_x, start_y = spawn_pos
+        # Kırmızı takım sağa doğru başlar
+        capture_the_flag_module.ctf_game_state.snakes[client_id] = [
+            (start_x, start_y),
+            (start_x-1, start_y),
+            (start_x-2, start_y)
+        ]
+        capture_the_flag_module.ctf_game_state.directions[client_id] = "RIGHT"
     else:
         # Mavi takım için rastgele spawn pozisyonu
         spawn_pos = random.choice(capture_the_flag_module.BLUE_SPAWN_POSITIONS)
         start_x, start_y = spawn_pos
+        # Mavi takım sola doğru başlar
+        capture_the_flag_module.ctf_game_state.snakes[client_id] = [
+            (start_x, start_y),
+            (start_x+1, start_y),
+            (start_x+2, start_y)
+        ]
+        capture_the_flag_module.ctf_game_state.directions[client_id] = "LEFT"
     
-    capture_the_flag_module.ctf_game_state.snakes[client_id] = [
-        (start_x, start_y),
-        (start_x-1, start_y),
-        (start_x-2, start_y)
-    ]
-    capture_the_flag_module.ctf_game_state.directions[client_id] = "RIGHT"
     capture_the_flag_module.ctf_game_state.colors[client_id] = get_snake_color(client_id)
     capture_the_flag_module.ctf_game_state.active[client_id] = True
     
@@ -1246,6 +1259,20 @@ def on_ctf_ready(data):
     capture_the_flag_module.ctf_game_state.active[client_id] = True
     print(f"[DEBUG] {client_id} CTF'de hazır")
 
+@socketio.on('ctf_respawn')
+def on_ctf_respawn(data):
+    client_id = data.get('client_id')
+    
+    if not client_id:
+        return
+    
+    # Oyuncuyu hemen respawn et
+    if client_id in capture_the_flag_module.ctf_game_state.respawn_timers:
+        capture_the_flag_module.ctf_game_state.respawn_timers[client_id] = time.time()
+        print(f"[DEBUG] {client_id} CTF'de manuel respawn istedi")
+    
+    emit('ctf_respawned', {"client_id": client_id})
+
 @socketio.on('ctf_restart')
 def on_ctf_restart(data):
     client_id = data.get('client_id')
@@ -1255,8 +1282,11 @@ def on_ctf_restart(data):
     
     # CTF oyununu yeniden başlat
     capture_the_flag_module.reset_ctf_game()
+    capture_the_flag_module.start_ctf_game()
     print(f"[DEBUG] {client_id} CTF'yi yeniden başlattı")
-    emit('ctf_restarted', {"message": "Oyun yeniden başlatıldı"})
+    
+    # Tüm bağlı oyunculara oyunun yeniden başladığını bildir
+    emit('ctf_game_restarted', {"message": "Oyun yeniden başlatıldı"}, broadcast=True)
 
 @socketio.on('disconnect')
 def on_disconnect():

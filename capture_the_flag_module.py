@@ -11,6 +11,7 @@ CTF_BOARD_WIDTH = 60
 CTF_BOARD_HEIGHT = 35
 CTF_START_LENGTH = 3
 CTF_TICK_RATE = 0.05
+CTF_RESPAWN_TIME = 3  # 3 saniye
 
 # Takım Sabitleri
 RED_TEAM = "red"
@@ -70,6 +71,9 @@ class CTFGameState:
         self.snakes = {}
         self.directions = {}
         self.colors = {}
+        self.respawn_timers = {}  # Oyuncuların respawn zamanları
+        self.eliminated_snakes = {}  # Elenen oyuncuların yılanları
+        self.eliminated_directions = {}  # Elenen oyuncuların yönleri
         
         # Bayraklar - her takımın kendi alanında
         self.flags = {
@@ -286,11 +290,80 @@ class CTFGameState:
             return
         
         self.active[player_id] = False
+        self.respawn_timers[player_id] = time.time() + CTF_RESPAWN_TIME
+        
+        # Elenen oyuncunun yılanını geçici olarak sil
+        if player_id in self.snakes:
+            # Yılanı geçici olarak sakla (respawn için)
+            self.eliminated_snakes[player_id] = self.snakes[player_id]
+            del self.snakes[player_id]
+        
+        # Yön bilgisini de geçici olarak sakla
+        if player_id in self.directions:
+            self.eliminated_directions[player_id] = self.directions[player_id]
+            del self.directions[player_id]
         
         # Taşıdığı bayrağı düşür
         for team in TEAMS:
             if self.flags[team]["carrier"] == player_id:
                 self.drop_flag(team)
+    
+    def respawn_player(self, player_id):
+        """Oyuncuyu yeniden doğur"""
+        if player_id not in self.respawn_timers:
+            return False
+        
+        # Respawn zamanı geldi mi kontrol et
+        if time.time() < self.respawn_timers[player_id]:
+            return False
+        
+        # Oyuncunun takımını bul
+        player_team = self.get_player_team(player_id)
+        if not player_team:
+            return False
+        
+        # Takım bazlı spawn pozisyonu
+        if player_team == RED_TEAM:
+            spawn_pos = random.choice(RED_SPAWN_POSITIONS)
+            start_x, start_y = spawn_pos
+            # Kırmızı takım sağa doğru başlar
+            self.snakes[player_id] = [
+                (start_x, start_y),
+                (start_x-1, start_y),
+                (start_x-2, start_y)
+            ]
+            self.directions[player_id] = "RIGHT"
+        else:
+            spawn_pos = random.choice(BLUE_SPAWN_POSITIONS)
+            start_x, start_y = spawn_pos
+            # Mavi takım sola doğru başlar
+            self.snakes[player_id] = [
+                (start_x, start_y),
+                (start_x+1, start_y),
+                (start_x+2, start_y)
+            ]
+            self.directions[player_id] = "LEFT"
+        
+        self.active[player_id] = True
+        self.respawn_timers.pop(player_id, None)
+        
+        # Elenen yılan ve yön bilgilerini temizle
+        self.eliminated_snakes.pop(player_id, None)
+        self.eliminated_directions.pop(player_id, None)
+        
+        return True
+    
+    def check_respawns(self):
+        """Respawn zamanı gelen oyuncuları yeniden doğur"""
+        current_time = time.time()
+        respawned_players = []
+        
+        for player_id, respawn_time in list(self.respawn_timers.items()):
+            if current_time >= respawn_time:
+                if self.respawn_player(player_id):
+                    respawned_players.append(player_id)
+        
+        return respawned_players
     
     def get_game_state(self):
         """Oyun durumunu döndürür"""
@@ -304,7 +377,10 @@ class CTFGameState:
             "individual_scores": self.individual_scores,
             "game_time": self.game_time,
             "game_phase": self.game_phase,
-            "teams": self.teams
+            "teams": self.teams,
+            "respawn_timers": self.respawn_timers,
+            "eliminated_snakes": self.eliminated_snakes,
+            "eliminated_directions": self.eliminated_directions
         }
     
     def start_game(self):
@@ -352,4 +428,11 @@ def get_ctf_game_state():
 def update_ctf_game():
     """CTF oyununu günceller"""
     global ctf_game_state
-    ctf_game_state.update_game_time() 
+    ctf_game_state.update_game_time()
+    
+    # Respawn kontrolü
+    respawned_players = ctf_game_state.check_respawns()
+    if respawned_players:
+        print(f"[DEBUG] CTF respawn: {respawned_players} oyuncuları yeniden doğdu")
+    
+    return respawned_players 

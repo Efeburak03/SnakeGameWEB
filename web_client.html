@@ -687,6 +687,25 @@
             showCTFResult(data);
         });
         
+        socket.on('ctf_respawned', (data) => {
+            console.log('[DEBUG] CTF respawn:', data);
+            // Respawn butonunu gizle
+            const respawnBtn = document.getElementById('ctf-respawn-btn');
+            if (respawnBtn) {
+                respawnBtn.style.display = 'none';
+            }
+        });
+        
+        socket.on('ctf_game_restarted', (data) => {
+            console.log('[DEBUG] CTF oyunu yeniden başlatıldı:', data);
+            // Oyun yeniden başlatıldığında state'i temizle
+            ctfGameState = null;
+            // UI'ı güncelle
+            if (currentGameMode === 'captureTheFlag') {
+                drawCTF();
+            }
+        });
+        
         socket.on('error', (err) => {
             const errorDiv = document.getElementById('ui-error');
             errorDiv.textContent = err.message || 'Bağlantı hatası!';
@@ -1083,6 +1102,12 @@
             else if (e.key === 'ArrowDown') sendCTFMove('DOWN');
             else if (e.key === 'ArrowLeft') sendCTFMove('LEFT');
             else if (e.key === 'ArrowRight') sendCTFMove('RIGHT');
+            else if (e.key === 'Enter') {
+                // CTF'de Enter ile respawn
+                if (socket && socket.connected) {
+                    socket.emit('ctf_respawn', {client_id: myId});
+                }
+            }
         } else {
             // Klasik mod için
             if (e.key === 'ArrowUp') sendMove('UP');
@@ -1719,8 +1744,16 @@
             <div id="ctf-team-display">Takım: <span id="ctf-team">--</span></div>
             <div id="ctf-score-display">Takım Skoru: <span id="ctf-team-score">0</span></div>
             <div id="ctf-player-score-display">Kişisel Skor: <span id="ctf-player-score">0</span></div>
+            <button id="ctf-respawn-btn" style="display:none;">Canlan (3s)</button>
         `;
         document.body.appendChild(ui);
+        
+        // Respawn butonu event listener
+        document.getElementById('ctf-respawn-btn').addEventListener('click', () => {
+            if (socket && socket.connected) {
+                socket.emit('ctf_respawn', {client_id: myId});
+            }
+        });
     }
     
     function drawCTF() {
@@ -1767,20 +1800,23 @@
         if (ctfGameState.snakes) {
             console.log('[DEBUG] drawCTF: Yılanlar çiziliyor, sayı:', Object.keys(ctfGameState.snakes).length);
             for (const [pid, snake] of Object.entries(ctfGameState.snakes)) {
-                const playerTeam = ctfGameState.teams?.red?.includes(pid) ? 'red' : 
-                                 ctfGameState.teams?.blue?.includes(pid) ? 'blue' : null;
-                
-                // Takım rengini belirle
-                let color = '#2ecc71'; // Varsayılan yeşil
-                if (playerTeam === 'red') {
-                    color = '#e74c3c'; // Kırmızı takım
-                } else if (playerTeam === 'blue') {
-                    color = '#3498db'; // Mavi takım
-                }
-                
-                ctx.fillStyle = color;
-                for (const seg of snake) {
-                    ctx.fillRect(seg[0]*CELL_SIZE, seg[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                // Sadece aktif oyuncuların yılanlarını çiz
+                if (ctfGameState.active && ctfGameState.active[pid]) {
+                    const playerTeam = ctfGameState.teams?.red?.includes(pid) ? 'red' : 
+                                     ctfGameState.teams?.blue?.includes(pid) ? 'blue' : null;
+                    
+                    // Takım rengini belirle
+                    let color = '#2ecc71'; // Varsayılan yeşil
+                    if (playerTeam === 'red') {
+                        color = '#e74c3c'; // Kırmızı takım
+                    } else if (playerTeam === 'blue') {
+                        color = '#3498db'; // Mavi takım
+                    }
+                    
+                    ctx.fillStyle = color;
+                    for (const seg of snake) {
+                        ctx.fillRect(seg[0]*CELL_SIZE, seg[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                    }
                 }
             }
         } else {
@@ -1822,6 +1858,7 @@
         const teamDisplay = document.getElementById('ctf-team');
         const teamScore = document.getElementById('ctf-team-score');
         const playerScore = document.getElementById('ctf-player-score');
+        const respawnBtn = document.getElementById('ctf-respawn-btn');
         
         if (timeLeft && ctfGameState.game_time !== undefined) {
             timeLeft.textContent = Math.floor(ctfGameState.game_time);
@@ -1836,8 +1873,26 @@
             teamScore.textContent = ctfGameState.team_scores[myTeam] || 0;
         }
         
-        if (playerScore && ctfGameState.scores && myId) {
-            playerScore.textContent = ctfGameState.scores[myId] || 0;
+        if (playerScore && ctfGameState.individual_scores && myId) {
+            playerScore.textContent = ctfGameState.individual_scores[myId] || 0;
+        }
+        
+        // Respawn butonunu kontrol et
+        if (respawnBtn && myId) {
+            if (ctfGameState.respawn_timers && ctfGameState.respawn_timers[myId]) {
+                const respawnTime = ctfGameState.respawn_timers[myId];
+                const currentTime = Date.now() / 1000;
+                const timeLeft = Math.max(0, respawnTime - currentTime);
+                
+                if (timeLeft > 0) {
+                    respawnBtn.style.display = 'inline-block';
+                    respawnBtn.textContent = `Canlan (${Math.ceil(timeLeft)}s)`;
+                } else {
+                    respawnBtn.style.display = 'none';
+                }
+            } else {
+                respawnBtn.style.display = 'none';
+            }
         }
     }
     
@@ -1875,10 +1930,15 @@
         
         document.getElementById('ctf-play-again-btn').addEventListener('click', () => {
             modal.remove();
-            // Yeni CTF oyunu başlat
-            if (socket && socket.connected) {
-                socket.emit('start_capture_the_flag', {client_id: myId});
-            }
+            // Oyun modu seçme ekranına dön
+            document.getElementById('ui').style.display = 'flex';
+            document.getElementById('game-container').style.display = 'none';
+            document.getElementById('top-usernames').style.display = 'none';
+            const ctfUI = document.getElementById('ctf-ui');
+            if (ctfUI) ctfUI.remove();
+            currentGameMode = null;
+            ctfGameState = null;
+            ctfTeam = null;
         });
         
         document.getElementById('ctf-back-to-menu-btn').addEventListener('click', () => {
@@ -1924,4 +1984,4 @@
     // (Kaldırıldı)
     </script>
 </body>
-</html> 
+</html>
