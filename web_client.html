@@ -853,6 +853,9 @@
             if (currentGameMode === 'timeAttack' && timeAttackState) {
                 console.log('[DEBUG] resizeGameCanvas: Time Attack modu çiziliyor');
                 drawTimeAttack();
+            } else if (currentGameMode === 'captureTheFlag' && ctfGameState) {
+                console.log('[DEBUG] resizeGameCanvas: CTF modu çiziliyor');
+                drawCTF();
             } else if (gameState) {
                 console.log('[DEBUG] resizeGameCanvas: Klasik mod çiziliyor');
                 draw();
