@@ -599,38 +599,42 @@
     function connect() {
         socket = io();
         socket.on('connect', () => {
+            console.log('[DEBUG] connect: Bağlantı kuruldu, mod:', currentGameMode);
             if (currentGameMode === 'timeAttack') {
                 socket.emit('start_time_attack', {client_id: nickname, difficulty: currentDifficulty});
             } else if (currentGameMode === 'captureTheFlag') {
                 socket.emit('start_capture_the_flag', {client_id: nickname});
                 socket.emit('ctf_join', {client_id: nickname, nickname: nickname, team: selectedTeam});
-            } else {
+            } else if (currentGameMode === 'classic') {
                 socket.emit('join', {client_id: nickname});
+            } else {
+                console.log('[DEBUG] connect: Bilinmeyen mod:', currentGameMode);
             }
         });
+        
         socket.on('state', (state) => {
-            console.log('[DEBUG] Gelen state:', state);
+            console.log('[DEBUG] Klasik mod state geldi:', state);
             gameState = state;
             if (!myId) myId = nickname;
             // Oyun durumu değiştiğinde readySent'i sıfırla
             readySent = false;
-            if (currentGameMode === 'timeAttack') {
-                drawTimeAttack();
-            } else {
+            
+            // Sadece klasik mod için draw() çağır
+            if (currentGameMode === 'classic') {
                 draw();
             }
+            
             updateTopUsernames();
             updateRestartButton();
         });
         
         // Time Attack event listener'ları
         socket.on('time_attack_started', (data) => {
+            console.log('[DEBUG] Time Attack başladı:', data);
             currentGameMode = 'timeAttack';
             currentDifficulty = data.difficulty;
             showTimeAttackUI();
         });
-        
-
         
         socket.on('time_attack_state', (state) => {
             console.log('[DEBUG] Time Attack state geldi:', state);
@@ -643,11 +647,16 @@
             if (state.game_active) {
                 hideRespawnMessage();
             }
-            drawTimeAttack();
+            
+            // Sadece Time Attack modu için drawTimeAttack() çağır
+            if (currentGameMode === 'timeAttack') {
+                drawTimeAttack();
+            }
         });
         
         // Capture the Flag event listener'ları
         socket.on('capture_the_flag_started', (data) => {
+            console.log('[DEBUG] CTF başladı:', data);
             currentGameMode = 'captureTheFlag';
             showCTFUI();
         });
@@ -656,19 +665,28 @@
             console.log('[DEBUG] CTF\'ye katıldı:', data);
             ctfGameState = data.game_state;
             ctfTeam = data.team;
-            drawCTF();
+            
+            // Sadece CTF modu için drawCTF() çağır
+            if (currentGameMode === 'captureTheFlag') {
+                drawCTF();
+            }
         });
         
         socket.on('ctf_state', (state) => {
             console.log('[DEBUG] CTF state geldi:', state);
             ctfGameState = state;
-            drawCTF();
+            
+            // Sadece CTF modu için drawCTF() çağır
+            if (currentGameMode === 'captureTheFlag') {
+                drawCTF();
+            }
         });
         
         socket.on('ctf_game_over', (data) => {
             console.log('[DEBUG] CTF oyunu bitti:', data);
             showCTFResult(data);
         });
+        
         socket.on('error', (err) => {
             const errorDiv = document.getElementById('ui-error');
             errorDiv.textContent = err.message || 'Bağlantı hatası!';
@@ -676,6 +694,7 @@
             document.getElementById('game-container').style.display = 'none';
             document.getElementById('top-usernames').style.display = 'none';
         });
+        
         socket.on('disconnect', () => {
             setTimeout(connect, 1000);
         });
@@ -683,7 +702,12 @@
 
     // --- Oyun çizimi ---
     function draw() {
-        // Arka planı tekrar eden desen olarak döşe
+        console.log('[DEBUG] draw: Klasik mod çiziliyor');
+        
+        // Canvas'ı tamamen temizle
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Sadece klasik mod için arka plan
         if (assets.bg) {
             const pattern = ctx.createPattern(assets.bg, 'repeat');
             ctx.save();
@@ -699,9 +723,17 @@
         } else {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
-        if (!gameState) return;
+        
+        if (!gameState) {
+            console.log('[DEBUG] draw: gameState yok');
+            return;
+        }
+        
+        console.log('[DEBUG] draw: Klasik mod state var');
+        
         // Yılanlar
         if (gameState.snakes) {
+            console.log('[DEBUG] draw: Yılanlar çiziliyor, sayı:', Object.keys(gameState.snakes).length);
             for (const [pid, snake] of Object.entries(gameState.snakes)) {
                 let frozen = false;
                 if (gameState.powerup_timers && gameState.powerup_timers[pid] && gameState.powerup_timers[pid]["frozen"] > 0) frozen = true;
@@ -710,7 +742,10 @@
                     ctx.fillRect(seg[0]*CELL_SIZE, seg[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
                 }
             }
+        } else {
+            console.log('[DEBUG] draw: Yılan yok');
         }
+        
         // İzler (trails)
         if (gameState.trails) {
             for (const [pid, trail] of Object.entries(gameState.trails)) {
@@ -725,6 +760,7 @@
                 ctx.restore();
             }
         }
+        
         // Engeller (yılanlardan sonra çiz)
         if (gameState.obstacles) {
             for (const obs of gameState.obstacles) {
@@ -748,6 +784,7 @@
                 }
             }
         }
+        
         // Portallar
         if (gameState.portals) {
             for (const [a, b] of gameState.portals) {
@@ -763,28 +800,43 @@
                 }
             }
         }
+        
         // Yemler
         if (gameState.food) {
+            console.log('[DEBUG] draw: Yemler çiziliyor, sayı:', gameState.food.length);
             for (const [fx, fy] of gameState.food) {
                 if (assets.apple) {
                     const size = CELL_SIZE * 1.2;
                     const offset = (size - CELL_SIZE) / 2;
                     ctx.drawImage(assets.apple, fx*CELL_SIZE - offset, fy*CELL_SIZE - offset, size, size);
-                } else { ctx.fillStyle = 'red'; ctx.fillRect(fx*CELL_SIZE, fy*CELL_SIZE, CELL_SIZE, CELL_SIZE); }
+                } else { 
+                    ctx.fillStyle = 'red'; 
+                    ctx.fillRect(fx*CELL_SIZE, fy*CELL_SIZE, CELL_SIZE, CELL_SIZE); 
+                }
             }
+        } else {
+            console.log('[DEBUG] draw: Yem yok');
         }
+        
         // Altın elma
         if (gameState.golden_food) {
             const [gx, gy] = gameState.golden_food;
             if (assets.golden) ctx.drawImage(assets.golden, gx*CELL_SIZE, gy*CELL_SIZE, CELL_SIZE, CELL_SIZE);
-            else { ctx.fillStyle = 'gold'; ctx.beginPath(); ctx.arc(gx*CELL_SIZE+CELL_SIZE/2, gy*CELL_SIZE+CELL_SIZE/2, CELL_SIZE/2, 0, 2*Math.PI); ctx.fill(); }
+            else { 
+                ctx.fillStyle = 'gold'; 
+                ctx.beginPath(); 
+                ctx.arc(gx*CELL_SIZE+CELL_SIZE/2, gy*CELL_SIZE+CELL_SIZE/2, CELL_SIZE/2, 0, 2*Math.PI); 
+                ctx.fill(); 
+            }
         }
+        
         // Kalan süre
         if (gameState.time_left !== undefined) {
             ctx.fillStyle = 'yellow';
             ctx.font = '24px Arial';
             ctx.fillText('Süre: ' + (gameState.time_left||0) + ' sn', canvas.width/2-60, 30);
         }
+        
         // Oyun mesajı gösterimi
         const msgDiv = document.getElementById('game-message');
         if (gameState.active && myId && !gameState.active[myId]) {
@@ -801,6 +853,7 @@
         } else {
             msgDiv.style.display = 'none';
         }
+        
         // Power-up'lar
         if (gameState.powerups) {
             for (const pu of gameState.powerups) {
@@ -846,21 +899,28 @@
         console.log('[DEBUG] resizeGameCanvas: Window boyutları:', w, 'x', h);
         console.log('[DEBUG] resizeGameCanvas: CELL_SIZE:', CELL_SIZE);
         console.log('[DEBUG] resizeGameCanvas: Canvas boyutları:', canvas.width, 'x', canvas.height);
+        console.log('[DEBUG] resizeGameCanvas: Mevcut mod:', currentGameMode);
         
         // Eğer oyun başladıysa çiz
         if (started) {
             console.log('[DEBUG] resizeGameCanvas: Oyun başladı, çizim yapılıyor');
+            
+            // Her mod kendi çizim fonksiyonunu çağırsın
             if (currentGameMode === 'timeAttack' && timeAttackState) {
                 console.log('[DEBUG] resizeGameCanvas: Time Attack modu çiziliyor');
                 drawTimeAttack();
             } else if (currentGameMode === 'captureTheFlag' && ctfGameState) {
                 console.log('[DEBUG] resizeGameCanvas: CTF modu çiziliyor');
                 drawCTF();
-            } else if (gameState) {
+            } else if (currentGameMode === 'classic' && gameState) {
                 console.log('[DEBUG] resizeGameCanvas: Klasik mod çiziliyor');
                 draw();
             } else {
-                console.log('[DEBUG] resizeGameCanvas: Game state yok');
+                console.log('[DEBUG] resizeGameCanvas: Mod belirlenemedi veya state yok');
+                console.log('[DEBUG] resizeGameCanvas: currentGameMode:', currentGameMode);
+                console.log('[DEBUG] resizeGameCanvas: timeAttackState:', timeAttackState);
+                console.log('[DEBUG] resizeGameCanvas: ctfGameState:', ctfGameState);
+                console.log('[DEBUG] resizeGameCanvas: gameState:', gameState);
             }
         } else {
             console.log('[DEBUG] resizeGameCanvas: Oyun henüz başlamadı');
@@ -976,6 +1036,13 @@
         document.getElementById('top-usernames').style.display = 'flex';
         started = true;
         currentDirection = null;
+        
+        // Klasik mod için currentGameMode'u ayarla
+        if (!currentGameMode || currentGameMode === 'classic') {
+            currentGameMode = 'classic';
+        }
+        
+        console.log('[DEBUG] startGameMode: Başlatılan mod:', currentGameMode);
         
         // Canvas'ı boyutlandır
         resizeGameCanvas();
@@ -1347,11 +1414,13 @@
             return;
         }
         
-        // Canvas'ı temizle
+        console.log('[DEBUG] drawTimeAttack: Time Attack modu çiziliyor');
+        
+        // Canvas'ı tamamen temizle
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         console.log('[DEBUG] drawTimeAttack: Canvas temizlendi');
         
-        // Arka plan
+        // Sadece Time Attack için arka plan
         if (assets.bg) {
             console.log('[DEBUG] drawTimeAttack: Arka plan çiziliyor');
             const pattern = ctx.createPattern(assets.bg, 'repeat');
@@ -1428,7 +1497,6 @@
                         ctx.fillStyle = '#555';
                         ctx.fillRect(ox*CELL_SIZE, oy*CELL_SIZE, CELL_SIZE, CELL_SIZE);
                     }
-                // Wall tipi engeller kaldırıldı, sadece çalı ve gizli duvarlar çiziliyor
                 }
             }
         }
@@ -1656,12 +1724,17 @@
     }
     
     function drawCTF() {
-        if (!ctfGameState) return;
+        if (!ctfGameState) {
+            console.log('[DEBUG] drawCTF: ctfGameState yok');
+            return;
+        }
         
-        // Canvas'ı temizle
+        console.log('[DEBUG] drawCTF: CTF modu çiziliyor');
+        
+        // Canvas'ı tamamen temizle
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        // Gri arka plan
+        // Sadece CTF için gri arka plan
         ctx.fillStyle = '#808080'; // Düz gri
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
@@ -1692,6 +1765,7 @@
         
         // Yılanları çiz
         if (ctfGameState.snakes) {
+            console.log('[DEBUG] drawCTF: Yılanlar çiziliyor, sayı:', Object.keys(ctfGameState.snakes).length);
             for (const [pid, snake] of Object.entries(ctfGameState.snakes)) {
                 const playerTeam = ctfGameState.teams?.red?.includes(pid) ? 'red' : 
                                  ctfGameState.teams?.blue?.includes(pid) ? 'blue' : null;
@@ -1709,10 +1783,13 @@
                     ctx.fillRect(seg[0]*CELL_SIZE, seg[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
                 }
             }
+        } else {
+            console.log('[DEBUG] drawCTF: Yılan yok');
         }
         
         // Bayrakları çiz
         if (ctfGameState.flags) {
+            console.log('[DEBUG] drawCTF: Bayraklar çiziliyor');
             // Kırmızı bayrak
             if (ctfGameState.flags.red) {
                 const flag = ctfGameState.flags.red;
@@ -1730,9 +1807,9 @@
                     ctx.fillRect(flag.pos[0]*CELL_SIZE, flag.pos[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
                 }
             }
+        } else {
+            console.log('[DEBUG] drawCTF: Bayrak yok');
         }
-        
-
         
         // UI güncelle
         updateCTFUI();
