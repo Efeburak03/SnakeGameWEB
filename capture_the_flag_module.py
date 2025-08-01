@@ -158,6 +158,10 @@ class CTFGameState:
         if self.flags[flag_team]["captured"]:
             return False
         
+        # Oyuncu aktif mi?
+        if player_id not in self.active or not self.active[player_id]:
+            return False
+        
         return True
     
     def capture_flag(self, player_id, flag_team):
@@ -179,9 +183,13 @@ class CTFGameState:
         if flag_team not in TEAMS:
             return
         
+        # Bayrağı düşür ve pozisyonunu güncelle
         self.flags[flag_team]["captured"] = False
         self.flags[flag_team]["dropped_pos"] = self.flags[flag_team]["pos"]
         self.flags[flag_team]["carrier"] = None
+        
+        # Düşen bayrağın pozisyonunu ayarla (düşen pozisyonda kalır)
+        # Bayrak artık düşen pozisyonda yakalanabilir
     
     def deliver_flag(self, player_id):
         """Bayrağı teslim eder"""
@@ -207,10 +215,6 @@ class CTFGameState:
             # Skor ver
             self.individual_scores[player_id] += FLAG_DELIVERY_SCORE
             self.team_scores[player_team] += FLAG_DELIVERY_SCORE
-            
-            # Oyunu yeniden başlat
-            self.reset_game()
-            self.start_game()
             
             # Server'a bildirim gönder (bu fonksiyon server tarafından çağrılır)
             return True

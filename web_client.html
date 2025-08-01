@@ -1861,12 +1861,18 @@
         // Bayrakları çiz
         if (ctfGameState.flags) {
             console.log('[DEBUG] drawCTF: Bayraklar çiziliyor');
+            
             // Kırmızı bayrak
             if (ctfGameState.flags.red) {
                 const flag = ctfGameState.flags.red;
                 if (!flag.captured) {
+                    // Bayrak pozisyonunda kırmızı bayrak çiz
                     ctx.fillStyle = '#e74c3c';
                     ctx.fillRect(flag.pos[0]*CELL_SIZE, flag.pos[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                    
+                    // Bayrak işareti çiz
+                    ctx.fillStyle = '#fff';
+                    ctx.fillRect((flag.pos[0]+0.2)*CELL_SIZE, (flag.pos[1]+0.2)*CELL_SIZE, CELL_SIZE*0.6, CELL_SIZE*0.6);
                 }
             }
             
@@ -1874,8 +1880,38 @@
             if (ctfGameState.flags.blue) {
                 const flag = ctfGameState.flags.blue;
                 if (!flag.captured) {
+                    // Bayrak pozisyonunda mavi bayrak çiz
                     ctx.fillStyle = '#3498db';
                     ctx.fillRect(flag.pos[0]*CELL_SIZE, flag.pos[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                    
+                    // Bayrak işareti çiz
+                    ctx.fillStyle = '#fff';
+                    ctx.fillRect((flag.pos[0]+0.2)*CELL_SIZE, (flag.pos[1]+0.2)*CELL_SIZE, CELL_SIZE*0.6, CELL_SIZE*0.6);
+                }
+            }
+            
+            // Bayrak taşıyan oyuncuları işaretle
+            for (const [pid, snake] of Object.entries(ctfGameState.snakes)) {
+                if (ctfGameState.active && ctfGameState.active[pid]) {
+                    const head = snake[0];
+                    
+                    // Kırmızı bayrak taşıyor mu?
+                    if (ctfGameState.flags.red && ctfGameState.flags.red.captured && 
+                        ctfGameState.flags.red.carrier === pid) {
+                        // Bayrak taşıyan oyuncunun etrafına çerçeve çiz
+                        ctx.strokeStyle = '#e74c3c';
+                        ctx.lineWidth = 3;
+                        ctx.strokeRect(head[0]*CELL_SIZE-2, head[1]*CELL_SIZE-2, CELL_SIZE+4, CELL_SIZE+4);
+                    }
+                    
+                    // Mavi bayrak taşıyor mu?
+                    if (ctfGameState.flags.blue && ctfGameState.flags.blue.captured && 
+                        ctfGameState.flags.blue.carrier === pid) {
+                        // Bayrak taşıyan oyuncunun etrafına çerçeve çiz
+                        ctx.strokeStyle = '#3498db';
+                        ctx.lineWidth = 3;
+                        ctx.strokeRect(head[0]*CELL_SIZE-2, head[1]*CELL_SIZE-2, CELL_SIZE+4, CELL_SIZE+4);
+                    }
                 }
             }
         } else {
@@ -1914,7 +1950,11 @@
         
         // Respawn butonunu kontrol et
         if (respawnBtn && myId) {
-            if (ctfGameState.respawn_timers && ctfGameState.respawn_timers[myId]) {
+            // Oyuncu aktif değilse respawn butonunu göster
+            if (ctfGameState.active && !ctfGameState.active[myId]) {
+                respawnBtn.style.display = 'inline-block';
+                respawnBtn.textContent = 'Canlan';
+            } else if (ctfGameState.respawn_timers && ctfGameState.respawn_timers[myId]) {
                 const respawnTime = ctfGameState.respawn_timers[myId];
                 const currentTime = Date.now() / 1000;
                 const timeLeft = Math.max(0, respawnTime - currentTime);

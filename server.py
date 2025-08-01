@@ -1273,10 +1273,18 @@ def on_ctf_respawn(data):
     
     # Oyuncuyu hemen respawn et
     if client_id in capture_the_flag_module.ctf_game_state.respawn_timers:
+        # Respawn zamanını şu anki zamana ayarla (hemen respawn)
         capture_the_flag_module.ctf_game_state.respawn_timers[client_id] = time.time()
         print(f"[DEBUG] {client_id} CTF'de manuel respawn istedi")
-    
-    emit('ctf_respawned', {"client_id": client_id})
+        
+        # Hemen respawn et
+        if capture_the_flag_module.ctf_game_state.respawn_player(client_id):
+            print(f"[DEBUG] {client_id} CTF'de respawn edildi")
+            emit('ctf_respawned', {"client_id": client_id})
+        else:
+            print(f"[DEBUG] {client_id} CTF'de respawn edilemedi")
+    else:
+        print(f"[DEBUG] {client_id} CTF'de respawn timer'ı yok")
 
 @socketio.on('ctf_restart')
 def on_ctf_restart(data):
@@ -1297,6 +1305,10 @@ def on_ctf_restart(data):
 def on_ctf_flag_delivered(data):
     """Bayrak teslim edildiğinde çağrılır"""
     print(f"[DEBUG] Bayrak teslim edildi, oyun yeniden başlatılıyor")
+    
+    # Tüm oyuncuları yeniden spawn et
+    for client_id in list(capture_the_flag_module.ctf_game_state.snakes.keys()):
+        capture_the_flag_module.ctf_game_state.respawn_player(client_id)
     
     # Tüm bağlı oyunculara oyunun yeniden başladığını bildir
     emit('ctf_flag_delivered', {"message": "Bayrak teslim edildi! Oyun yeniden başlatılıyor"}, broadcast=True)
