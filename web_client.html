@@ -1799,7 +1799,7 @@
             <div id="ctf-time-display">Süre: <span id="ctf-time-left">300</span></div>
             <div id="ctf-team-display">Takım: <span id="ctf-team">--</span></div>
             <div id="ctf-player-score-display">Kişisel Skor: <span id="ctf-player-score">0</span></div>
-            <div id="ctf-waiting-display" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.8); color: #fff; padding: 20px; border-radius: 10px; font-size: 24px; font-weight: bold; display: none;">Bekleme Süresi: <span id="ctf-waiting-time">0</span>s</div>
+            <div id="ctf-waiting-display" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.9); color: #fff; padding: 30px; border-radius: 15px; font-size: 32px; font-weight: bold; display: none; z-index: 1000; border: 3px solid #e74c3c; box-shadow: 0 0 20px rgba(231, 76, 60, 0.5);">Bekleme Süresi: <span id="ctf-waiting-time">0</span>s</div>
             <div id="ctf-red-score-display" style="position: absolute; bottom: 10px; left: 10px; color: #e74c3c; font-weight: bold;">Kırmızı: <span id="ctf-red-score">0</span></div>
             <div id="ctf-blue-score-display" style="position: absolute; bottom: 10px; right: 10px; color: #3498db; font-weight: bold;">Mavi: <span id="ctf-blue-score">0</span></div>
             <button id="ctf-respawn-btn" style="display:none;">Canlan (5s)</button>
@@ -2018,25 +2018,50 @@
         
         // Bekleme süresi göstergesini kontrol et
         if (waitingDisplay && waitingTime && myId) {
+            console.log('[DEBUG] Bekleme süresi kontrolü:', {
+                myId: myId,
+                active: ctfGameState.active,
+                myActive: ctfGameState.active[myId],
+                respawnTimers: ctfGameState.respawn_timers,
+                myRespawnTimer: ctfGameState.respawn_timers?.[myId]
+            });
+            
             if (ctfGameState.active && !ctfGameState.active[myId]) {
+                console.log('[DEBUG] Oyuncu aktif değil, bekleme süresi kontrol ediliyor');
                 // Oyuncu aktif değilse bekleme süresini göster
                 if (ctfGameState.respawn_timers && ctfGameState.respawn_timers[myId]) {
                     const currentTime = Date.now() / 1000;
                     const respawnTime = ctfGameState.respawn_timers[myId];
                     const remainingTime = respawnTime - currentTime;
                     
+                    console.log('[DEBUG] Respawn timer hesaplaması:', {
+                        currentTime: currentTime,
+                        respawnTime: respawnTime,
+                        remainingTime: remainingTime
+                    });
+                    
                     if (remainingTime > 0) {
+                        console.log('[DEBUG] Bekleme süresi gösteriliyor:', remainingTime.toFixed(1));
                         waitingDisplay.style.display = 'block';
                         waitingTime.textContent = remainingTime.toFixed(1);
                     } else {
+                        console.log('[DEBUG] Bekleme süresi gizleniyor (süre doldu)');
                         waitingDisplay.style.display = 'none';
                     }
                 } else {
+                    console.log('[DEBUG] Respawn timer yok, bekleme süresi gizleniyor');
                     waitingDisplay.style.display = 'none';
                 }
             } else {
+                console.log('[DEBUG] Oyuncu aktif, bekleme süresi gizleniyor');
                 waitingDisplay.style.display = 'none';
             }
+        } else {
+            console.log('[DEBUG] Bekleme süresi elementi bulunamadı:', {
+                waitingDisplay: !!waitingDisplay,
+                waitingTime: !!waitingTime,
+                myId: myId
+            });
         }
         
         // Respawn butonunu kontrol et
@@ -2176,6 +2201,24 @@
 
     // --- Tam ekran fonksiyonu ---
     // (Kaldırıldı)
+
+    // Test fonksiyonu - bekleme süresini manuel olarak göster
+    function testWaitingDisplay() {
+        console.log('[DEBUG] Test: Bekleme süresi test ediliyor');
+        const waitingDisplay = document.getElementById('ctf-waiting-display');
+        const waitingTime = document.getElementById('ctf-waiting-time');
+        
+        if (waitingDisplay && waitingTime) {
+            console.log('[DEBUG] Test: Elementler bulundu, gösteriliyor');
+            waitingDisplay.style.display = 'block';
+            waitingTime.textContent = '5.0';
+        } else {
+            console.error('[DEBUG] Test: Elementler bulunamadı!');
+        }
+    }
+    
+    // Test için global fonksiyon
+    window.testWaitingDisplay = testWaitingDisplay;
     </script>
 </body>
 </html>
