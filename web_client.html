@@ -1799,10 +1799,11 @@
             <div id="ctf-time-display">Süre: <span id="ctf-time-left">300</span></div>
             <div id="ctf-team-display">Takım: <span id="ctf-team">--</span></div>
             <div id="ctf-player-score-display">Kişisel Skor: <span id="ctf-player-score">0</span></div>
-            <div id="ctf-waiting-display" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.9); color: #fff; padding: 30px; border-radius: 15px; font-size: 32px; font-weight: bold; display: none; z-index: 1000; border: 3px solid #e74c3c; box-shadow: 0 0 20px rgba(231, 76, 60, 0.5);">Bekleme Süresi: <span id="ctf-waiting-time">0</span>s</div>
+            <div id="ctf-waiting-display" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.95); color: #fff; padding: 40px; border-radius: 20px; font-size: 36px; font-weight: bold; display: none; z-index: 9999; border: 4px solid #e74c3c; box-shadow: 0 0 30px rgba(231, 76, 60, 0.8); text-align: center; min-width: 300px;">Bekleme Süresi: <span id="ctf-waiting-time">0</span>s</div>
             <div id="ctf-red-score-display" style="position: absolute; bottom: 10px; left: 10px; color: #e74c3c; font-weight: bold;">Kırmızı: <span id="ctf-red-score">0</span></div>
             <div id="ctf-blue-score-display" style="position: absolute; bottom: 10px; right: 10px; color: #3498db; font-weight: bold;">Mavi: <span id="ctf-blue-score">0</span></div>
             <button id="ctf-respawn-btn" style="display:none;">Canlan (5s)</button>
+            <button id="ctf-test-waiting-btn" style="position: absolute; top: 10px; right: 10px; padding: 10px; background: #f39c12; color: #fff; border: none; border-radius: 5px; cursor: pointer;">Test Sayaç</button>
         `;
         document.body.appendChild(ui);
         
@@ -1811,6 +1812,12 @@
             if (socket && socket.connected) {
                 socket.emit('ctf_respawn', {client_id: myId});
             }
+        });
+        
+        // Test butonu event listener
+        document.getElementById('ctf-test-waiting-btn').addEventListener('click', () => {
+            console.log('[DEBUG] Test butonuna tıklandı');
+            testWaitingDisplay();
         });
     }
     
@@ -2026,9 +2033,10 @@
                 myRespawnTimer: ctfGameState.respawn_timers?.[myId]
             });
             
+            // Oyuncu aktif değilse bekleme süresini göster
             if (ctfGameState.active && !ctfGameState.active[myId]) {
                 console.log('[DEBUG] Oyuncu aktif değil, bekleme süresi kontrol ediliyor');
-                // Oyuncu aktif değilse bekleme süresini göster
+                
                 if (ctfGameState.respawn_timers && ctfGameState.respawn_timers[myId]) {
                     const currentTime = Date.now() / 1000;
                     const respawnTime = ctfGameState.respawn_timers[myId];
@@ -2093,11 +2101,12 @@
     // CTF UI'ı daha sık güncelle (respawn countdown için)
     function startCTFUITimer() {
         if (currentGameMode === 'captureTheFlag') {
+            console.log('[DEBUG] CTF UI timer başlatıldı');
             setInterval(() => {
                 if (ctfGameState) {
                     updateCTFUI();
                 }
-            }, 100); // 100ms'de bir güncelle (10 FPS)
+            }, 50); // 50ms'de bir güncelle (20 FPS)
         }
     }
     
@@ -2212,8 +2221,16 @@
             console.log('[DEBUG] Test: Elementler bulundu, gösteriliyor');
             waitingDisplay.style.display = 'block';
             waitingTime.textContent = '5.0';
+            
+            // 5 saniye sonra gizle
+            setTimeout(() => {
+                waitingDisplay.style.display = 'none';
+                console.log('[DEBUG] Test: Sayaç gizlendi');
+            }, 5000);
         } else {
             console.error('[DEBUG] Test: Elementler bulunamadı!');
+            console.error('waitingDisplay:', waitingDisplay);
+            console.error('waitingTime:', waitingTime);
         }
     }
     
