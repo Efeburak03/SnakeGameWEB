@@ -11,7 +11,7 @@ CTF_BOARD_WIDTH = 60
 CTF_BOARD_HEIGHT = 35
 CTF_START_LENGTH = 3
 CTF_TICK_RATE = 0.05
-CTF_RESPAWN_TIME = 3  # 3 saniye
+CTF_RESPAWN_TIME = 5  # 5 saniye
 
 # Takım Sabitleri
 RED_TEAM = "red"
@@ -335,9 +335,8 @@ class CTFGameState:
         if player_id not in self.respawn_timers:
             return False
         
-        # Respawn zamanı geldi mi kontrol et
-        if time.time() < self.respawn_timers[player_id]:
-            return False
+        # CTF'de manuel respawn için zaman kontrolü yok
+        # Sadece respawn_timers'da olup olmadığını kontrol et
         
         # Oyuncunun takımını bul
         player_team = self.get_player_team(player_id)
@@ -376,16 +375,9 @@ class CTFGameState:
         return True
     
     def check_respawns(self):
-        """Respawn zamanı gelen oyuncuları yeniden doğur"""
-        current_time = time.time()
-        respawned_players = []
-        
-        for player_id, respawn_time in list(self.respawn_timers.items()):
-            if current_time >= respawn_time:
-                if self.respawn_player(player_id):
-                    respawned_players.append(player_id)
-        
-        return respawned_players
+        """Respawn zamanı gelen oyuncuları yeniden doğur - CTF'de otomatik respawn yok"""
+        # CTF modunda otomatik respawn yok, sadece manuel respawn
+        return []
     
     def get_game_state(self):
         """Oyun durumunu döndürür"""

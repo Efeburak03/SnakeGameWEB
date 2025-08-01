@@ -1779,7 +1779,7 @@
             <div id="ctf-team-display">Takım: <span id="ctf-team">--</span></div>
             <div id="ctf-score-display">Takım Skoru: <span id="ctf-team-score">0</span></div>
             <div id="ctf-player-score-display">Kişisel Skor: <span id="ctf-player-score">0</span></div>
-            <button id="ctf-respawn-btn" style="display:none;">Canlan (3s)</button>
+            <button id="ctf-respawn-btn" style="display:none;">Canlan (5s)</button>
         `;
         document.body.appendChild(ui);
         
@@ -1953,18 +1953,7 @@
             // Oyuncu aktif değilse respawn butonunu göster
             if (ctfGameState.active && !ctfGameState.active[myId]) {
                 respawnBtn.style.display = 'inline-block';
-                respawnBtn.textContent = 'Canlan';
-            } else if (ctfGameState.respawn_timers && ctfGameState.respawn_timers[myId]) {
-                const respawnTime = ctfGameState.respawn_timers[myId];
-                const currentTime = Date.now() / 1000;
-                const timeLeft = Math.max(0, respawnTime - currentTime);
-                
-                if (timeLeft > 0) {
-                    respawnBtn.style.display = 'inline-block';
-                    respawnBtn.textContent = `Canlan (${Math.ceil(timeLeft)}s)`;
-                } else {
-                    respawnBtn.style.display = 'none';
-                }
+                respawnBtn.textContent = 'Canlan (Enter)';
             } else {
                 respawnBtn.style.display = 'none';
             }
