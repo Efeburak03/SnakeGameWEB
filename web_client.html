@@ -601,6 +601,9 @@
         socket.on('connect', () => {
             if (currentGameMode === 'timeAttack') {
                 socket.emit('start_time_attack', {client_id: nickname, difficulty: currentDifficulty});
+            } else if (currentGameMode === 'captureTheFlag') {
+                socket.emit('start_capture_the_flag', {client_id: nickname});
+                socket.emit('ctf_join', {client_id: nickname, nickname: nickname, team: selectedTeam});
             } else {
                 socket.emit('join', {client_id: nickname});
             }
@@ -627,11 +630,7 @@
             showTimeAttackUI();
         });
         
-        // CTF modu başlatıldığında oyuna katıl
-        if (currentGameMode === 'captureTheFlag') {
-            socket.emit('start_capture_the_flag', {client_id: myId});
-            socket.emit('ctf_join', {client_id: myId, nickname: nickname, team: selectedTeam});
-        }
+
         
         socket.on('time_attack_state', (state) => {
             console.log('[DEBUG] Time Attack state geldi:', state);
