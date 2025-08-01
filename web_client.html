@@ -1342,8 +1342,28 @@
         const right = document.getElementById('btn-right');
         const restart = document.getElementById('btn-restart');
         if (!up) return;
+        
+        // Touch kontroller için eagle easter egg kontrolü
+        function checkEasterEgg(key) {
+            if (key === easterEggSequence[easterEggProgress]) {
+                easterEggProgress++;
+                if (easterEggProgress === easterEggSequence.length) {
+                    // PNG'yi hemen ekrana getir
+                    showEagleEggScreen();
+                    // Sunucuya özel mesaj gönder
+                    if (socket && socket.connected) {
+                        socket.emit('easteregg', {client_id: myId});
+                    }
+                    easterEggProgress = 0;
+                }
+            } else {
+                easterEggProgress = 0;
+            }
+        }
+        
         up.addEventListener('touchstart', e => { 
             e.preventDefault(); 
+            checkEasterEgg('ArrowUp');
             if (currentGameMode === 'timeAttack') {
                 sendTimeAttackMove('UP');
             } else {
@@ -1352,6 +1372,7 @@
         });
         down.addEventListener('touchstart', e => { 
             e.preventDefault(); 
+            checkEasterEgg('ArrowDown');
             if (currentGameMode === 'timeAttack') {
                 sendTimeAttackMove('DOWN');
             } else {
@@ -1360,6 +1381,7 @@
         });
         left.addEventListener('touchstart', e => { 
             e.preventDefault(); 
+            checkEasterEgg('ArrowLeft');
             if (currentGameMode === 'timeAttack') {
                 sendTimeAttackMove('LEFT');
             } else {
@@ -1368,6 +1390,7 @@
         });
         right.addEventListener('touchstart', e => { 
             e.preventDefault(); 
+            checkEasterEgg('ArrowRight');
             if (currentGameMode === 'timeAttack') {
                 sendTimeAttackMove('RIGHT');
             } else {
