@@ -9,6 +9,13 @@ READY_MSG = 'ready'
 # Maksimum oyuncu sayısı
 MAX_PLAYERS = 8
 
+# Oyun alanı sabitleri
+BOARD_WIDTH = 60   # Enine daha geniş
+BOARD_HEIGHT = 35  # 700/20 = 35 satır
+START_LENGTH = 3
+TICK_RATE = 0.05   # saniye, 20 FPS
+MAX_SNAKE_LENGTH = 10
+
 # Yılan renkleri (her oyuncuya farklı renk)
 def get_snake_color(client_id):
     colors = [
@@ -59,7 +66,7 @@ TIME_ATTACK_CONSTANTS = {
     "MAX_SNAKE_LENGTH": 10,           # Time Attack'ta maksimum yılan uzunluğu
     "FOOD_COUNT": 3,                  # Time Attack'ta maksimum yem sayısı
     "MAX_POWERUPS": 2,                # Time Attack'ta maksimum power-up sayısı
-    "GOLDEN_FOOD_CHANCE": 0.05,       # Altın elma çıkma olasılığı (%5)
+    "GOLDEN_FOOD_CHANCE": 0.02,       # Altın elma çıkma olasılığı (%2)
     "POWERUP_SPAWN_CHANCE": 0.02,     # Power-up çıkma olasılığı (%2) - artırıldı
     "FOOD_BONUS_TIME": 5,             # Yem yendiğinde +5 saniye
     "GOLDEN_FOOD_BONUS_TIME": 15,     # Altın elma yendiğinde +15 saniye

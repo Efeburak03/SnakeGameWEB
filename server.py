@@ -10,6 +10,9 @@ from common import MSG_MOVE, MSG_STATE, MSG_RESTART, create_state_message, MAX_P
 # Time Attack modülünü import et
 import time_attack_module
 
+# Capture the Flag modülünü import et
+import capture_the_flag_module
+
 BOARD_WIDTH = 60   # Enine daha geniş
 BOARD_HEIGHT = 35 # 700/20 = 35 satır
 START_LENGTH = 3
@@ -408,6 +411,23 @@ async def game_loop():
                         await ws.send(state_msg)
                     except:
                         pass
+        # CTF oyun güncellemesi
+        ctf_update_result = capture_the_flag_module.update_ctf_game()
+        if ctf_update_result.get("game_over"):
+            winner = ctf_update_result.get("winner")
+            print(f"[DEBUG] CTF oyunu bitti! Kazanan: {winner}")
+            # CTF oyun durumunu tüm oyunculara gönder
+            ctf_state = capture_the_flag_module.get_ctf_game_state()
+            for ws, pid in list(clients.items()):
+                try:
+                    await ws.send(create_state_message({
+                        "type": "ctf_game_over",
+                        "winner": winner,
+                        "game_state": ctf_state
+                    }))
+                except:
+                    pass
+        
         tick_count += 1
         await asyncio.sleep(TICK_RATE)
 
@@ -1104,6 +1124,105 @@ def on_time_attack_respawn(data):
     game_state["game_active"] = True  # Oyunu tekrar aktif hale getir
     print(f"[DEBUG] {client_id} manuel canlanma! Canlanma sayısı: {game_state['respawn_count']}")
 
+# --- Capture the Flag Event Handler'ları ---
+@socketio.on('start_capture_the_flag')
+def on_start_capture_the_flag(data):
+    client_id = data.get('client_id')
+    sid = request.sid
+    
+    # Client ID kontrolü
+    if not client_id or client_id == 'null' or client_id == '':
+        emit('error', {"message": "Geçersiz kullanıcı adı!"})
+        return
+    
+    # CTF oyununu başlat
+    capture_the_flag_module.reset_ctf_game()
+    capture_the_flag_module.start_ctf_game()
+    clients[sid] = client_id
+    print(f"[DEBUG] {client_id} Capture the Flag başlattı")
+    emit('capture_the_flag_started', {"game_time": 300})
+
+@socketio.on('ctf_join')
+def on_ctf_join(data):
+    client_id = data.get('client_id')
+    nickname = data.get('nickname', client_id)
+    selected_team = data.get('team')
+    
+    if not client_id:
+        emit('error', {"message": "Geçersiz kullanıcı!"})
+        return
+    
+    # Oyuncuyu takıma ata
+    if selected_team and selected_team in [capture_the_flag_module.RED_TEAM, capture_the_flag_module.BLUE_TEAM]:
+        team = selected_team
+        # Seçilen takıma ekle
+        capture_the_flag_module.ctf_game_state.teams[team].append(client_id)
+        capture_the_flag_module.ctf_game_state.individual_scores[client_id] = 0
+    else:
+        # Otomatik takım ataması
+        team = capture_the_flag_module.ctf_game_state.assign_team(client_id)
+    
+    # Yılan oluştur
+    if team == capture_the_flag_module.RED_TEAM:
+        start_x, start_y = 10, 17  # Sol taraf
+    else:
+        start_x, start_y = 50, 17  # Sağ taraf
+    
+    capture_the_flag_module.ctf_game_state.snakes[client_id] = [
+        (start_x, start_y),
+        (start_x-1, start_y),
+        (start_x-2, start_y)
+    ]
+    capture_the_flag_module.ctf_game_state.directions[client_id] = "RIGHT"
+    capture_the_flag_module.ctf_game_state.colors[client_id] = get_snake_color(client_id)
+    capture_the_flag_module.ctf_game_state.active[client_id] = True
+    
+    print(f"[DEBUG] {client_id} CTF'ye katıldı, takım: {team}")
+    emit('ctf_joined', {
+        "team": team,
+        "position": [start_x, start_y],
+        "game_state": capture_the_flag_module.get_ctf_game_state()
+    })
+
+@socketio.on('ctf_move')
+def on_ctf_move(data):
+    client_id = data.get('client_id')
+    direction = data.get('direction')
+    
+    if not client_id or client_id not in capture_the_flag_module.ctf_game_state.snakes:
+        return
+    
+    # Yön kontrolü
+    current_dir = capture_the_flag_module.ctf_game_state.directions.get(client_id, "RIGHT")
+    OPPOSITE_DIRECTIONS = {"UP": "DOWN", "DOWN": "UP", "LEFT": "RIGHT", "RIGHT": "LEFT"}
+    if OPPOSITE_DIRECTIONS.get(current_dir) == direction:
+        return
+    
+    capture_the_flag_module.ctf_game_state.directions[client_id] = direction
+
+@socketio.on('ctf_ready')
+def on_ctf_ready(data):
+    client_id = data.get('client_id')
+    
+    if not client_id:
+        return
+    
+    # Oyuncuyu hazır olarak işaretle
+    capture_the_flag_module.ctf_game_state.active[client_id] = True
+    print(f"[DEBUG] {client_id} CTF'de hazır")
+
+@socketio.on('ctf_restart')
+def on_ctf_restart(data):
+    client_id = data.get('client_id')
+    
+    if not client_id:
+        return
+    
+    # CTF oyununu yeniden başlat
+    capture_the_flag_module.reset_ctf_game()
+    print(f"[DEBUG] {client_id} CTF'yi yeniden başlattı")
+    emit('ctf_restarted', {"message": "Oyun yeniden başlatıldı"})
+
 @socketio.on('disconnect')
 def on_disconnect():
     sid = request.sid
@@ -1120,6 +1239,9 @@ def on_disconnect():
         
         # Time Attack temizliği
         time_attack_module.remove_time_attack_game(client_id)
+        
+        # CTF temizliği
+        capture_the_flag_module.ctf_game_state.eliminate_player(client_id)
     
     clients.pop(sid, None)
 
