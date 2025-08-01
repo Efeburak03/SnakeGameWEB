@@ -1799,6 +1799,7 @@
             <div id="ctf-time-display">Süre: <span id="ctf-time-left">300</span></div>
             <div id="ctf-team-display">Takım: <span id="ctf-team">--</span></div>
             <div id="ctf-player-score-display">Kişisel Skor: <span id="ctf-player-score">0</span></div>
+            <div id="ctf-waiting-display" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.8); color: #fff; padding: 20px; border-radius: 10px; font-size: 24px; font-weight: bold; display: none;">Bekleme Süresi: <span id="ctf-waiting-time">0</span>s</div>
             <div id="ctf-red-score-display" style="position: absolute; bottom: 10px; left: 10px; color: #e74c3c; font-weight: bold;">Kırmızı: <span id="ctf-red-score">0</span></div>
             <div id="ctf-blue-score-display" style="position: absolute; bottom: 10px; right: 10px; color: #3498db; font-weight: bold;">Mavi: <span id="ctf-blue-score">0</span></div>
             <button id="ctf-respawn-btn" style="display:none;">Canlan (5s)</button>
@@ -1920,19 +1921,57 @@
                     // Kırmızı bayrak taşıyor mu?
                     if (ctfGameState.flags.red && ctfGameState.flags.red.captured && 
                         ctfGameState.flags.red.carrier === pid) {
-                        // Bayrak taşıyan oyuncunun etrafına çerçeve çiz
-                        ctx.strokeStyle = '#e74c3c';
-                        ctx.lineWidth = 3;
-                        ctx.strokeRect(head[0]*CELL_SIZE-2, head[1]*CELL_SIZE-2, CELL_SIZE+4, CELL_SIZE+4);
+                        // Kırmızı bayrak taşıyan oyuncuya parıltı efekti
+                        const glowRadius = 8;
+                        
+                        // Parıltı efekti için gradient
+                        const gradient = ctx.createRadialGradient(
+                            head[0]*CELL_SIZE + CELL_SIZE/2, head[1]*CELL_SIZE + CELL_SIZE/2, 0,
+                            head[0]*CELL_SIZE + CELL_SIZE/2, head[1]*CELL_SIZE + CELL_SIZE/2, glowRadius
+                        );
+                        gradient.addColorStop(0, 'rgba(231, 76, 60, 0.8)');
+                        gradient.addColorStop(0.5, 'rgba(231, 76, 60, 0.4)');
+                        gradient.addColorStop(1, 'rgba(231, 76, 60, 0)');
+                        
+                        ctx.fillStyle = gradient;
+                        ctx.fillRect(
+                            head[0]*CELL_SIZE - glowRadius, 
+                            head[1]*CELL_SIZE - glowRadius, 
+                            CELL_SIZE + glowRadius*2, 
+                            CELL_SIZE + glowRadius*2
+                        );
+                        
+                        // Yılanın kendisini daha parlak çiz
+                        ctx.fillStyle = '#ff6b6b';
+                        ctx.fillRect(head[0]*CELL_SIZE, head[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
                     }
                     
                     // Mavi bayrak taşıyor mu?
                     if (ctfGameState.flags.blue && ctfGameState.flags.blue.captured && 
                         ctfGameState.flags.blue.carrier === pid) {
-                        // Bayrak taşıyan oyuncunun etrafına çerçeve çiz
-                        ctx.strokeStyle = '#3498db';
-                        ctx.lineWidth = 3;
-                        ctx.strokeRect(head[0]*CELL_SIZE-2, head[1]*CELL_SIZE-2, CELL_SIZE+4, CELL_SIZE+4);
+                        // Mavi bayrak taşıyan oyuncuya parıltı efekti
+                        const glowRadius = 8;
+                        
+                        // Parıltı efekti için gradient
+                        const gradient = ctx.createRadialGradient(
+                            head[0]*CELL_SIZE + CELL_SIZE/2, head[1]*CELL_SIZE + CELL_SIZE/2, 0,
+                            head[0]*CELL_SIZE + CELL_SIZE/2, head[1]*CELL_SIZE + CELL_SIZE/2, glowRadius
+                        );
+                        gradient.addColorStop(0, 'rgba(52, 152, 219, 0.8)');
+                        gradient.addColorStop(0.5, 'rgba(52, 152, 219, 0.4)');
+                        gradient.addColorStop(1, 'rgba(52, 152, 219, 0)');
+                        
+                        ctx.fillStyle = gradient;
+                        ctx.fillRect(
+                            head[0]*CELL_SIZE - glowRadius, 
+                            head[1]*CELL_SIZE - glowRadius, 
+                            CELL_SIZE + glowRadius*2, 
+                            CELL_SIZE + glowRadius*2
+                        );
+                        
+                        // Yılanın kendisini daha parlak çiz
+                        ctx.fillStyle = '#74b9ff';
+                        ctx.fillRect(head[0]*CELL_SIZE, head[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
                     }
                 }
             }
@@ -1953,6 +1992,8 @@
         const redScore = document.getElementById('ctf-red-score');
         const blueScore = document.getElementById('ctf-blue-score');
         const respawnBtn = document.getElementById('ctf-respawn-btn');
+        const waitingDisplay = document.getElementById('ctf-waiting-display');
+        const waitingTime = document.getElementById('ctf-waiting-time');
         
         if (timeLeft && ctfGameState.game_time !== undefined) {
             timeLeft.textContent = Math.floor(ctfGameState.game_time);
@@ -1973,6 +2014,29 @@
         
         if (playerScore && ctfGameState.individual_scores && myId) {
             playerScore.textContent = ctfGameState.individual_scores[myId] || 0;
+        }
+        
+        // Bekleme süresi göstergesini kontrol et
+        if (waitingDisplay && waitingTime && myId) {
+            if (ctfGameState.active && !ctfGameState.active[myId]) {
+                // Oyuncu aktif değilse bekleme süresini göster
+                if (ctfGameState.respawn_timers && ctfGameState.respawn_timers[myId]) {
+                    const currentTime = Date.now() / 1000;
+                    const respawnTime = ctfGameState.respawn_timers[myId];
+                    const remainingTime = respawnTime - currentTime;
+                    
+                    if (remainingTime > 0) {
+                        waitingDisplay.style.display = 'block';
+                        waitingTime.textContent = remainingTime.toFixed(1);
+                    } else {
+                        waitingDisplay.style.display = 'none';
+                    }
+                } else {
+                    waitingDisplay.style.display = 'none';
+                }
+            } else {
+                waitingDisplay.style.display = 'none';
+            }
         }
         
         // Respawn butonunu kontrol et
@@ -2035,8 +2099,8 @@
             <div style="background: #333; padding: 30px; border-radius: 15px; text-align: center; color: #fff;">
                 <h2>OYUN BİTTİ!</h2>
                 <p>Kazanan: ${winnerText}</p>
-                <p>Kırmızı Takım Skoru: ${data.game_state?.team_scores?.red || 0}</p>
-                <p>Mavi Takım Skoru: ${data.game_state?.team_scores?.blue || 0}</p>
+                <p>Kırmızı Takım Skoru: ${data.team_scores?.red || 0}</p>
+                <p>Mavi Takım Skoru: ${data.team_scores?.blue || 0}</p>
                 <button id="ctf-play-again-btn" style="margin: 10px; padding: 10px 20px; background: #4caf50; border: none; border-radius: 5px; color: #fff; cursor: pointer;">Tekrar Oyna</button>
                 <button id="ctf-back-to-menu-btn" style="margin: 10px; padding: 10px 20px; background: #666; border: none; border-radius: 5px; color: #fff; cursor: pointer;">Ana Menü</button>
             </div>
@@ -2044,31 +2108,45 @@
         
         document.body.appendChild(modal);
         
-        document.getElementById('ctf-play-again-btn').addEventListener('click', () => {
-            modal.remove();
-            // Oyun modu seçme ekranına dön
-            document.getElementById('ui').style.display = 'flex';
-            document.getElementById('game-container').style.display = 'none';
-            document.getElementById('top-usernames').style.display = 'none';
-            const ctfUI = document.getElementById('ctf-ui');
-            if (ctfUI) ctfUI.remove();
-            currentGameMode = null;
-            ctfGameState = null;
-            ctfTeam = null;
-        });
+        // Buton event listener'larını ekle
+        const playAgainBtn = document.getElementById('ctf-play-again-btn');
+        const backToMenuBtn = document.getElementById('ctf-back-to-menu-btn');
         
-        document.getElementById('ctf-back-to-menu-btn').addEventListener('click', () => {
-            modal.remove();
-            // Ana menüye dön
-            document.getElementById('ui').style.display = 'flex';
-            document.getElementById('game-container').style.display = 'none';
-            document.getElementById('top-usernames').style.display = 'none';
-            const ctfUI = document.getElementById('ctf-ui');
-            if (ctfUI) ctfUI.remove();
-            currentGameMode = null;
-            ctfGameState = null;
-            ctfTeam = null;
-        });
+        if (playAgainBtn) {
+            playAgainBtn.addEventListener('click', () => {
+                console.log('[DEBUG] Tekrar Oyna butonuna tıklandı');
+                modal.remove();
+                // Oyun modu seçme ekranına dön
+                document.getElementById('ui').style.display = 'flex';
+                document.getElementById('game-container').style.display = 'none';
+                document.getElementById('top-usernames').style.display = 'none';
+                const ctfUI = document.getElementById('ctf-ui');
+                if (ctfUI) ctfUI.remove();
+                currentGameMode = null;
+                ctfGameState = null;
+                ctfTeam = null;
+            });
+        } else {
+            console.error('[DEBUG] Tekrar Oyna butonu bulunamadı!');
+        }
+        
+        if (backToMenuBtn) {
+            backToMenuBtn.addEventListener('click', () => {
+                console.log('[DEBUG] Ana Menü butonuna tıklandı');
+                modal.remove();
+                // Ana menüye dön
+                document.getElementById('ui').style.display = 'flex';
+                document.getElementById('game-container').style.display = 'none';
+                document.getElementById('top-usernames').style.display = 'none';
+                const ctfUI = document.getElementById('ctf-ui');
+                if (ctfUI) ctfUI.remove();
+                currentGameMode = null;
+                ctfGameState = null;
+                ctfTeam = null;
+            });
+        } else {
+            console.error('[DEBUG] Ana Menü butonu bulunamadı!');
+        }
     }
     
     function sendCTFMove(direction) {
