@@ -13,6 +13,29 @@ CTF_START_LENGTH = 6
 CTF_TICK_RATE = 0.05
 CTF_RESPAWN_TIME = 5  # 5 saniye
 
+# CTF Power-up Sabitleri
+CTF_POWERUP_TYPES = [
+    {"type": "shield", "color": (0, 0, 0)},        # Zırh (siyah)
+    {"type": "reverse", "color": (255, 255, 255)},   # Ters kontrol (beyaz)
+    {"type": "magnet", "color": (180, 0, 255)},      # Magnet (mor) - 2 blok yakınında bayrak çeker
+    {"type": "trail", "color": (0, 255, 200, 128)}, # İz bırakıcı (yarı saydam turkuaz)
+    {"type": "freeze", "color": (0, 200, 255)},      # Rakibi dondurma (açık mavi) - sadece karşı takım
+    {"type": "invisible", "color": (128, 128, 128)}, # Görünmezlik (gri)
+]
+
+# CTF Power-up Süreleri (saniye)
+CTF_POWERUP_DURATIONS = {
+    "shield": 10,
+    "reverse": 8,
+    "magnet": 12,
+    "trail": 10,
+    "freeze": 5,  # CTF'de 5 saniye
+    "invisible": 10
+}
+
+# CTF Power-up Spawn Olasılığı
+CTF_POWERUP_SPAWN_CHANCE = 0.01  # %1
+
 # Takım Sabitleri
 RED_TEAM = "red"
 BLUE_TEAM = "blue"
@@ -97,6 +120,11 @@ class CTFGameState:
         self.game_phase = "preparation"  # preparation, active, finished
         self.start_time = None
         self.active = {}
+        
+        # Power-up sistemi
+        self.powerups = []  # Haritadaki power-up'lar
+        self.active_powerups = {}  # Oyuncuların aktif power-up'ları
+        self.powerup_spawn_timer = 0  # Power-up spawn zamanlayıcısı
         
     def assign_team(self, player_id):
         """Oyuncuyu rastgele bir takıma atar"""
@@ -308,8 +336,23 @@ class CTFGameState:
         if player_id not in self.snakes or player_id not in self.directions:
             return False
         
+        # Freeze kontrolü - sadece karşı takımı etkiler
+        if self.has_powerup(player_id, "frozen"):
+            return False
+        
         snake = self.snakes[player_id]
         head = snake[0]
+        
+        # Ters hareket kontrolü
+        if self.has_powerup(player_id, "reverse"):
+            if direction == "UP":
+                direction = "DOWN"
+            elif direction == "DOWN":
+                direction = "UP"
+            elif direction == "LEFT":
+                direction = "RIGHT"
+            elif direction == "RIGHT":
+                direction = "LEFT"
         
         # Yeni baş pozisyonu
         if direction == "UP":
@@ -323,14 +366,57 @@ class CTFGameState:
         else:
             return False
         
-        # Çarpışma kontrolü
-        if self.check_collision(player_id, new_head):
-            self.eliminate_player(player_id)
-            return False
+        # Çarpışma kontrolü (zırh hariç)
+        if not self.has_powerup(player_id, "shield"):
+            if self.check_collision(player_id, new_head):
+                self.eliminate_player(player_id)
+                return False
         
         # Yılanı hareket ettir
         snake.insert(0, new_head)
         snake.pop()  # Kuyruğu kaldır
+        
+        # Power-up kontrolü
+        for powerup in list(self.powerups):
+            if new_head == tuple(powerup["pos"]):
+                powerup_type = powerup["type"]
+                self.add_powerup(player_id, powerup_type)
+                
+                # Özel power-up etkileri
+                if powerup_type == "freeze":
+                    # Sadece karşı takımı dondur
+                    player_team = self.get_player_team(player_id)
+                    if player_team:
+                        opponent_team = self.get_opponent_team(player_id)
+                        for other_id in self.teams.get(opponent_team, []):
+                            if other_id in self.active and self.active[other_id]:
+                                self.add_powerup(other_id, "frozen")
+                
+                # Power-up'ı haritadan kaldır
+                self.powerups.remove(powerup)
+                break
+        
+        # Magnet etkisi - bayrakları çek
+        if self.has_powerup(player_id, "magnet"):
+            for team in TEAMS:
+                flag_pos = self.flags[team]["pos"]
+                if flag_pos and not self.flags[team]["captured"]:
+                    # 2 blok yakınında mı kontrol et
+                    distance = abs(new_head[0] - flag_pos[0]) + abs(new_head[1] - flag_pos[1])
+                    if distance <= 2:
+                        # Bayrağı yılanın yanına çek
+                        dx = 1 if new_head[0] > flag_pos[0] else -1 if new_head[0] < flag_pos[0] else 0
+                        dy = 1 if new_head[1] > flag_pos[1] else -1 if new_head[1] < flag_pos[1] else 0
+                        new_flag_x = flag_pos[0] + dx
+                        new_flag_y = flag_pos[1] + dy
+                        
+                        # Pozisyon boş mu kontrol et
+                        occupied = set()
+                        for s in self.snakes.values():
+                            occupied.update(s)
+                        
+                        if (new_flag_x, new_flag_y) not in occupied:
+                            self.flags[team]["pos"] = [new_flag_x, new_flag_y]
         
         # Bayrak taşıyorsa bayrağı da hareket ettir
         player_team = self.get_player_team(player_id)
@@ -449,7 +535,9 @@ class CTFGameState:
             "teams": self.teams,
             "respawn_timers": self.respawn_timers,
             "eliminated_snakes": self.eliminated_snakes,
-            "eliminated_directions": self.eliminated_directions
+            "eliminated_directions": self.eliminated_directions,
+            "powerups": self.powerups,
+            "active_powerups": self.active_powerups
         }
     
     def start_game(self):
@@ -459,12 +547,93 @@ class CTFGameState:
     
     def update_game_time(self):
         """Oyun süresini günceller"""
-        if self.start_time:
-            elapsed = time.time() - self.start_time
-            self.game_time = max(0, 300 - int(elapsed))
-            
+        if self.game_phase == "active" and self.game_time > 0:
+            self.game_time -= 1
             if self.game_time <= 0:
                 self.game_phase = "finished"
+    
+    def has_powerup(self, player_id, powerup_type):
+        """Oyuncunun belirli bir power-up'ı olup olmadığını kontrol eder"""
+        if player_id not in self.active_powerups:
+            return False
+        
+        current_time = time.time()
+        for powerup in self.active_powerups[player_id]:
+            if powerup["type"] == powerup_type:
+                if current_time - powerup["tick"] < CTF_POWERUP_DURATIONS.get(powerup_type, 10):
+                    return True
+        return False
+    
+    def add_powerup(self, player_id, powerup_type):
+        """Oyuncuya power-up ekler"""
+        if player_id not in self.active_powerups:
+            self.active_powerups[player_id] = []
+        
+        self.active_powerups[player_id].append({
+            "type": powerup_type,
+            "tick": time.time()
+        })
+    
+    def spawn_powerup(self):
+        """Haritaya rastgele power-up yerleştirir"""
+        if len(self.powerups) >= 3:  # Maksimum 3 power-up
+            return
+        
+        # Boş pozisyon bul
+        occupied_positions = set()
+        
+        # Yılanları ekle
+        for snake in self.snakes.values():
+            occupied_positions.update(snake)
+        
+        # Bayrakları ekle
+        for flag in self.flags.values():
+            if flag["pos"]:
+                occupied_positions.add(tuple(flag["pos"]))
+        
+        # Mevcut power-up'ları ekle
+        for powerup in self.powerups:
+            occupied_positions.add(tuple(powerup["pos"]))
+        
+        # Boş pozisyon ara
+        attempts = 0
+        while attempts < 50:
+            x = random.randint(5, CTF_BOARD_WIDTH - 6)
+            y = random.randint(5, CTF_BOARD_HEIGHT - 6)
+            
+            # Takım alanlarından uzak dur
+            if (x < 10 or x > CTF_BOARD_WIDTH - 11):
+                attempts += 1
+                continue
+            
+            if (x, y) not in occupied_positions:
+                # Rastgele power-up seç
+                powerup_type = random.choice(CTF_POWERUP_TYPES)
+                self.powerups.append({
+                    "type": powerup_type["type"],
+                    "pos": [x, y],
+                    "color": powerup_type["color"]
+                })
+                break
+            attempts += 1
+    
+    def update_powerups(self):
+        """Power-up sistemini günceller"""
+        current_time = time.time()
+        
+        # Power-up spawn kontrolü
+        if random.random() < CTF_POWERUP_SPAWN_CHANCE:
+            self.spawn_powerup()
+        
+        # Süresi dolmuş power-up'ları temizle
+        for player_id in list(self.active_powerups.keys()):
+            if player_id not in self.active_powerups:
+                continue
+            
+            self.active_powerups[player_id] = [
+                pu for pu in self.active_powerups[player_id]
+                if current_time - pu["tick"] < CTF_POWERUP_DURATIONS.get(pu["type"], 10)
+            ]
     
     def get_winner(self):
         """Oyunun kazananını döndürür"""
@@ -498,6 +667,7 @@ def update_ctf_game():
     """CTF oyununu günceller"""
     global ctf_game_state
     ctf_game_state.update_game_time()
+    ctf_game_state.update_powerups()  # Power-up sistemini güncelle
     
     # Respawn kontrolü
     respawned_players = ctf_game_state.check_respawns()

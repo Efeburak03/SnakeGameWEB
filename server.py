@@ -1263,6 +1263,11 @@ def on_ctf_move(data):
     if OPPOSITE_DIRECTIONS.get(current_dir) == direction:
         return
     
+    # Ters hareket power-up kontrolü
+    if capture_the_flag_module.ctf_game_state.has_powerup(client_id, "reverse"):
+        OPP = {"UP":"DOWN","DOWN":"UP","LEFT":"RIGHT","RIGHT":"LEFT"}
+        direction = OPP.get(direction, direction)
+    
     capture_the_flag_module.ctf_game_state.directions[client_id] = direction
 
 @socketio.on('ctf_ready')

@@ -1867,10 +1867,45 @@
                         color = '#3498db'; // Mavi takım
                     }
                     
+                    // Power-up efektleri
+                    const hasShield = ctfGameState.active_powerups?.[pid]?.some(pu => pu.type === 'shield');
+                    const hasInvisible = ctfGameState.active_powerups?.[pid]?.some(pu => pu.type === 'invisible');
+                    const hasTrail = ctfGameState.active_powerups?.[pid]?.some(pu => pu.type === 'trail');
+                    
+                    // Görünmezlik kontrolü
+                    if (hasInvisible) {
+                        ctx.globalAlpha = 0.3; // Şeffaf yap
+                    }
+                    
+                    // Zırh efekti
+                    if (hasShield) {
+                        // Zırh çerçevesi çiz
+                        ctx.strokeStyle = '#000000';
+                        ctx.lineWidth = 3;
+                        for (const seg of snake) {
+                            ctx.strokeRect(seg[0]*CELL_SIZE, seg[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                        }
+                    }
+                    
+                    // Trail efekti
+                    if (hasTrail) {
+                        // İz efekti - yılanın arkasında şeffaf iz bırak
+                        ctx.fillStyle = color;
+                        ctx.globalAlpha = 0.5;
+                        for (let i = snake.length - 1; i >= Math.max(0, snake.length - 3); i--) {
+                            const seg = snake[i];
+                            ctx.fillRect(seg[0]*CELL_SIZE, seg[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                        }
+                        ctx.globalAlpha = 1.0;
+                    }
+                    
+                    // Normal yılan çizimi
                     ctx.fillStyle = color;
+                    ctx.globalAlpha = hasInvisible ? 0.3 : 1.0;
                     for (const seg of snake) {
                         ctx.fillRect(seg[0]*CELL_SIZE, seg[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
                     }
+                    ctx.globalAlpha = 1.0; // Alpha'yı sıfırla
                 }
             }
         } else {
@@ -1908,89 +1943,49 @@
                     ctx.fillRect((flag.pos[0]+0.2)*CELL_SIZE, (flag.pos[1]+0.2)*CELL_SIZE, CELL_SIZE*0.6, CELL_SIZE*0.6);
                 }
             }
-            
-            // Bayrak taşıyan oyuncuları işaretle
-            for (const [pid, snake] of Object.entries(ctfGameState.snakes)) {
-                if (ctfGameState.active && ctfGameState.active[pid]) {
-                    const head = snake[0];
-                    
-                    // Kırmızı bayrak taşıyor mu?
-                    if (ctfGameState.flags.red && ctfGameState.flags.red.captured && 
-                        ctfGameState.flags.red.carrier === pid) {
-                        // Zaman bazlı parıltı animasyonu
-                        const time = Date.now() / 1000;
-                        const pulseIntensity = 0.3 + 0.2 * Math.sin(time * 4); // 4 Hz pulse
-                        
-                        // Kırmızı bayrak taşıyan yılanın tüm segmentlerini parlat
-                        for (let i = 0; i < snake.length; i++) {
-                            const seg = snake[i];
-                            const glowRadius = 6 + 2 * pulseIntensity; // Dinamik parıltı yarıçapı
-                            
-                            // Her segment için parıltı efekti
-                            const gradient = ctx.createRadialGradient(
-                                seg[0]*CELL_SIZE + CELL_SIZE/2, seg[1]*CELL_SIZE + CELL_SIZE/2, 0,
-                                seg[0]*CELL_SIZE + CELL_SIZE/2, seg[1]*CELL_SIZE + CELL_SIZE/2, glowRadius
-                            );
-                            gradient.addColorStop(0, `rgba(231, 76, 60, ${0.9 + pulseIntensity * 0.1})`);
-                            gradient.addColorStop(0.6, `rgba(231, 76, 60, ${0.5 + pulseIntensity * 0.2})`);
-                            gradient.addColorStop(1, 'rgba(231, 76, 60, 0)');
-                            
-                            ctx.fillStyle = gradient;
-                            ctx.fillRect(
-                                seg[0]*CELL_SIZE - glowRadius, 
-                                seg[1]*CELL_SIZE - glowRadius, 
-                                CELL_SIZE + glowRadius*2, 
-                                CELL_SIZE + glowRadius*2
-                            );
-                        }
-                        
-                        // Yılanın kendisini daha parlak çiz
-                        ctx.fillStyle = `rgba(255, 107, 107, ${0.8 + pulseIntensity * 0.2})`;
-                        for (const seg of snake) {
-                            ctx.fillRect(seg[0]*CELL_SIZE, seg[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
-                        }
-                    }
-                    
-                    // Mavi bayrak taşıyor mu?
-                    if (ctfGameState.flags.blue && ctfGameState.flags.blue.captured && 
-                        ctfGameState.flags.blue.carrier === pid) {
-                        // Zaman bazlı parıltı animasyonu
-                        const time = Date.now() / 1000;
-                        const pulseIntensity = 0.3 + 0.2 * Math.sin(time * 4); // 4 Hz pulse
-                        
-                        // Mavi bayrak taşıyan yılanın tüm segmentlerini parlat
-                        for (let i = 0; i < snake.length; i++) {
-                            const seg = snake[i];
-                            const glowRadius = 6 + 2 * pulseIntensity; // Dinamik parıltı yarıçapı
-                            
-                            // Her segment için parıltı efekti
-                            const gradient = ctx.createRadialGradient(
-                                seg[0]*CELL_SIZE + CELL_SIZE/2, seg[1]*CELL_SIZE + CELL_SIZE/2, 0,
-                                seg[0]*CELL_SIZE + CELL_SIZE/2, seg[1]*CELL_SIZE + CELL_SIZE/2, glowRadius
-                            );
-                            gradient.addColorStop(0, `rgba(52, 152, 219, ${0.9 + pulseIntensity * 0.1})`);
-                            gradient.addColorStop(0.6, `rgba(52, 152, 219, ${0.5 + pulseIntensity * 0.2})`);
-                            gradient.addColorStop(1, 'rgba(52, 152, 219, 0)');
-                            
-                            ctx.fillStyle = gradient;
-                            ctx.fillRect(
-                                seg[0]*CELL_SIZE - glowRadius, 
-                                seg[1]*CELL_SIZE - glowRadius, 
-                                CELL_SIZE + glowRadius*2, 
-                                CELL_SIZE + glowRadius*2
-                            );
-                        }
-                        
-                        // Yılanın kendisini daha parlak çiz
-                        ctx.fillStyle = `rgba(116, 185, 255, ${0.8 + pulseIntensity * 0.2})`;
-                        for (const seg of snake) {
-                            ctx.fillRect(seg[0]*CELL_SIZE, seg[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
-                        }
-                    }
+        }
+        
+        // Power-up'ları çiz
+        if (ctfGameState.powerups) {
+            console.log('[DEBUG] drawCTF: Power-up\'lar çiziliyor, sayı:', ctfGameState.powerups.length);
+            for (const powerup of ctfGameState.powerups) {
+                const [x, y] = powerup.pos;
+                let color = '#ccc';
+                
+                // Power-up türüne göre renk belirle
+                switch (powerup.type) {
+                    case 'shield':
+                        color = '#000000'; // Siyah
+                        break;
+                    case 'reverse':
+                        color = '#ffffff'; // Beyaz
+                        break;
+                    case 'magnet':
+                        color = '#b400ff'; // Mor
+                        break;
+                    case 'trail':
+                        color = '#00e6e6'; // Turkuaz
+                        break;
+                    case 'freeze':
+                        color = '#00c8ff'; // Açık mavi
+                        break;
+                    case 'invisible':
+                        color = '#808080'; // Gri
+                        break;
                 }
+                
+                // Power-up'ı daire olarak çiz
+                ctx.beginPath();
+                ctx.arc(x*CELL_SIZE + CELL_SIZE/2, y*CELL_SIZE + CELL_SIZE/2, CELL_SIZE/2.2, 0, 2*Math.PI);
+                ctx.fillStyle = color;
+                ctx.fill();
+                
+                // Power-up türünü yaz
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 10px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(powerup.type.charAt(0).toUpperCase(), x*CELL_SIZE + CELL_SIZE/2, y*CELL_SIZE + CELL_SIZE/2 + 3);
             }
-        } else {
-            console.log('[DEBUG] drawCTF: Bayrak yok');
         }
         
         // Takım puanlarını canvas'a çiz
