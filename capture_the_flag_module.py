@@ -319,4 +319,37 @@ class CTFGameState:
             self.game_time = max(0, 300 - int(elapsed))
             
             if self.game_time <= 0:
-                self.game_phase = "finished" 
+                self.game_phase = "finished"
+    
+    def get_winner(self):
+        """Oyunun kazananını döndürür"""
+        if self.team_scores[RED_TEAM] > self.team_scores[BLUE_TEAM]:
+            return RED_TEAM
+        elif self.team_scores[BLUE_TEAM] > self.team_scores[RED_TEAM]:
+            return BLUE_TEAM
+        else:
+            return "tie"  # Beraberlik
+
+# Global CTF oyun durumu
+ctf_game_state = CTFGameState()
+
+# Global fonksiyonlar (server.py tarafından çağrılır)
+def reset_ctf_game():
+    """CTF oyununu sıfırlar"""
+    global ctf_game_state
+    ctf_game_state = CTFGameState()
+
+def start_ctf_game():
+    """CTF oyununu başlatır"""
+    global ctf_game_state
+    ctf_game_state.start_game()
+
+def get_ctf_game_state():
+    """CTF oyun durumunu döndürür"""
+    global ctf_game_state
+    return ctf_game_state.get_game_state()
+
+def update_ctf_game():
+    """CTF oyununu günceller"""
+    global ctf_game_state
+    ctf_game_state.update_game_time() 
