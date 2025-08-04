@@ -759,7 +759,6 @@
     let animationFrameId = null;
     
     function startRenderLoop() {
-        // Eğer zaten çalışıyorsa, önce durdur
         if (animationFrameId) {
             cancelAnimationFrame(animationFrameId);
             animationFrameId = null;
@@ -768,26 +767,20 @@
         let lastTime = 0;
         
         function renderLoop(currentTime) {
-            // FPS kontrolü - sadece 60 FPS'de çalıştır
-            if (currentTime - lastTime < 16.67) { // 60 FPS = 16.67ms
+            if (currentTime - lastTime < 16.67) {
                 animationFrameId = requestAnimationFrame(renderLoop);
                 return;
             }
             lastTime = currentTime;
             
-            // Animasyon zamanını güncelle (daha az sıklıkta)
             animationTime += 0.016;
             
-            // Oyun durumuna göre çiz
             if (currentGameMode === 'captureTheFlag' && ctfGameState) {
                 drawCTF();
             } else if (currentGameMode === 'timeAttack' && timeAttackState) {
                 drawTimeAttack();
             } else if (gameState) {
                 draw();
-            } else {
-                // Ana menüde sadece canvas'ı temizle
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
             }
             
             animationFrameId = requestAnimationFrame(renderLoop);
@@ -1142,6 +1135,9 @@
         
         // Canvas'ı boyutlandır
         resizeGameCanvas();
+        
+        // Render loop'u başlat
+        startRenderLoop();
         
         // Bağlantıyı kur
         connect();
@@ -1522,6 +1518,9 @@
         // Ana menü tuşunu göster
         document.getElementById('main-menu-btn').style.display = 'block';
         
+        // Render loop'u başlat
+        startRenderLoop();
+        
         // Canlanma butonu event listener
         document.getElementById('respawn-btn').addEventListener('click', () => {
             if (socket && socket.connected) {
@@ -1830,6 +1829,9 @@
         
         // Ana menü tuşunu göster
         document.getElementById('main-menu-btn').style.display = 'block';
+        
+        // Render loop'u başlat
+        startRenderLoop();
         
         // Respawn butonu event listener
         document.getElementById('ctf-respawn-btn').addEventListener('click', () => {
@@ -2296,13 +2298,14 @@
     
     // Ana menüye dönüş fonksiyonu
     function goToMainMenu() {
-        // Socket bağlantısını kapat
         if (socket) {
             socket.disconnect();
             socket = null;
         }
         
-        // Oyun durumlarını sıfırla
+        // Render loop'u durdur
+        stopRenderLoop();
+        
         gameState = null;
         timeAttackState = null;
         ctfGameState = null;
@@ -2315,7 +2318,6 @@
         ctfTeam = null;
         selectedTeam = null;
         
-        // Tüm UI elementlerini gizle
         document.getElementById('game-container').style.display = 'none';
         document.getElementById('top-usernames').style.display = 'none';
         document.getElementById('main-menu-btn').style.display = 'none';
@@ -2323,17 +2325,13 @@
         document.getElementById('difficulty-ui').style.display = 'none';
         document.getElementById('team-selection-ui').style.display = 'none';
         
-        // Time Attack ve CTF UI'larını kaldır
         const timeAttackUI = document.getElementById('time-attack-ui');
         if (timeAttackUI) timeAttackUI.remove();
         
         const ctfUI = document.getElementById('ctf-ui');
         if (ctfUI) ctfUI.remove();
         
-        // Ana menüyü göster
         document.getElementById('ui').style.display = 'flex';
-        
-        // Matrix yağmurunu başlat
         startMatrixRain();
     }
     
@@ -2353,8 +2351,6 @@
     // --- Başlat ---
     loadAssets(() => {
         resizeGameCanvas();
-        // Render loop'u başlat - sadece ana menü için
-        startRenderLoop();
     });
 
     // --- Tam ekran fonksiyonu ---
