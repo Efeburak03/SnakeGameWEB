@@ -748,6 +748,16 @@
             console.log('[DEBUG] CTF respawn failed:', data);
             // Alert kaldırıldı - sayaç zaten ekranda görünüyor
         });
+        
+        socket.on('ctf_countdown_started', (data) => {
+            console.log('[DEBUG] CTF countdown başladı:', data);
+            showCTFCountdown(data.countdown);
+        });
+        
+        socket.on('ctf_round_countdown', (data) => {
+            console.log('[DEBUG] CTF round countdown:', data);
+            showCTFRoundCountdown(data.countdown);
+        });
     }
 
     // --- Oyun çizimi ---
@@ -1796,7 +1806,10 @@
             <h3>Capture the Flag</h3>
             <div id="ctf-time-display">Süre: <span id="ctf-time-left">300</span></div>
             <div id="ctf-team-display">Takım: <span id="ctf-team">--</span></div>
-            <div id="ctf-player-score-display">Kişisel Skor: <span id="ctf-player-score">0</span></div>
+            <div id="ctf-team-scores">
+                <span style="color: #e74c3c;">Kırmızı: <span id="ctf-red-score">0</span></span>
+                <span style="color: #3498db; margin-left: 20px;">Mavi: <span id="ctf-blue-score">0</span></span>
+            </div>
             <div id="ctf-waiting-display" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.95); color: #fff; padding: 40px; border-radius: 20px; font-size: 36px; font-weight: bold; display: none; z-index: 99999; border: 4px solid #e74c3c; box-shadow: 0 0 30px rgba(231, 76, 60, 0.8); text-align: center; min-width: 300px;">Bekleme Süresi: <span id="ctf-waiting-time">0</span>s</div>
             <button id="ctf-respawn-btn" style="display:none;">Canlan (5s)</button>
         `;
@@ -1870,11 +1883,17 @@
                     // Power-up efektleri
                     const hasShield = ctfGameState.active_powerups?.[pid]?.some(pu => pu.type === 'shield');
                     const hasInvisible = ctfGameState.active_powerups?.[pid]?.some(pu => pu.type === 'invisible');
-                    const hasTrail = ctfGameState.active_powerups?.[pid]?.some(pu => pu.type === 'trail');
                     
-                    // Görünmezlik kontrolü
+                    // Görünmezlik kontrolü - sadece karşı takım için
                     if (hasInvisible) {
-                        ctx.globalAlpha = 0.3; // Şeffaf yap
+                        // Kendi takımı görebilsin, karşı takım göremesin
+                        const playerTeam = ctfGameState.teams?.red?.includes(pid) ? 'red' : 
+                                         ctfGameState.teams?.blue?.includes(pid) ? 'blue' : null;
+                        const myTeam = ctfTeam;
+                        
+                        if (playerTeam !== myTeam) {
+                            ctx.globalAlpha = 0.3; // Karşı takım için şeffaf
+                        }
                     }
                     
                     // Zırh efekti
@@ -1887,17 +1906,10 @@
                         }
                     }
                     
-                    // Trail efekti
-                    if (hasTrail) {
-                        // İz efekti - yılanın arkasında şeffaf iz bırak
-                        ctx.fillStyle = color;
-                        ctx.globalAlpha = 0.5;
-                        for (let i = snake.length - 1; i >= Math.max(0, snake.length - 3); i--) {
-                            const seg = snake[i];
-                            ctx.fillRect(seg[0]*CELL_SIZE, seg[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
-                        }
-                        ctx.globalAlpha = 1.0;
-                    }
+
+                    
+                    // Bayrak taşıma efekti
+                    const isCarryingFlag = ctfGameState.flags?.red?.carrier === pid || ctfGameState.flags?.blue?.carrier === pid;
                     
                     // Normal yılan çizimi
                     ctx.fillStyle = color;
@@ -1906,6 +1918,28 @@
                         ctx.fillRect(seg[0]*CELL_SIZE, seg[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
                     }
                     ctx.globalAlpha = 1.0; // Alpha'yı sıfırla
+                    
+                    // Bayrak taşıyorsa yanıp sönen efekt
+                    if (isCarryingFlag) {
+                        const flagTeam = ctfGameState.flags?.red?.carrier === pid ? 'red' : 'blue';
+                        const flagColor = flagTeam === 'red' ? '#e74c3c' : '#3498db';
+                        
+                        // Yanıp sönen efekt
+                        const blinkIntensity = Math.sin(Date.now() / 200) * 0.5 + 0.5;
+                        ctx.fillStyle = flagColor;
+                        ctx.globalAlpha = blinkIntensity;
+                        
+                        // Yılanın başını bayrak rengiyle çiz
+                        const head = snake[0];
+                        ctx.fillRect(head[0]*CELL_SIZE, head[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                        
+                        // Bayrak işareti
+                        ctx.fillStyle = '#fff';
+                        ctx.globalAlpha = blinkIntensity;
+                        ctx.fillRect((head[0]+0.2)*CELL_SIZE, (head[1]+0.2)*CELL_SIZE, CELL_SIZE*0.6, CELL_SIZE*0.6);
+                        
+                        ctx.globalAlpha = 1.0;
+                    }
                 }
             }
         } else {
@@ -1963,9 +1997,7 @@
                     case 'magnet':
                         color = '#b400ff'; // Mor
                         break;
-                    case 'trail':
-                        color = '#00e6e6'; // Turkuaz
-                        break;
+
                     case 'freeze':
                         color = '#00c8ff'; // Açık mavi
                         break;
@@ -2027,7 +2059,8 @@
         
         const timeLeft = document.getElementById('ctf-time-left');
         const teamDisplay = document.getElementById('ctf-team');
-        const playerScore = document.getElementById('ctf-player-score');
+        const redScore = document.getElementById('ctf-red-score');
+        const blueScore = document.getElementById('ctf-blue-score');
         const respawnBtn = document.getElementById('ctf-respawn-btn');
         const waitingDisplay = document.getElementById('ctf-waiting-display');
         const waitingTime = document.getElementById('ctf-waiting-time');
@@ -2040,8 +2073,12 @@
             teamDisplay.textContent = ctfTeam === 'red' ? 'Kırmızı' : 'Mavi';
         }
         
-        if (playerScore && ctfGameState.individual_scores && myId) {
-            playerScore.textContent = ctfGameState.individual_scores[myId] || 0;
+        if (redScore && ctfGameState.team_scores) {
+            redScore.textContent = ctfGameState.team_scores.red || 0;
+        }
+        
+        if (blueScore && ctfGameState.team_scores) {
+            blueScore.textContent = ctfGameState.team_scores.blue || 0;
         }
         
         // Bekleme süresi göstergesini kontrol et
@@ -2203,6 +2240,74 @@
         if (socket && socket.connected) {
             socket.emit('ctf_move', {client_id: myId, direction: direction});
         }
+    }
+    
+    function showCTFCountdown(countdown) {
+        const countdownDiv = document.createElement('div');
+        countdownDiv.id = 'ctf-countdown';
+        countdownDiv.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.95);
+            color: #fff;
+            padding: 60px;
+            border-radius: 20px;
+            font-size: 72px;
+            font-weight: bold;
+            z-index: 10000;
+            border: 4px solid #4caf50;
+            box-shadow: 0 0 50px rgba(76, 175, 80, 0.8);
+            text-align: center;
+            min-width: 200px;
+        `;
+        countdownDiv.textContent = countdown;
+        document.body.appendChild(countdownDiv);
+        
+        // Countdown animasyonu
+        const countdownInterval = setInterval(() => {
+            countdown--;
+            countdownDiv.textContent = countdown;
+            if (countdown <= 0) {
+                clearInterval(countdownInterval);
+                countdownDiv.remove();
+            }
+        }, 1000);
+    }
+    
+    function showCTFRoundCountdown(countdown) {
+        const countdownDiv = document.createElement('div');
+        countdownDiv.id = 'ctf-round-countdown';
+        countdownDiv.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.95);
+            color: #fff;
+            padding: 60px;
+            border-radius: 20px;
+            font-size: 72px;
+            font-weight: bold;
+            z-index: 10000;
+            border: 4px solid #ff9800;
+            box-shadow: 0 0 50px rgba(255, 152, 0, 0.8);
+            text-align: center;
+            min-width: 200px;
+        `;
+        countdownDiv.textContent = countdown;
+        document.body.appendChild(countdownDiv);
+        
+        // Countdown animasyonu
+        const countdownInterval = setInterval(() => {
+            countdown--;
+            countdownDiv.textContent = countdown;
+            if (countdown <= 0) {
+                clearInterval(countdownInterval);
+                countdownDiv.remove();
+            }
+        }, 1000);
     }
     
     // Oyun state güncellendiğinde restart butonunu göster/gizle

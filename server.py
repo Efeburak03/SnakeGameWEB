@@ -1015,8 +1015,8 @@ def game_loop():
                 
                 # Bayrak teslim kontrolü
                 deliver_result = capture_the_flag_module.ctf_game_state.deliver_flag(client_id)
-                if deliver_result:
-                    if isinstance(deliver_result, dict) and deliver_result.get("round_won"):
+                if deliver_result and isinstance(deliver_result, dict):
+                    if deliver_result.get("round_won"):
                         # Round kazanıldı
                         winning_team = deliver_result["winning_team"]
                         winning_player = deliver_result["winning_player"]
@@ -1026,7 +1026,7 @@ def game_loop():
                             "winning_player": winning_player,
                             "message": f"{winning_team} takımı round'u kazandı!"
                         }, broadcast=True)
-                    else:
+                    elif deliver_result.get("flag_delivered"):
                         # Normal bayrak teslimi
                         print(f"[DEBUG] {client_id} bayrak teslim etti!")
                         socketio.emit('ctf_flag_delivered', {"message": "Bayrak teslim edildi!"}, broadcast=True)
@@ -1035,6 +1035,12 @@ def game_loop():
         if len(capture_the_flag_module.ctf_game_state.snakes) > 0:
             ctf_state = capture_the_flag_module.get_ctf_game_state()
             socketio.emit('ctf_state', ctf_state)
+            
+            # Round countdown kontrolü
+            if ctf_state.get('round_phase') == 'round_end':
+                socketio.emit('ctf_round_countdown', {
+                    "countdown": ctf_state.get('round_countdown', 0)
+                }, broadcast=True)
             
             # Oyun bitti mi kontrol et
             if capture_the_flag_module.ctf_game_state.game_phase == "finished":
@@ -1178,9 +1184,8 @@ def on_start_capture_the_flag(data):
         emit('error', {"message": "Geçersiz kullanıcı adı!"})
         return
     
-    # CTF oyununu başlat
+    # CTF oyununu sıfırla
     capture_the_flag_module.reset_ctf_game()
-    capture_the_flag_module.start_ctf_game()
     clients[sid] = client_id
     print(f"[DEBUG] {client_id} Capture the Flag başlattı")
     
@@ -1201,14 +1206,11 @@ def on_ctf_join(data):
         return
     
     # Oyuncuyu takıma ata
-    if selected_team and selected_team in [capture_the_flag_module.RED_TEAM, capture_the_flag_module.BLUE_TEAM]:
-        team = selected_team
-        # Seçilen takıma ekle
-        capture_the_flag_module.ctf_game_state.teams[team].append(client_id)
-        capture_the_flag_module.ctf_game_state.individual_scores[client_id] = 0
-    else:
-        # Otomatik takım ataması
-        team = capture_the_flag_module.ctf_game_state.assign_team(client_id)
+    team = capture_the_flag_module.ctf_game_state.assign_team(client_id, selected_team)
+    
+    if team is None:
+        emit('error', {"message": "Seçilen takım dolu!"})
+        return
     
     # Yılan oluştur - takım bazlı spawn pozisyonları
     if team == capture_the_flag_module.RED_TEAM:
@@ -1238,10 +1240,6 @@ def on_ctf_join(data):
     capture_the_flag_module.ctf_game_state.active[client_id] = True
     
     print(f"[DEBUG] {client_id} CTF'ye katıldı, takım: {team}")
-    
-    # İlk oyuncu katıldığında oyunu başlat
-    if len(capture_the_flag_module.ctf_game_state.snakes) == 1:
-        capture_the_flag_module.start_ctf_game()
     
     emit('ctf_joined', {
         "team": team,
@@ -1278,8 +1276,13 @@ def on_ctf_ready(data):
         return
     
     # Oyuncuyu hazır olarak işaretle
-    capture_the_flag_module.ctf_game_state.active[client_id] = True
+    capture_the_flag_module.ctf_game_state.set_player_ready(client_id)
     print(f"[DEBUG] {client_id} CTF'de hazır")
+    
+    # Tüm oyuncular hazır mı kontrol et
+    if capture_the_flag_module.ctf_game_state.all_players_ready():
+        print(f"[DEBUG] Tüm oyuncular hazır, sayım başlıyor")
+        emit('ctf_countdown_started', {"countdown": 3}, broadcast=True)
 
 @socketio.on('ctf_respawn')
 def on_ctf_respawn(data):

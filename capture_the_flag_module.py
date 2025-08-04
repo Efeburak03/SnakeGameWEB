@@ -12,26 +12,18 @@ CTF_BOARD_HEIGHT = 35
 CTF_START_LENGTH = 6
 CTF_TICK_RATE = 0.05
 CTF_RESPAWN_TIME = 5  # 5 saniye
+CTF_GAME_TIME = 300  # 5 dakika
+CTF_COUNTDOWN_TIME = 3  # Oyun başlama sayımı
+CTF_MAX_PLAYERS_PER_TEAM = 3
 
 # CTF Power-up Sabitleri
 CTF_POWERUP_TYPES = [
-    {"type": "shield", "color": (0, 0, 0)},        # Zırh (siyah)
-    {"type": "reverse", "color": (255, 255, 255)},   # Ters kontrol (beyaz)
-    {"type": "magnet", "color": (180, 0, 255)},      # Magnet (mor) - 2 blok yakınında bayrak çeker
-    {"type": "trail", "color": (0, 255, 200, 128)}, # İz bırakıcı (yarı saydam turkuaz)
-    {"type": "freeze", "color": (0, 200, 255)},      # Rakibi dondurma (açık mavi) - sadece karşı takım
-    {"type": "invisible", "color": (128, 128, 128)}, # Görünmezlik (gri)
+    {"type": "shield", "color": (0, 0, 0), "duration": 10},        # Zırh (siyah) - 10s
+    {"type": "reverse", "color": (255, 255, 255), "duration": 5},   # Ters kontrol (beyaz) - 5s
+    {"type": "magnet", "color": (180, 0, 255), "duration": 5},      # Magnet (mor) - 5s
+    {"type": "freeze", "color": (0, 200, 255), "duration": 5},      # Rakibi dondurma (açık mavi) - 5s
+    {"type": "invisible", "color": (128, 128, 128), "duration": 5}, # Görünmezlik (gri) - 5s
 ]
-
-# CTF Power-up Süreleri (saniye)
-CTF_POWERUP_DURATIONS = {
-    "shield": 10,
-    "reverse": 8,
-    "magnet": 12,
-    "trail": 10,
-    "freeze": 5,  # CTF'de 5 saniye
-    "invisible": 10
-}
 
 # CTF Power-up Spawn Olasılığı
 CTF_POWERUP_SPAWN_CHANCE = 0.01  # %1
@@ -42,7 +34,6 @@ BLUE_TEAM = "blue"
 TEAMS = [RED_TEAM, BLUE_TEAM]
 
 # Bayrak Bölgeleri (5x4 alan)
-# Kırmızı takım: Sol duvarın ortası
 RED_FLAG_AREA = {
     "x": 1,  # Sol duvar
     "y": 15,  # Ortaya yakın (35/2 - 2)
@@ -50,7 +41,6 @@ RED_FLAG_AREA = {
     "height": 5
 }
 
-# Mavi takım: Sağ duvarın ortası  
 BLUE_FLAG_AREA = {
     "x": 55,  # Sağ duvar (60-5)
     "y": 15,  # Ortaya yakın
@@ -58,22 +48,21 @@ BLUE_FLAG_AREA = {
     "height": 5
 }
 
-# Takım Doğuş Noktaları
+# Takım Doğuş Noktaları - Çakışma olmayacak şekilde
 RED_SPAWN_POSITIONS = [
-    (10, 10), (10, 15), (10, 20), (10, 25),
-    (15, 10), (15, 15), (15, 20), (15, 25),
-    (20, 10), (20, 15), (20, 20), (20, 25)
+    (8, 8), (8, 12), (8, 16), (8, 20), (8, 24), (8, 28),
+    (12, 8), (12, 12), (12, 16), (12, 20), (12, 24), (12, 28),
+    (16, 8), (16, 12), (16, 16), (16, 20), (16, 24), (16, 28)
 ]
 
 BLUE_SPAWN_POSITIONS = [
-    (40, 10), (40, 15), (40, 20), (40, 25),
-    (45, 10), (45, 15), (45, 20), (45, 25),
-    (50, 10), (50, 15), (50, 20), (50, 25)
+    (42, 8), (42, 12), (42, 16), (42, 20), (42, 24), (42, 28),
+    (46, 8), (46, 12), (46, 16), (46, 20), (46, 24), (46, 28),
+    (50, 8), (50, 12), (50, 16), (50, 20), (50, 24), (50, 28)
 ]
 
 # Skor Sistemi
-FLAG_CAPTURE_SCORE = 10
-FLAG_DELIVERY_SCORE = 15
+FLAG_CAPTURE_SCORE = 15
 KILL_SCORE = 5
 
 class CTFGameState:
@@ -97,6 +86,7 @@ class CTFGameState:
         self.respawn_timers = {}  # Oyuncuların respawn zamanları
         self.eliminated_snakes = {}  # Elenen oyuncuların yılanları
         self.eliminated_directions = {}  # Elenen oyuncuların yönleri
+        self.ready_players = {}  # Hazır olan oyuncular
         
         # Bayraklar - her takımın kendi alanında
         self.flags = {
@@ -104,37 +94,53 @@ class CTFGameState:
                 "pos": [RED_FLAG_AREA["x"] + 2, RED_FLAG_AREA["y"] + 2],  # Alanın ortası
                 "captured": False,
                 "carrier": None,
-                "dropped_pos": None,
                 "base_pos": [RED_FLAG_AREA["x"] + 2, RED_FLAG_AREA["y"] + 2]
             },
             BLUE_TEAM: {
                 "pos": [BLUE_FLAG_AREA["x"] + 2, BLUE_FLAG_AREA["y"] + 2],  # Alanın ortası
                 "captured": False,
                 "carrier": None,
-                "dropped_pos": None,
                 "base_pos": [BLUE_FLAG_AREA["x"] + 2, BLUE_FLAG_AREA["y"] + 2]
             }
         }
         
-        self.game_time = 300  # 5 dakika
-        self.game_phase = "preparation"  # preparation, active, finished
+        self.game_time = CTF_GAME_TIME
+        self.game_phase = "waiting"  # waiting, countdown, active, finished
+        self.countdown_time = CTF_COUNTDOWN_TIME
         self.start_time = None
         self.active = {}
         
         # Power-up sistemi
         self.powerups = []  # Haritadaki power-up'lar
         self.active_powerups = {}  # Oyuncuların aktif power-up'ları
-        self.powerup_spawn_timer = 0  # Power-up spawn zamanlayıcısı
         
-    def assign_team(self, player_id):
-        """Oyuncuyu rastgele bir takıma atar"""
-        if len(self.teams[RED_TEAM]) <= len(self.teams[BLUE_TEAM]):
-            team = RED_TEAM
+        # Round sistemi
+        self.round_countdown = 0  # Round sonrası sayım
+        self.round_phase = "normal"  # normal, round_end
+        
+    def can_join_team(self, team):
+        """Takıma katılabilir mi kontrol eder"""
+        if team not in TEAMS:
+            return False
+        return len(self.teams[team]) < CTF_MAX_PLAYERS_PER_TEAM
+    
+    def assign_team(self, player_id, selected_team=None):
+        """Oyuncuyu takıma atar"""
+        if selected_team and selected_team in TEAMS:
+            if self.can_join_team(selected_team):
+                team = selected_team
+            else:
+                return None  # Takım dolu
         else:
-            team = BLUE_TEAM
+            # Otomatik takım ataması
+            if len(self.teams[RED_TEAM]) <= len(self.teams[BLUE_TEAM]):
+                team = RED_TEAM
+            else:
+                team = BLUE_TEAM
         
         self.teams[team].append(player_id)
         self.individual_scores[player_id] = 0
+        self.ready_players[player_id] = False
         return team
     
     def get_player_team(self, player_id):
@@ -159,6 +165,44 @@ class CTFGameState:
         team2 = self.get_player_team(player2_id)
         return team1 and team2 and team1 == team2
     
+    def all_players_ready(self):
+        """Tüm oyuncular hazır mı kontrol eder"""
+        if not self.teams[RED_TEAM] and not self.teams[BLUE_TEAM]:
+            return False
+        
+        for team in TEAMS:
+            for player_id in self.teams[team]:
+                if not self.ready_players.get(player_id, False):
+                    return False
+        return True
+    
+    def set_player_ready(self, player_id):
+        """Oyuncuyu hazır olarak işaretler"""
+        self.ready_players[player_id] = True
+        
+        # Tüm oyuncular hazır mı kontrol et
+        if self.all_players_ready():
+            self.start_countdown()
+    
+    def start_countdown(self):
+        """Oyun başlama sayımını başlatır"""
+        self.game_phase = "countdown"
+        self.countdown_time = CTF_COUNTDOWN_TIME
+        print(f"[DEBUG] Oyun başlama sayımı başladı: {self.countdown_time}")
+    
+    def update_countdown(self):
+        """Sayımı günceller"""
+        if self.game_phase == "countdown":
+            self.countdown_time -= 1
+            if self.countdown_time <= 0:
+                self.start_game()
+    
+    def start_game(self):
+        """Oyunu başlatır"""
+        self.game_phase = "active"
+        self.start_time = time.time()
+        print(f"[DEBUG] CTF oyunu başladı!")
+    
     def can_capture_flag(self, player_id, flag_pos):
         """Oyuncunun bayrağı yakalayıp yakalayamayacağını kontrol eder"""
         if player_id not in self.snakes:
@@ -171,9 +215,7 @@ class CTFGameState:
         # Hangi bayrağın pozisyonu olduğunu bul
         flag_team = None
         for team in TEAMS:
-            # Bayrak pozisyonunu tuple formatına çevir
-            flag_pos_tuple = tuple(self.flags[team]["pos"])
-            if flag_pos_tuple == flag_pos:
+            if self.flags[team]["pos"] and flag_pos == tuple(self.flags[team]["pos"]):
                 flag_team = team
                 break
         
@@ -192,7 +234,10 @@ class CTFGameState:
         if player_id not in self.active or not self.active[player_id]:
             return False
         
-        print(f"[DEBUG] {player_id} {flag_team} bayrağını yakalayabilir")
+        # Oyuncu donmuş mu?
+        if self.has_powerup(player_id, "frozen"):
+            return False
+        
         return True
     
     def capture_flag(self, player_id, flag_team):
@@ -206,10 +251,7 @@ class CTFGameState:
         head_pos = list(self.snakes[player_id][0])
         self.flags[flag_team]["pos"] = head_pos
         
-        # Skor ver
-        self.individual_scores[player_id] += FLAG_CAPTURE_SCORE
-        
-        print(f"[DEBUG] {player_id} {flag_team} bayrağını yakaladı ve {head_pos} pozisyonuna taşıdı")
+        print(f"[DEBUG] {player_id} {flag_team} bayrağını yakaladı!")
         return True
     
     def drop_flag(self, flag_team):
@@ -219,11 +261,10 @@ class CTFGameState:
         
         # Bayrağı düşür ve pozisyonunu güncelle
         self.flags[flag_team]["captured"] = False
-        self.flags[flag_team]["dropped_pos"] = self.flags[flag_team]["pos"]
-        self.flags[flag_team]["pos"] = self.flags[flag_team]["dropped_pos"]  # Ana pozisyonu güncelle
+        self.flags[flag_team]["pos"] = self.flags[flag_team]["base_pos"]
         self.flags[flag_team]["carrier"] = None
         
-        print(f"[DEBUG] {flag_team} bayrağı {self.flags[flag_team]['pos']} pozisyonuna düştü")
+        print(f"[DEBUG] {flag_team} bayrağı düştü")
     
     def deliver_flag(self, player_id):
         """Bayrağı teslim eder"""
@@ -243,11 +284,9 @@ class CTFGameState:
         head = self.snakes[player_id][0]
         in_team_area = self.is_in_team_area(player_id, player_team)
         
-        print(f"[DEBUG] {player_id} pozisyon: {head}, takım: {player_team}, takım alanında: {in_team_area}")
-        print(f"[DEBUG] {opponent_team} bayrağını taşıyor mu: {self.flags[opponent_team]['carrier'] == player_id}")
-        
         if (self.flags[opponent_team]["carrier"] == player_id and 
-            in_team_area):
+            in_team_area and 
+            self.flags[opponent_team]["captured"]):
             
             print(f"[DEBUG] {player_id} {opponent_team} bayrağını {player_team} alanına teslim etti!")
             
@@ -257,17 +296,28 @@ class CTFGameState:
             self.flags[opponent_team]["pos"] = self.flags[opponent_team]["base_pos"]
             
             # Skor ver
-            self.individual_scores[player_id] += FLAG_DELIVERY_SCORE
-            self.team_scores[player_team] += FLAG_DELIVERY_SCORE
+            self.individual_scores[player_id] += FLAG_CAPTURE_SCORE
+            self.team_scores[player_team] += FLAG_CAPTURE_SCORE
             
-            # Round kazanıldı - oyunu yeniden başlat
-            print(f"[DEBUG] {player_team} takımı round'u kazandı! Oyun yeniden başlatılıyor...")
-            self.reset_round()
+            # Round sonu - oyunu yeniden başlat
+            self.start_round_end()
             
-            # Server'a round kazanma bildirimi gönder
-            return {"round_won": True, "winning_team": player_team, "winning_player": player_id}
+            return {"flag_delivered": True, "winning_team": player_team, "winning_player": player_id, "round_won": True}
         
         return False
+
+    def start_round_end(self):
+        """Round sonunu başlatır"""
+        self.round_phase = "round_end"
+        self.round_countdown = 3  # 3 saniye sayım
+        print(f"[DEBUG] Round sonu başladı, 3 saniye sonra yeniden başlayacak")
+    
+    def update_round_end(self):
+        """Round sonu sayımını günceller"""
+        if self.round_phase == "round_end":
+            self.round_countdown -= 1
+            if self.round_countdown <= 0:
+                self.reset_round()
     
     def reset_round(self):
         """Round sonunda oyunu yeniden başlatır"""
@@ -286,6 +336,13 @@ class CTFGameState:
         self.flags[BLUE_TEAM]["pos"] = self.flags[BLUE_TEAM]["base_pos"]
         self.flags[BLUE_TEAM]["captured"] = False
         self.flags[BLUE_TEAM]["carrier"] = None
+        
+        # Power-up'ları temizle
+        self.powerups = []
+        self.active_powerups = {}
+        
+        # Round fazını sıfırla
+        self.round_phase = "normal"
         
         print("[DEBUG] Round yeniden başlatıldı")
     
@@ -318,11 +375,16 @@ class CTFGameState:
             new_head[1] < 0 or new_head[1] >= CTF_BOARD_HEIGHT):
             return True
         
-        # Diğer yılanlarla çarpışma
+        # Diğer yılanlarla çarpışma (takım arkadaşları hariç)
         for other_id, snake in self.snakes.items():
             if other_id != player_id and other_id in self.active and self.active[other_id]:
-                if new_head in snake:
-                    return True
+                # Takım arkadaşları arasında çarpışma yok
+                if not self.is_teammate(player_id, other_id):
+                    if new_head in snake:
+                        # Kill puanı ver
+                        self.individual_scores[player_id] += KILL_SCORE
+                        self.team_scores[self.get_player_team(player_id)] += KILL_SCORE
+                        return True
         
         # Kendi yılanıyla çarpışma
         if player_id in self.snakes:
@@ -434,11 +496,10 @@ class CTFGameState:
         # Bayrak yakalama kontrolü
         for team in TEAMS:
             flag_pos = self.flags[team]["pos"]
-            flag_pos_tuple = tuple(flag_pos)
-            print(f"[DEBUG] {player_id} yeni pozisyon: {new_head}, {team} bayrak pozisyonu: {flag_pos_tuple}, yakalanmış: {self.flags[team]['captured']}")
-            if new_head == flag_pos_tuple and self.can_capture_flag(player_id, flag_pos_tuple):
-                print(f"[DEBUG] {player_id} {team} bayrağını yakaladı!")
-                self.capture_flag(player_id, team)
+            if flag_pos and not self.flags[team]["captured"]:  # Bayrak pozisyonu varsa ve yakalanmamışsa
+                flag_pos_tuple = tuple(flag_pos)
+                if new_head == flag_pos_tuple and self.can_capture_flag(player_id, flag_pos_tuple):
+                    self.capture_flag(player_id, team)
         
         return True
     
@@ -466,7 +527,7 @@ class CTFGameState:
             if self.flags[team]["carrier"] == player_id:
                 self.drop_flag(team)
         
-        print(f"[DEBUG] {player_id} elendi, {CTF_RESPAWN_TIME} saniye sonra manuel respawn mümkün")
+        print(f"[DEBUG] {player_id} elendi, {CTF_RESPAWN_TIME} saniye sonra respawn")
     
     def respawn_player(self, player_id):
         """Oyuncuyu yeniden doğur"""
@@ -515,11 +576,6 @@ class CTFGameState:
         print(f"[DEBUG] {player_id} respawn edildi")
         return True
     
-    def check_respawns(self):
-        """Respawn zamanı gelen oyuncuları yeniden doğur - CTF'de otomatik respawn yok"""
-        # CTF modunda otomatik respawn yok, sadece manuel respawn
-        return []
-    
     def get_game_state(self):
         """Oyun durumunu döndürür"""
         return {
@@ -532,18 +588,17 @@ class CTFGameState:
             "individual_scores": self.individual_scores,
             "game_time": self.game_time,
             "game_phase": self.game_phase,
+            "countdown_time": self.countdown_time,
             "teams": self.teams,
+            "ready_players": self.ready_players,
             "respawn_timers": self.respawn_timers,
             "eliminated_snakes": self.eliminated_snakes,
             "eliminated_directions": self.eliminated_directions,
             "powerups": self.powerups,
-            "active_powerups": self.active_powerups
+            "active_powerups": self.active_powerups,
+            "round_phase": self.round_phase,
+            "round_countdown": self.round_countdown
         }
-    
-    def start_game(self):
-        """Oyunu başlatır"""
-        self.game_phase = "active"
-        self.start_time = time.time()
     
     def update_game_time(self):
         """Oyun süresini günceller"""
@@ -560,7 +615,8 @@ class CTFGameState:
         current_time = time.time()
         for powerup in self.active_powerups[player_id]:
             if powerup["type"] == powerup_type:
-                if current_time - powerup["tick"] < CTF_POWERUP_DURATIONS.get(powerup_type, 10):
+                duration = next((pu["duration"] for pu in CTF_POWERUP_TYPES if pu["type"] == powerup_type), 5)
+                if current_time - powerup["tick"] < duration:
                     return True
         return False
     
@@ -632,7 +688,7 @@ class CTFGameState:
             
             self.active_powerups[player_id] = [
                 pu for pu in self.active_powerups[player_id]
-                if current_time - pu["tick"] < CTF_POWERUP_DURATIONS.get(pu["type"], 10)
+                if current_time - pu["tick"] < next((p["duration"] for p in CTF_POWERUP_TYPES if p["type"] == pu["type"]), 5)
             ]
     
     def get_winner(self):
@@ -666,12 +722,40 @@ def get_ctf_game_state():
 def update_ctf_game():
     """CTF oyununu günceller"""
     global ctf_game_state
-    ctf_game_state.update_game_time()
-    ctf_game_state.update_powerups()  # Power-up sistemini güncelle
     
-    # Respawn kontrolü
-    respawned_players = ctf_game_state.check_respawns()
-    if respawned_players:
-        print(f"[DEBUG] CTF respawn: {respawned_players} oyuncuları yeniden doğdu")
+    # Sayım güncellemesi
+    if ctf_game_state.game_phase == "countdown":
+        ctf_game_state.update_countdown()
     
-    return respawned_players 
+    # Oyun süresi güncellemesi
+    if ctf_game_state.game_phase == "active":
+        ctf_game_state.update_game_time()
+        ctf_game_state.update_powerups()
+        ctf_game_state.update_round_end()
+    
+    return []
+
+def remove_ctf_player(client_id):
+    """CTF oyunundan oyuncuyu çıkarır"""
+    global ctf_game_state
+    if client_id in ctf_game_state.snakes:
+        ctf_game_state.eliminate_player(client_id)
+    
+    # Takımlardan da çıkar
+    for team in TEAMS:
+        if client_id in ctf_game_state.teams[team]:
+            ctf_game_state.teams[team].remove(client_id)
+    
+    # Diğer verilerden de temizle
+    ctf_game_state.snakes.pop(client_id, None)
+    ctf_game_state.directions.pop(client_id, None)
+    ctf_game_state.colors.pop(client_id, None)
+    ctf_game_state.active.pop(client_id, None)
+    ctf_game_state.individual_scores.pop(client_id, None)
+    ctf_game_state.respawn_timers.pop(client_id, None)
+    ctf_game_state.eliminated_snakes.pop(client_id, None)
+    ctf_game_state.eliminated_directions.pop(client_id, None)
+    ctf_game_state.active_powerups.pop(client_id, None)
+    ctf_game_state.ready_players.pop(client_id, None)
+    
+    print(f"[DEBUG] {client_id} CTF oyunundan çıkarıldı") 
