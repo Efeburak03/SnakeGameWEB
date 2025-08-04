@@ -175,7 +175,7 @@ def reset_snake(client_id):
         game_state["portals"] = place_portals()      # Sadece ilk oyuncu girince portalları yerleştir
 
 # --- Power-up süreleri ---
-POWERUP_DURATIONS = {"speed": 10, "shield": 10, "invisible": 10, "reverse": 5, "freeze": 5, "giant": 10, "trail": 10}
+POWERUP_DURATIONS = {"speed": 10, "shield": 10, "invisible": 10, "reverse": 5, "freeze": 5, "giant": 10, "trail": 10, "magnet": 10}
 
 def has_powerup(cid, ptype):
     now = time.time()
@@ -358,7 +358,7 @@ async def game_loop():
                 else:
                     if tick_count % 2 == 0:
                         move_snake(client_id)
-        # --- Magnet power-up aktifse, elmalar sürekli çekilsin ---
+        # --- Magnet power-up aktifse, sadece normal elmalar çekilsin ---
         for cid, snake in game_state["snakes"].items():
             if has_powerup(cid, "magnet") and len(snake) > 0:
                 head = snake[0]
@@ -380,6 +380,7 @@ async def game_loop():
                     else:
                         new_foods.append((fx, fy))
                 game_state["food"] = new_foods
+        # Altın elma için magnet etkisi yok!
         # Her client için özel state gönder
         for client_id in list(game_state["snakes"].keys()):
             state_copy = copy.deepcopy(game_state)
@@ -392,7 +393,7 @@ async def game_loop():
             state_copy["powerup_timers"] = {}
             for cid in state_copy["snakes"].keys():
                 timers = {}
-                for ptype in ["speed","shield","invisible","reverse"]:
+                for ptype in ["speed","shield","invisible","reverse","magnet"]:
                     tleft = get_powerup_timeleft(cid, ptype)
                     if tleft > 0:
                         timers[ptype] = tleft
