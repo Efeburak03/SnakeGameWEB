@@ -339,8 +339,6 @@ async def game_loop():
                 same_type_count = sum(1 for p in game_state["powerups"] if p["type"] == pu["type"])
                 if same_type_count < 2:
                     game_state["powerups"].append(pu)
-                    if pu["type"] == "magnet":
-                        print(f"[DEBUG] Magnet power-up oluşturuldu: {pu['pos']}")
             # Altın elma üretimi
             if game_state["golden_food"] is None and random.random() < 0.01:
                 game_state["golden_food"] = random_food(
@@ -365,14 +363,12 @@ async def game_loop():
         for cid, snake in game_state["snakes"].items():
             if has_powerup(cid, "magnet") and len(snake) > 0:
                 head = snake[0]
-                print(f"[DEBUG] Magnet aktif: {cid}, baş pozisyonu: {head}")
                 new_foods = []
                 foods_eaten = 0  # Yenen yem sayısını takip et
                 attracted_foods = []  # Çekilen yemler için efekt
                 for fx, fy in game_state["food"]:
                     dist = abs(fx - head[0]) + abs(fy - head[1])
                     if dist <= 5:  # 5 kare mesafede
-                        print(f"[DEBUG] Magnet: Yem {fx},{fy} yılanın başına çekiliyor ve yeniyor (mesafe: {dist})")
                         # Çekilen yem için efekt ekle
                         attracted_foods.append({
                             "start_pos": [fx, fy],
@@ -390,12 +386,10 @@ async def game_loop():
                         )
                         if new_food:
                             new_foods.append(new_food)
-                            print(f"[DEBUG] Magnet: Yeni yem oluşturuldu: {new_food}")
                         # Yılanın boyunu artır (yemi yediği için)
                         if len(snake) > 0:
                             snake.append(snake[-1])  # Kuyruğu uzat
                             foods_eaten += 1  # Yenen yem sayısını artır
-                            print(f"[DEBUG] Magnet: Yılan {cid} yemi yedi, boyu uzadı")
                     else:
                         new_foods.append((fx, fy))
                 # Magnet efekti verilerini kaydet
@@ -407,7 +401,6 @@ async def game_loop():
                 # Yenen yem sayısı kadar puan ekle
                 if foods_eaten > 0:
                     game_state["scores"][cid] = game_state["scores"].get(cid, 0) + foods_eaten
-                    print(f"[DEBUG] Magnet: Yılan {cid} {foods_eaten} yem yedi, {foods_eaten} puan kazandı")
                 game_state["food"] = new_foods
         # Altın elma için magnet etkisi yok!
         # Her client için özel state gönder
@@ -760,8 +753,6 @@ def game_loop():
                 same_type_count = sum(1 for p in game_state["powerups"] if p["type"] == pu["type"])
                 if same_type_count < 2:
                     game_state["powerups"].append(pu)
-                    if pu["type"] == "magnet":
-                        print(f"[DEBUG] Magnet power-up oluşturuldu: {pu['pos']}")
             if game_state["golden_food"] is None and random.random() < 0.01:
                 game_state["golden_food"] = random_food(
                     game_state["snakes"],
@@ -785,14 +776,12 @@ def game_loop():
         for cid, snake in game_state["snakes"].items():
             if has_powerup(cid, "magnet") and len(snake) > 0:
                 head = snake[0]
-                print(f"[DEBUG] Magnet aktif: {cid}, baş pozisyonu: {head}")
                 new_foods = []
                 foods_eaten = 0  # Yenen yem sayısını takip et
                 attracted_foods = []  # Çekilen yemler için efekt
                 for fx, fy in game_state["food"]:
                     dist = abs(fx - head[0]) + abs(fy - head[1])
                     if dist <= 5:  # 5 kare mesafede
-                        print(f"[DEBUG] Magnet: Yem {fx},{fy} yılanın başına çekiliyor ve yeniyor (mesafe: {dist})")
                         # Çekilen yem için efekt ekle
                         attracted_foods.append({
                             "start_pos": [fx, fy],
@@ -810,12 +799,10 @@ def game_loop():
                         )
                         if new_food:
                             new_foods.append(new_food)
-                            print(f"[DEBUG] Magnet: Yeni yem oluşturuldu: {new_food}")
                         # Yılanın boyunu artır (yemi yediği için)
                         if len(snake) > 0:
                             snake.append(snake[-1])  # Kuyruğu uzat
                             foods_eaten += 1  # Yenen yem sayısını artır
-                            print(f"[DEBUG] Magnet: Yılan {cid} yemi yedi, boyu uzadı")
                     else:
                         new_foods.append((fx, fy))
                 # Magnet efekti verilerini kaydet
@@ -827,7 +814,6 @@ def game_loop():
                 # Yenen yem sayısı kadar puan ekle
                 if foods_eaten > 0:
                     game_state["scores"][cid] = game_state["scores"].get(cid, 0) + foods_eaten
-                    print(f"[DEBUG] Magnet: Yılan {cid} {foods_eaten} yem yedi, {foods_eaten} puan kazandı")
                 game_state["food"] = new_foods
         # Altın elma için magnet etkisi yok!
         

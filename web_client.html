@@ -744,9 +744,17 @@
         if (animationFrameId) {
             cancelAnimationFrame(animationFrameId);
         }
-        function renderLoop() {
-            // Animasyon zamanını güncelle
-            animationTime += 0.016; // ~60 FPS için
+        let lastTime = 0;
+        function renderLoop(currentTime) {
+            // FPS kontrolü - sadece 60 FPS'de çalıştır
+            if (currentTime - lastTime < 16.67) { // 60 FPS = 16.67ms
+                animationFrameId = requestAnimationFrame(renderLoop);
+                return;
+            }
+            lastTime = currentTime;
+            
+            // Animasyon zamanını güncelle (daha az sıklıkta)
+            animationTime += 0.016;
             
             if (currentGameMode === 'captureTheFlag' && ctfGameState) {
                 drawCTF();
@@ -757,7 +765,7 @@
             }
             animationFrameId = requestAnimationFrame(renderLoop);
         }
-        renderLoop();
+        renderLoop(0);
     }
     
     function stopRenderLoop() {
@@ -771,54 +779,45 @@
         // Canvas'ı tamamen temizle
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        // Sadece klasik mod için arka plan
+        // Sadece klasik mod için arka plan - optimize edilmiş
         if (assets.bg) {
-            const pattern = ctx.createPattern(assets.bg, 'repeat');
-            ctx.save();
-            ctx.fillStyle = pattern;
+            ctx.fillStyle = ctx.createPattern(assets.bg, 'repeat');
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.restore();
         } else if (assets.grass) {
-            const pattern = ctx.createPattern(assets.grass, 'repeat');
-            ctx.save();
-            ctx.fillStyle = pattern;
+            ctx.fillStyle = ctx.createPattern(assets.grass, 'repeat');
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.restore();
-        } else {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
         
         if (!gameState) {
             return;
         }
         
-        // Yılanlar
+        // Yılanlar - optimize edilmiş
         if (gameState.snakes) {
             for (const [pid, snake] of Object.entries(gameState.snakes)) {
-                let frozen = false;
-                if (gameState.powerup_timers && gameState.powerup_timers[pid] && gameState.powerup_timers[pid]["frozen"] > 0) frozen = true;
+                if (!snake || snake.length === 0) continue;
+                
+                const frozen = gameState.powerup_timers && gameState.powerup_timers[pid] && gameState.powerup_timers[pid]["frozen"] > 0;
                 ctx.fillStyle = frozen ? '#888' : (pid === myId ? 'lime' : 'yellow');
-                for (const [i, seg] of snake.entries()) {
+                
+                // Batch drawing için
+                for (const seg of snake) {
                     ctx.fillRect(seg[0]*CELL_SIZE, seg[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
                 }
             }
-        } else {
-            // Yılan yok
         }
         
-        // İzler (trails)
+        // İzler (trails) - optimize edilmiş
         if (gameState.trails) {
+            ctx.globalAlpha = 0.5;
+            ctx.fillStyle = 'rgba(0,255,200,0.5)';
             for (const [pid, trail] of Object.entries(gameState.trails)) {
-                // İzler için sabit turkuaz yarı saydam renk
-                let color = 'rgba(0,255,200,0.5)';
-                ctx.save();
-                ctx.globalAlpha = 0.5;
-                ctx.fillStyle = color;
+                if (!trail || trail.length === 0) continue;
                 for (const seg of trail) {
                     ctx.fillRect(seg[0]*CELL_SIZE, seg[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
                 }
-                ctx.restore();
             }
+            ctx.globalAlpha = 1.0;
         }
         
         // Engeller (yılanlardan sonra çiz)
@@ -1199,8 +1198,8 @@
 
     // --- Mesaj gönderme fonksiyonları ---
     function sendMove(dir) {
-        if (!myId) return;
-        // Gereksiz yön kontrolünü kaldır - bu tuş algılamasını geciktiriyor
+        if (!myId || !socket || !socket.connected) return;
+        // Direkt gönder - hiçbir kontrol yapma
         socket.emit('move', {client_id: myId, direction: dir});
         currentDirection = dir;
     }
