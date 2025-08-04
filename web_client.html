@@ -759,20 +759,15 @@
     let animationFrameId = null;
     
     function startRenderLoop() {
-        // Eğer zaten çalışıyorsa, yeni bir render loop başlatma
+        // Eğer zaten çalışıyorsa, önce durdur
         if (animationFrameId) {
-            return;
+            cancelAnimationFrame(animationFrameId);
+            animationFrameId = null;
         }
         
         let lastTime = 0;
-        let isRunning = true;
         
         function renderLoop(currentTime) {
-            // Eğer durdurulduysa, döngüyü sonlandır
-            if (!isRunning) {
-                return;
-            }
-            
             // FPS kontrolü - sadece 60 FPS'de çalıştır
             if (currentTime - lastTime < 16.67) { // 60 FPS = 16.67ms
                 animationFrameId = requestAnimationFrame(renderLoop);
@@ -783,31 +778,31 @@
             // Animasyon zamanını güncelle (daha az sıklıkta)
             animationTime += 0.016;
             
-            // Sadece oyun aktifse çiz
+            // Oyun durumuna göre çiz
             if (currentGameMode === 'captureTheFlag' && ctfGameState) {
                 drawCTF();
             } else if (currentGameMode === 'timeAttack' && timeAttackState) {
                 drawTimeAttack();
             } else if (gameState) {
                 draw();
+            } else {
+                // Ana menüde sadece canvas'ı temizle
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
             }
             
             animationFrameId = requestAnimationFrame(renderLoop);
         }
         
         renderLoop(0);
-        
-        // stopRenderLoop fonksiyonunu güncelle
-        window.stopRenderLoop = function() {
-            isRunning = false;
-            if (animationFrameId) {
-                cancelAnimationFrame(animationFrameId);
-                animationFrameId = null;
-            }
-        };
     }
     
-
+    
+    function stopRenderLoop() {
+        if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+            animationFrameId = null;
+        }
+    }
     
     function draw() {
         // Canvas'ı tamamen temizle
@@ -1147,9 +1142,6 @@
         
         // Canvas'ı boyutlandır
         resizeGameCanvas();
-        
-        // Render loop'u başlat
-        startRenderLoop();
         
         // Bağlantıyı kur
         connect();
@@ -1530,9 +1522,6 @@
         // Ana menü tuşunu göster
         document.getElementById('main-menu-btn').style.display = 'block';
         
-        // Render loop'u başlat
-        startRenderLoop();
-        
         // Canlanma butonu event listener
         document.getElementById('respawn-btn').addEventListener('click', () => {
             if (socket && socket.connected) {
@@ -1841,9 +1830,6 @@
         
         // Ana menü tuşunu göster
         document.getElementById('main-menu-btn').style.display = 'block';
-        
-        // Render loop'u başlat
-        startRenderLoop();
         
         // Respawn butonu event listener
         document.getElementById('ctf-respawn-btn').addEventListener('click', () => {
@@ -2316,11 +2302,6 @@
             socket = null;
         }
         
-        // Render loop'u durdur
-        if (window.stopRenderLoop) {
-            window.stopRenderLoop();
-        }
-        
         // Oyun durumlarını sıfırla
         gameState = null;
         timeAttackState = null;
@@ -2349,13 +2330,6 @@
         const ctfUI = document.getElementById('ctf-ui');
         if (ctfUI) ctfUI.remove();
         
-        // Canvas'ı temizle
-        const canvas = document.getElementById('game');
-        if (canvas) {
-            const ctx = canvas.getContext('2d');
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-        }
-        
         // Ana menüyü göster
         document.getElementById('ui').style.display = 'flex';
         
@@ -2379,7 +2353,8 @@
     // --- Başlat ---
     loadAssets(() => {
         resizeGameCanvas();
-        // Ana menüde render loop başlatma - sadece oyun modlarında başlatılacak
+        // Render loop'u başlat - sadece ana menü için
+        startRenderLoop();
     });
 
     // --- Tam ekran fonksiyonu ---
