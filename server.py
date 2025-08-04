@@ -737,6 +737,8 @@ def game_loop():
                 same_type_count = sum(1 for p in game_state["powerups"] if p["type"] == pu["type"])
                 if same_type_count < 2:
                     game_state["powerups"].append(pu)
+                    if pu["type"] == "magnet":
+                        print(f"[DEBUG] Magnet power-up oluşturuldu: {pu['pos']}")
             if game_state["golden_food"] is None and random.random() < 0.01:
                 game_state["golden_food"] = random_food(
                     game_state["snakes"],
@@ -754,6 +756,37 @@ def game_loop():
                 else:
                     if tick_count % 2 == 0:
                         move_snake(client_id)
+        
+        # --- Magnet power-up aktifse, yılanın başının 5 kare yakınındaki yemleri çekip yesin ---
+        for cid, snake in game_state["snakes"].items():
+            if has_powerup(cid, "magnet") and len(snake) > 0:
+                head = snake[0]
+                print(f"[DEBUG] Magnet aktif: {cid}, baş pozisyonu: {head}")
+                new_foods = []
+                for fx, fy in game_state["food"]:
+                    dist = abs(fx - head[0]) + abs(fy - head[1])
+                    if dist <= 5:  # 5 kare mesafede
+                        print(f"[DEBUG] Magnet: Yem {fx},{fy} yılanın başına çekiliyor ve yeniyor (mesafe: {dist})")
+                        # Yemi yedik, yeni yem oluştur
+                        new_food = random_food(
+                            game_state["snakes"],
+                            new_foods,
+                            game_state["obstacles"],
+                            game_state["portals"],
+                            game_state["powerups"],
+                            game_state.get("golden_food")
+                        )
+                        if new_food:
+                            new_foods.append(new_food)
+                            print(f"[DEBUG] Magnet: Yeni yem oluşturuldu: {new_food}")
+                        # Yılanın boyunu artır (yemi yediği için)
+                        if len(snake) > 0:
+                            snake.append(snake[-1])  # Kuyruğu uzat
+                            print(f"[DEBUG] Magnet: Yılan {cid} yemi yedi, boyu uzadı")
+                    else:
+                        new_foods.append((fx, fy))
+                game_state["food"] = new_foods
+        # Altın elma için magnet etkisi yok!
         
         # Time Attack yılanlarını hareket ettir
         for client_id in list(time_attack_module.time_attack_games.keys()):
