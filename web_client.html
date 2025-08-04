@@ -574,6 +574,7 @@
     let ctfGameState = null;
     let ctfTeam = null;
     let selectedTeam = null;
+    let animationTime = 0; // Magnet efektleri için animasyon zamanı
 
     // --- Görselleri yükle ---
     const assetFiles = {
@@ -744,6 +745,9 @@
             cancelAnimationFrame(animationFrameId);
         }
         function renderLoop() {
+            // Animasyon zamanını güncelle
+            animationTime += 0.016; // ~60 FPS için
+            
             if (currentGameMode === 'captureTheFlag' && ctfGameState) {
                 drawCTF();
             } else if (currentGameMode === 'timeAttack' && timeAttackState) {
@@ -926,6 +930,87 @@
                 ctx.arc(x*CELL_SIZE+CELL_SIZE/2, y*CELL_SIZE+CELL_SIZE/2, CELL_SIZE/2.2, 0, 2*Math.PI);
                 ctx.fillStyle = color;
                 ctx.fill();
+            }
+        }
+        
+        // Magnet efektleri
+        if (gameState.magnet_effects) {
+            for (const [playerId, effect] of Object.entries(gameState.magnet_effects)) {
+                const headPos = effect.head_pos;
+                
+                // Magnet alanı efekti (yılanın başı etrafında) - animasyonlu
+                ctx.save();
+                const pulseAlpha = 0.2 + 0.1 * Math.sin(animationTime * 3); // Nabız efekti
+                ctx.globalAlpha = pulseAlpha;
+                ctx.fillStyle = 'purple';
+                ctx.beginPath();
+                ctx.arc(headPos[0]*CELL_SIZE + CELL_SIZE/2, headPos[1]*CELL_SIZE + CELL_SIZE/2, CELL_SIZE * 3, 0, 2*Math.PI);
+                ctx.fill();
+                ctx.restore();
+                
+                // Magnet çizgileri (yılanın başından dışarıya doğru) - animasyonlu
+                ctx.save();
+                ctx.strokeStyle = 'purple';
+                ctx.lineWidth = 2;
+                
+                for (let i = 0; i < 8; i++) {
+                    const angle = (i * Math.PI * 2) / 8 + animationTime * 0.5; // Dönen çizgiler
+                    const startX = headPos[0]*CELL_SIZE + CELL_SIZE/2;
+                    const startY = headPos[1]*CELL_SIZE + CELL_SIZE/2;
+                    const lineLength = CELL_SIZE * 2.5 + Math.sin(animationTime * 2 + i) * CELL_SIZE * 0.5; // Değişen uzunluk
+                    const endX = startX + Math.cos(angle) * lineLength;
+                    const endY = startY + Math.sin(angle) * lineLength;
+                    
+                    const lineAlpha = 0.4 + 0.3 * Math.sin(animationTime * 2 + i);
+                    ctx.globalAlpha = lineAlpha;
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(startX, startY);
+                    ctx.lineTo(endX, endY);
+                    ctx.stroke();
+                }
+                ctx.restore();
+                
+                // Çekilen yemler için efekt - animasyonlu
+                if (effect.attracted_foods) {
+                    for (const foodEffect of effect.attracted_foods) {
+                        const startPos = foodEffect.start_pos;
+                        const endPos = foodEffect.end_pos;
+                        const progress = foodEffect.progress || 0;
+                        
+                        // Yem pozisyonunu hesapla (başlangıçtan bitişe doğru)
+                        const currentX = startPos[0] + (endPos[0] - startPos[0]) * progress;
+                        const currentY = startPos[1] + (endPos[1] - startPos[1]) * progress;
+                        
+                        // Çekilen yem efekti - animasyonlu
+                        ctx.save();
+                        const foodAlpha = 0.6 + 0.4 * Math.sin(animationTime * 4);
+                        ctx.globalAlpha = foodAlpha;
+                        ctx.fillStyle = 'red';
+                        ctx.beginPath();
+                        ctx.arc(currentX*CELL_SIZE + CELL_SIZE/2, currentY*CELL_SIZE + CELL_SIZE/2, CELL_SIZE/2, 0, 2*Math.PI);
+                        ctx.fill();
+                        
+                        // Parçacık efekti - animasyonlu
+                        ctx.strokeStyle = 'yellow';
+                        ctx.lineWidth = 1;
+                        for (let i = 0; i < 6; i++) {
+                            const particleAngle = (i * Math.PI * 2) / 6 + animationTime * 2;
+                            const particleRadius = CELL_SIZE * 0.8 + Math.sin(animationTime * 3 + i) * CELL_SIZE * 0.2;
+                            const particleX = currentX*CELL_SIZE + CELL_SIZE/2 + Math.cos(particleAngle) * particleRadius;
+                            const particleY = currentY*CELL_SIZE + CELL_SIZE/2 + Math.sin(particleAngle) * particleRadius;
+                            
+                            const particleAlpha = 0.5 + 0.5 * Math.sin(animationTime * 2 + i);
+                            ctx.globalAlpha = particleAlpha;
+                            
+                            ctx.beginPath();
+                            ctx.moveTo(currentX*CELL_SIZE + CELL_SIZE/2, currentY*CELL_SIZE + CELL_SIZE/2);
+                            ctx.lineTo(particleX, particleY);
+                            ctx.stroke();
+                        }
+                        ctx.restore();
+                    }
+                }
             }
         }
     }
