@@ -633,7 +633,12 @@
             socket.disconnect();
         }
         socket = io();
-        startRenderLoop(); // Render loop'u başlat
+        
+        // Render loop'u sadece ilk kez başlat
+        if (!window.renderLoopStarted) {
+            startRenderLoop();
+            window.renderLoopStarted = true;
+        }
         socket.on('connect', () => {
             if (currentGameMode === 'timeAttack') {
                 socket.emit('start_time_attack', {client_id: nickname, difficulty: currentDifficulty});
@@ -2306,6 +2311,7 @@
         
         // Render loop'u durdur
         stopRenderLoop();
+        window.renderLoopStarted = false;
         
         // Tüm UI elementlerini gizle
         document.getElementById('game-container').style.display = 'none';
@@ -2327,6 +2333,13 @@
         
         // Matrix yağmurunu başlat
         startMatrixRain();
+        
+        // Canvas'ı temizle
+        const canvas = document.getElementById('game');
+        if (canvas) {
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
     }
     
     // Oyun state güncellendiğinde restart butonunu göster/gizle
@@ -2345,7 +2358,10 @@
     // --- Başlat ---
     loadAssets(() => {
         resizeGameCanvas();
-        startRenderLoop(); // Render loop'u başlat
+        if (!window.renderLoopStarted) {
+            startRenderLoop(); // Render loop'u başlat
+            window.renderLoopStarted = true;
+        }
     });
 
     // --- Tam ekran fonksiyonu ---
