@@ -268,7 +268,7 @@ def reset_game():
 async def game_loop():
     global game_timer, waiting_for_restart, winner_id
     last_state_msg = None
-    powerup_spawn_chance = 0.01
+    powerup_spawn_chance = 0.05  # Geçici olarak artırıldı test için
     max_powerups = 4
     tick_count = 0
     waiting_for_restart = False
@@ -339,6 +339,8 @@ async def game_loop():
                 same_type_count = sum(1 for p in game_state["powerups"] if p["type"] == pu["type"])
                 if same_type_count < 2:
                     game_state["powerups"].append(pu)
+                    if pu["type"] == "magnet":
+                        print(f"[DEBUG] Magnet power-up oluşturuldu: {pu['pos']}")
             # Altın elma üretimi
             if game_state["golden_food"] is None and random.random() < 0.01:
                 game_state["golden_food"] = random_food(
@@ -381,8 +383,9 @@ async def game_loop():
                             new_foods.append(new_food)
                             print(f"[DEBUG] Magnet: Yeni yem oluşturuldu: {new_food}")
                         # Yılanın boyunu artır (yemi yediği için)
-                        snake.append(snake[-1])  # Kuyruğu uzat
-                        print(f"[DEBUG] Magnet: Yılan {cid} yemi yedi, boyu uzadı")
+                        if len(snake) > 0:
+                            snake.append(snake[-1])  # Kuyruğu uzat
+                            print(f"[DEBUG] Magnet: Yılan {cid} yemi yedi, boyu uzadı")
                     else:
                         new_foods.append((fx, fy))
                 game_state["food"] = new_foods
@@ -474,6 +477,8 @@ def move_snake(client_id):
             if client_id not in game_state["active_powerups"]:
                 game_state["active_powerups"][client_id] = []
             game_state["active_powerups"][client_id].append({"type": pu["type"], "tick": time.time()})
+            if pu["type"] == "magnet":
+                print(f"[DEBUG] Magnet power-up toplandı: {client_id}")
             # Freeze ve giant etkileri burada kalacak
             if pu["type"] == "freeze":
                 for other_id in game_state["snakes"]:
@@ -568,8 +573,6 @@ def move_snake(client_id):
     if not ate_food:
         snake.insert(0, new_head)
         snake.pop()
-    else:
-        snake.insert(0, new_head)
     # Uzunluk sınırı uygula
     if len(snake) > MAX_SNAKE_LENGTH:
         snake = snake[:MAX_SNAKE_LENGTH]
@@ -668,7 +671,7 @@ import threading
 def game_loop():
     global game_timer, waiting_for_restart, winner_id, game_state
     last_state_msg = None
-    powerup_spawn_chance = 0.01
+    powerup_spawn_chance = 0.05  # Geçici olarak artırıldı test için
     max_powerups = 4
     tick_count = 0
     waiting_for_restart = False
