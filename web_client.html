@@ -597,7 +597,11 @@
 
     // --- WebSocket bağlantısı ---
     function connect() {
+        if (socket) {
+            socket.disconnect();
+        }
         socket = io();
+        startRenderLoop(); // Render loop'u başlat
         socket.on('connect', () => {
             console.log('[DEBUG] connect: Bağlantı kuruldu, mod:', currentGameMode);
             if (currentGameMode === 'timeAttack') {
@@ -733,6 +737,32 @@
     }
 
     // --- Oyun çizimi ---
+    let animationFrameId = null;
+    
+    function startRenderLoop() {
+        if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+        }
+        function renderLoop() {
+            if (currentGameMode === 'captureTheFlag' && ctfGameState) {
+                drawCTF();
+            } else if (currentGameMode === 'timeAttack' && timeAttackState) {
+                drawTimeAttack();
+            } else if (gameState) {
+                draw();
+            }
+            animationFrameId = requestAnimationFrame(renderLoop);
+        }
+        renderLoop();
+    }
+    
+    function stopRenderLoop() {
+        if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+            animationFrameId = null;
+        }
+    }
+    
     function draw() {
         // Canvas'ı tamamen temizle
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -2265,7 +2295,7 @@
     // --- Başlat ---
     loadAssets(() => {
         resizeGameCanvas();
-        draw();
+        startRenderLoop(); // Render loop'u başlat
     });
 
     // --- Tam ekran fonksiyonu ---
