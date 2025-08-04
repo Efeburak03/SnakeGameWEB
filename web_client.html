@@ -759,14 +759,20 @@
     let animationFrameId = null;
     
     function startRenderLoop() {
-        // Eğer zaten çalışıyorsa, önce durdur
+        // Eğer zaten çalışıyorsa, yeni bir render loop başlatma
         if (animationFrameId) {
-            cancelAnimationFrame(animationFrameId);
-            animationFrameId = null;
+            return;
         }
         
         let lastTime = 0;
+        let isRunning = true;
+        
         function renderLoop(currentTime) {
+            // Eğer durdurulduysa, döngüyü sonlandır
+            if (!isRunning) {
+                return;
+            }
+            
             // FPS kontrolü - sadece 60 FPS'de çalıştır
             if (currentTime - lastTime < 16.67) { // 60 FPS = 16.67ms
                 animationFrameId = requestAnimationFrame(renderLoop);
@@ -788,15 +794,20 @@
             
             animationFrameId = requestAnimationFrame(renderLoop);
         }
+        
         renderLoop(0);
+        
+        // stopRenderLoop fonksiyonunu güncelle
+        window.stopRenderLoop = function() {
+            isRunning = false;
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+        };
     }
     
-    function stopRenderLoop() {
-        if (animationFrameId) {
-            cancelAnimationFrame(animationFrameId);
-            animationFrameId = null;
-        }
-    }
+
     
     function draw() {
         // Canvas'ı tamamen temizle
@@ -2306,7 +2317,9 @@
         }
         
         // Render loop'u durdur
-        stopRenderLoop();
+        if (window.stopRenderLoop) {
+            window.stopRenderLoop();
+        }
         
         // Oyun durumlarını sıfırla
         gameState = null;
@@ -2366,8 +2379,7 @@
     // --- Başlat ---
     loadAssets(() => {
         resizeGameCanvas();
-        // Render loop'u başlat - sadece ana menü için
-        startRenderLoop();
+        // Ana menüde render loop başlatma - sadece oyun modlarında başlatılacak
     });
 
     // --- Tam ekran fonksiyonu ---
