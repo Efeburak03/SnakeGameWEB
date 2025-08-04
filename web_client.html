@@ -604,7 +604,6 @@
         socket = io();
         startRenderLoop(); // Render loop'u başlat
         socket.on('connect', () => {
-            console.log('[DEBUG] connect: Bağlantı kuruldu, mod:', currentGameMode);
             if (currentGameMode === 'timeAttack') {
                 socket.emit('start_time_attack', {client_id: nickname, difficulty: currentDifficulty});
             } else if (currentGameMode === 'captureTheFlag') {
@@ -612,8 +611,6 @@
                 socket.emit('ctf_join', {client_id: nickname, nickname: nickname, team: selectedTeam});
             } else if (currentGameMode === 'classic') {
                 socket.emit('join', {client_id: nickname});
-            } else {
-                console.log('[DEBUG] connect: Bilinmeyen mod:', currentGameMode);
             }
         });
         
@@ -629,7 +626,6 @@
         
         // Time Attack event listener'ları
         socket.on('time_attack_started', (data) => {
-            console.log('[DEBUG] Time Attack başladı:', data);
             currentGameMode = 'timeAttack';
             currentDifficulty = data.difficulty;
             showTimeAttackUI();
@@ -645,7 +641,6 @@
         
         // Capture the Flag event listener'ları
         socket.on('capture_the_flag_started', (data) => {
-            console.log('[DEBUG] CTF başladı:', data);
             currentGameMode = 'captureTheFlag';
             showCTFUI();
             startCTFUITimer(); // UI timer'ını başlat
@@ -661,12 +656,10 @@
         });
         
         socket.on('ctf_game_over', (data) => {
-            console.log('[DEBUG] CTF oyunu bitti:', data);
             showCTFResult(data);
         });
         
         socket.on('ctf_respawned', (data) => {
-            console.log('[DEBUG] CTF respawn:', data);
             // Respawn butonunu gizle
             const respawnBtn = document.getElementById('ctf-respawn-btn');
             if (respawnBtn) {
@@ -675,7 +668,6 @@
         });
         
         socket.on('ctf_game_restarted', (data) => {
-            console.log('[DEBUG] CTF oyunu yeniden başlatıldı:', data);
             // Oyun yeniden başlatıldığında state'i temizle
             ctfGameState = null;
             // UI'ı güncelle
@@ -685,7 +677,6 @@
         });
         
         socket.on('ctf_flag_delivered', (data) => {
-            console.log('[DEBUG] CTF bayrak teslim edildi:', data);
             // Bayrak teslim edildiğinde bildirim göster
             alert('Bayrak teslim edildi! Oyun yeniden başlatılıyor...');
             // Kısa bir süre sonra oyunu yeniden başlat
@@ -697,7 +688,6 @@
         });
         
         socket.on('ctf_round_won', (data) => {
-            console.log('[DEBUG] CTF round kazanıldı:', data);
             // Round kazanıldığında bildirim göster
             const winningTeam = data.winning_team === 'red' ? 'Kırmızı Takım' : 'Mavi Takım';
             alert(`${winningTeam} round'u kazandı! Oyun yeniden başlatılıyor...`);
@@ -722,17 +712,14 @@
         });
         
         socket.on('ctf_respawn_failed', (data) => {
-            console.log('[DEBUG] CTF respawn failed:', data);
             // Alert kaldırıldı - sayaç zaten ekranda görünüyor
         });
         
         socket.on('ctf_countdown_started', (data) => {
-            console.log('[DEBUG] CTF countdown başladı:', data);
             showCTFCountdown(data.countdown);
         });
         
         socket.on('ctf_round_countdown', (data) => {
-            console.log('[DEBUG] CTF round countdown:', data);
             showCTFRoundCountdown(data.countdown);
         });
     }
@@ -1110,12 +1097,8 @@
             currentGameMode = 'classic';
         }
         
-        console.log('[DEBUG] startGameMode: Başlatılan mod:', currentGameMode);
-        
         // Canvas'ı boyutlandır
         resizeGameCanvas();
-        console.log('[DEBUG] startGameMode: Canvas boyutlandırıldı');
-        console.log('[DEBUG] startGameMode: Canvas boyutları:', canvas.width, 'x', canvas.height);
         
         // Bağlantıyı kur
         connect();
@@ -1278,17 +1261,14 @@
         img.style.maxWidth = '90vw';
         img.style.maxHeight = '90vh';
         img.onerror = function() {
-            console.error('[DEBUG] Eagle PNG yüklenemedi:', img.src);
             overlay.innerHTML = '<div style="color:white;font-size:2em;">Eagle PNG yüklenemedi! (' + img.src + ')</div>';
         };
         img.onload = function() {
-            console.log('[DEBUG] Eagle PNG yüklendi:', img.src);
         };
         overlay.appendChild(img);
         overlay.style.display = 'flex';
         overlay.style.visibility = 'visible';
         overlay.style.opacity = '1';
-        console.log('[DEBUG] Eagle overlay gösterildi', img.src, overlay);
     }
 
     // Oyuncu yeniden başlatınca eagle overlay'i kapat
@@ -1502,64 +1482,45 @@
     }
     
     function drawTimeAttack() {
-        console.log('[DEBUG] drawTimeAttack çağrıldı, timeAttackState:', timeAttackState);
-        console.log('[DEBUG] Canvas boyutları:', canvas.width, 'x', canvas.height);
-        console.log('[DEBUG] CELL_SIZE:', CELL_SIZE);
-        
         if (!timeAttackState) {
-            console.log('[DEBUG] timeAttackState yok, çıkıyor');
             return;
         }
         
-        console.log('[DEBUG] drawTimeAttack: Time Attack modu çiziliyor');
-        
         // Canvas'ı tamamen temizle
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        console.log('[DEBUG] drawTimeAttack: Canvas temizlendi');
         
         // Sadece Time Attack için arka plan
         if (assets.bg) {
-            console.log('[DEBUG] drawTimeAttack: Arka plan çiziliyor');
             const pattern = ctx.createPattern(assets.bg, 'repeat');
             ctx.save();
             ctx.fillStyle = pattern;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.restore();
         } else {
-            console.log('[DEBUG] drawTimeAttack: Arka plan asset yok, siyah arka plan');
             ctx.fillStyle = '#000';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
         
         // Yılan
         if (timeAttackState.snake) {
-            console.log('[DEBUG] drawTimeAttack: Yılan çiziliyor, uzunluk:', timeAttackState.snake.length);
             ctx.fillStyle = 'lime';
             for (const [i, seg] of timeAttackState.snake.entries()) {
                 const x = seg[0] * CELL_SIZE;
                 const y = seg[1] * CELL_SIZE;
                 ctx.fillRect(x, y, CELL_SIZE, CELL_SIZE);
-                console.log('[DEBUG] drawTimeAttack: Yılan segmenti çizildi:', seg, 'pozisyon:', x, y);
             }
-        } else {
-            console.log('[DEBUG] drawTimeAttack: Yılan yok');
         }
         
         // Yemler
         if (timeAttackState.food) {
-            console.log('[DEBUG] drawTimeAttack: Yemler çiziliyor, sayı:', timeAttackState.food.length);
             for (const food of timeAttackState.food) {
                 if (assets.apple) {
                     ctx.drawImage(assets.apple, food[0]*CELL_SIZE, food[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
-                    console.log('[DEBUG] drawTimeAttack: Elma asset ile çizildi:', food);
                 } else {
                     ctx.fillStyle = 'red';
                     ctx.fillRect(food[0]*CELL_SIZE, food[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
-                    console.log('[DEBUG] drawTimeAttack: Kırmızı kare ile yem çizildi:', food);
                 }
             }
-        } else {
-            console.log('[DEBUG] drawTimeAttack: Yem yok');
         }
         
         // Altın elma
@@ -1626,7 +1587,6 @@
         
         // Power-up'lar
         if (timeAttackState.powerups) {
-            console.log('[DEBUG] drawTimeAttack: Power-up\'lar çiziliyor, sayı:', timeAttackState.powerups.length);
             for (const powerup of timeAttackState.powerups) {
                 const [px, py] = powerup.pos;
                 const powerupColors = {
@@ -1665,11 +1625,7 @@
                 ctx.fillStyle = '#fff';
                 ctx.fill();
                 ctx.globalAlpha = 1.0;
-                
-                console.log('[DEBUG] drawTimeAttack: Power-up çizildi:', powerup.type, 'pozisyon:', px, py);
             }
-        } else {
-            console.log('[DEBUG] drawTimeAttack: Power-up yok');
         }
         
         updateTimeAttackUI();
@@ -2093,35 +2049,15 @@
                     if (remainingTime > 0) {
                         waitingDisplay.style.display = 'block';
                         waitingTime.textContent = remainingTime.toFixed(1);
-                        console.log('[DEBUG] Bekleme süresi gösteriliyor:', remainingTime.toFixed(1));
                     } else {
                         waitingDisplay.style.display = 'none';
-                        console.log('[DEBUG] Bekleme süresi gizlendi (süre doldu)');
                     }
                 } else {
                     waitingDisplay.style.display = 'none';
-                    console.log('[DEBUG] Respawn timer yok');
                 }
             } else {
                 waitingDisplay.style.display = 'none';
-                console.log('[DEBUG] Oyuncu aktif, bekleme süresi gizli');
             }
-        } else {
-            console.log('[DEBUG] Bekleme süresi elementi bulunamadı:', {
-                waitingDisplay: !!waitingDisplay,
-                waitingTime: !!waitingTime,
-                myId: myId
-            });
-        }
-        
-        // Bekleme süresi göstergesini her zaman güncelle (debug için)
-        if (waitingDisplay && waitingTime && myId && ctfGameState.active && !ctfGameState.active[myId]) {
-            console.log('[DEBUG] Bekleme süresi güncelleniyor:', {
-                myId: myId,
-                active: ctfGameState.active[myId],
-                respawnTimer: ctfGameState.respawn_timers?.[myId],
-                display: waitingDisplay.style.display
-            });
         }
         
         // Respawn butonunu kontrol et
@@ -2153,11 +2089,9 @@
     // CTF UI'ı daha sık güncelle (respawn countdown için)
     function startCTFUITimer() {
         if (currentGameMode === 'captureTheFlag') {
-            console.log('[DEBUG] CTF UI timer başlatıldı');
             setInterval(() => {
                 if (ctfGameState) {
                     updateCTFUI();
-                    // Debug log'u kaldır - performans için
                 }
             }, 100); // 100ms'de bir güncelle (10 FPS - daha az sıklık)
         }
@@ -2201,7 +2135,6 @@
         
         if (playAgainBtn) {
             playAgainBtn.addEventListener('click', () => {
-                console.log('[DEBUG] Tekrar Oyna butonuna tıklandı');
                 modal.remove();
                 // Oyun modu seçme ekranına dön
                 document.getElementById('ui').style.display = 'flex';
@@ -2219,7 +2152,6 @@
         
         if (backToMenuBtn) {
             backToMenuBtn.addEventListener('click', () => {
-                console.log('[DEBUG] Ana Menü butonuna tıklandı');
                 modal.remove();
                 // Ana menüye dön
                 document.getElementById('ui').style.display = 'flex';

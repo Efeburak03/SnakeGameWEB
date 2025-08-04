@@ -260,7 +260,6 @@ def reset_game():
         game_state["food"].append(pos)
     game_state["ready"] = {}
     game_timer = time.time()
-    print(f"[DEBUG] reset_game: game_timer set to {game_timer}")
     waiting_for_restart = False
     winner_id = None
 
@@ -277,7 +276,6 @@ async def game_loop():
     while True:
         # Oyun hiç başlamadıysa ve en az bir oyuncu varsa, sadece bir kez başlat
         if not game_started and game_timer is None and len(game_state["snakes"]) > 0:
-            print("[DEBUG] game_loop: Oyun başlatılıyor, reset_game çağrılıyor.")
             reset_game()
             game_started = True
         # Oyun bittiğinde (tüm oyuncular elendiğinde veya süre bittiğinde) tekrar başlatmak için flag'i sıfırla
@@ -440,7 +438,6 @@ async def game_loop():
         ctf_update_result = capture_the_flag_module.update_ctf_game()
         if ctf_update_result.get("game_over"):
             winner = ctf_update_result.get("winner")
-            print(f"[DEBUG] CTF oyunu bitti! Kazanan: {winner}")
             # CTF oyun durumunu tüm oyunculara gönder
             ctf_state = capture_the_flag_module.get_ctf_game_state()
             for ws, pid in list(clients.items()):
@@ -493,8 +490,6 @@ def move_snake(client_id):
             if client_id not in game_state["active_powerups"]:
                 game_state["active_powerups"][client_id] = []
             game_state["active_powerups"][client_id].append({"type": pu["type"], "tick": time.time()})
-            if pu["type"] == "magnet":
-                print(f"[DEBUG] Magnet power-up toplandı: {client_id}")
             # Freeze ve giant etkileri burada kalacak
             if pu["type"] == "freeze":
                 for other_id in game_state["snakes"]:
@@ -703,7 +698,6 @@ def game_loop():
         new_queue = []
         now = time.time()
         if not game_started and game_timer is None and len(game_state["snakes"]) > 0:
-            print("[DEBUG] game_loop: Oyun başlatılıyor, reset_game çağrılıyor.")
             reset_game()
             game_started = True
         if game_timer is None:
@@ -1027,14 +1021,13 @@ def game_loop():
                     if empty:
                         powerup_pos = random.choice(empty)
                         ta_game_state["powerups"].append({"pos": powerup_pos, "type": powerup_type})
-                        print(f"[DEBUG] Time Attack power-up oluşturuldu: {powerup_type} pozisyon: {powerup_pos}")
                     else:
-                        print(f"[DEBUG] Time Attack power-up için boş alan bulunamadı")
+                        pass
                 else:
                     if len(ta_game_state["powerups"]) >= time_attack_module.TIME_ATTACK_CONFIG["max_powerups"]:
-                        print(f"[DEBUG] Time Attack maksimum power-up sayısına ulaşıldı: {len(ta_game_state['powerups'])}")
+                        pass
                     elif random.random() >= time_attack_module.TIME_ATTACK_CONSTANTS["POWERUP_SPAWN_CHANCE"]:
-                        print(f"[DEBUG] Time Attack power-up olasılığı düşük: {random.random():.3f} >= {time_attack_module.TIME_ATTACK_CONSTANTS['POWERUP_SPAWN_CHANCE']}")
+                        pass
         
         # State'leri gönder
         for sid, client_id in list(clients.items()):
@@ -1045,7 +1038,6 @@ def game_loop():
                 state_copy["time_left"] = max(0, int(GAME_DURATION - (now - game_timer)))
             else:
                 state_copy["time_left"] = 0
-            print(f"[DEBUG] game_loop: time_left={state_copy['time_left']} game_timer={game_timer}")
             state_copy["winner_id"] = winner_id
             state_copy["waiting_for_restart"] = waiting_for_restart
             state_copy["powerup_timers"] = {}
@@ -1069,11 +1061,6 @@ def game_loop():
             # Time Attack state'i
             if client_id in time_attack_module.time_attack_games:
                 ta_state = copy.deepcopy(time_attack_module.time_attack_games[client_id])
-                print(f"[DEBUG] Time Attack state gönderiliyor: {client_id}")
-                print(f"[DEBUG] Power-up sayısı: {len(ta_state.get('powerups', []))}")
-                if ta_state.get('powerups'):
-                    for i, pu in enumerate(ta_state['powerups']):
-                        print(f"[DEBUG] Power-up {i}: {pu['type']} pozisyon: {pu['pos']}")
                 socketio.emit('time_attack_state', ta_state, room=sid)
         
         # CTF modunu güncelle
@@ -1095,7 +1082,6 @@ def game_loop():
                         # Round kazanıldı
                         winning_team = deliver_result["winning_team"]
                         winning_player = deliver_result["winning_player"]
-                        print(f"[DEBUG] {winning_team} takımı round'u kazandı! Oyuncu: {winning_player}")
                         socketio.emit('ctf_round_won', {
                             "winning_team": winning_team,
                             "winning_player": winning_player,
@@ -1103,7 +1089,6 @@ def game_loop():
                         }, broadcast=True)
                     elif deliver_result.get("flag_delivered"):
                         # Normal bayrak teslimi
-                        print(f"[DEBUG] {client_id} bayrak teslim etti!")
                         socketio.emit('ctf_flag_delivered', {"message": "Bayrak teslim edildi!"}, broadcast=True)
         
         # CTF durumunu tüm oyunculara gönder
@@ -1176,7 +1161,6 @@ def on_ready(data):
 
 @socketio.on('easteregg')
 def on_easteregg(data):
-    print('[DEBUG] Easter egg tetiklendi! Tüm oyuncular eleniyor.')
     for cid in list(game_state["snakes"].keys()):
         eliminate_snake(cid)
 
@@ -1199,8 +1183,6 @@ def on_start_time_attack(data):
     # Time Attack oyunu oluştur
     time_attack_module.create_time_attack_game(client_id, difficulty, BOARD_WIDTH, BOARD_HEIGHT)
     clients[sid] = client_id  # clients dictionary'sine ekle
-    print(f"[DEBUG] {client_id} Time Attack başlattı: {difficulty}")
-    print(f"[DEBUG] Time Attack games: {list(time_attack_module.time_attack_games.keys())}")
     emit('time_attack_started', {"difficulty": difficulty, "time": time_attack_module.TIME_ATTACK_CONFIG["difficulties"][difficulty]["time"]})
 
 @socketio.on('time_attack_move')
@@ -1246,7 +1228,6 @@ def on_time_attack_respawn(data):
     game_state["direction"] = "RIGHT"
     game_state["respawn_count"] += 1
     game_state["game_active"] = True  # Oyunu tekrar aktif hale getir
-    print(f"[DEBUG] {client_id} manuel canlanma! Canlanma sayısı: {game_state['respawn_count']}")
 
 # --- Capture the Flag Event Handler'ları ---
 @socketio.on('start_capture_the_flag')
@@ -1262,7 +1243,6 @@ def on_start_capture_the_flag(data):
     # CTF oyununu sıfırla
     capture_the_flag_module.reset_ctf_game()
     clients[sid] = client_id
-    print(f"[DEBUG] {client_id} Capture the Flag başlattı")
     
     # Oyun başladığını bildir
     emit('capture_the_flag_started', {"game_time": 300})
@@ -1352,11 +1332,9 @@ def on_ctf_ready(data):
     
     # Oyuncuyu hazır olarak işaretle
     capture_the_flag_module.ctf_game_state.set_player_ready(client_id)
-    print(f"[DEBUG] {client_id} CTF'de hazır")
     
     # Tüm oyuncular hazır mı kontrol et
     if capture_the_flag_module.ctf_game_state.all_players_ready():
-        print(f"[DEBUG] Tüm oyuncular hazır, sayım başlıyor")
         emit('ctf_countdown_started', {"countdown": 3}, broadcast=True)
 
 @socketio.on('ctf_respawn')
@@ -1368,21 +1346,18 @@ def on_ctf_respawn(data):
     
     # Oyuncuyu respawn et (5 saniye bekleme süresi kontrolü CTF modülünde yapılır)
     if client_id in capture_the_flag_module.ctf_game_state.respawn_timers:
-        print(f"[DEBUG] {client_id} CTF'de manuel respawn istedi")
         
         # Respawn dene (5 saniye bekleme süresi kontrolü yapılır)
         if capture_the_flag_module.ctf_game_state.respawn_player(client_id):
-            print(f"[DEBUG] {client_id} CTF'de respawn edildi")
             emit('ctf_respawned', {"client_id": client_id})
         else:
-            print(f"[DEBUG] {client_id} CTF'de henüz respawn olamaz (5 saniye bekleme süresi)")
             # Kalan süreyi hesapla ve client'a bildir
             current_time = time.time()
             respawn_time = capture_the_flag_module.ctf_game_state.respawn_timers[client_id]
             remaining_time = respawn_time - current_time
             emit('ctf_respawn_failed', {"client_id": client_id, "remaining_time": remaining_time})
     else:
-        print(f"[DEBUG] {client_id} CTF'de respawn timer'ı yok")
+        pass
 
 @socketio.on('ctf_restart')
 def on_ctf_restart(data):
@@ -1394,7 +1369,6 @@ def on_ctf_restart(data):
     # CTF oyununu yeniden başlat
     capture_the_flag_module.reset_ctf_game()
     capture_the_flag_module.start_ctf_game()
-    print(f"[DEBUG] {client_id} CTF'yi yeniden başlattı")
     
     # Tüm bağlı oyunculara oyunun yeniden başladığını bildir
     emit('ctf_game_restarted', {"message": "Oyun yeniden başlatıldı"}, broadcast=True)
@@ -1402,7 +1376,6 @@ def on_ctf_restart(data):
 @socketio.on('ctf_flag_delivered')
 def on_ctf_flag_delivered(data):
     """Bayrak teslim edildiğinde çağrılır"""
-    print(f"[DEBUG] Bayrak teslim edildi, oyun yeniden başlatılıyor")
     
     # Tüm oyuncuları yeniden spawn et
     for client_id in list(capture_the_flag_module.ctf_game_state.snakes.keys()):

@@ -202,7 +202,6 @@ class TimeAttackGame:
         # Engel kontrolü - klasik moddaki gibi
         for obs in self.game_state["obstacles"]:
             if new_head == tuple(obs["pos"]):
-                print(f"[DEBUG] Time Attack: Engel çarpışması - Tip: {obs['type']}, Pozisyon: {obs['pos']}")
                 if obs["type"] == "slow":
                     # Çalı engelleri yavaşlatma yapar (klasik moddaki gibi)
                     # Yavaşlatma etkisi için hareket hızını azalt
@@ -210,12 +209,9 @@ class TimeAttackGame:
                     pass
                 elif obs["type"] == "poison":
                     # Zehir engelleri yılanı kısaltır
-                    print(f"[DEBUG] Time Attack: Zehir engeli! Yılan uzunluğu: {len(self.game_state['snake'])}")
                     if len(self.game_state["snake"]) > 1:
                         self.game_state["snake"].pop()
-                        print(f"[DEBUG] Time Attack: Yılan kısaltıldı, yeni uzunluk: {len(self.game_state['snake'])}")
                     else:
-                        print(f"[DEBUG] Time Attack: Yılan çok kısa, eleniyor!")
                         self.eliminate_snake()
                         return
                 # Wall tipi engeller kaldırıldı
@@ -301,11 +297,10 @@ class TimeAttackGame:
             self.game_state["snake"] = [start_pos]
             self.game_state["direction"] = "RIGHT"
             self.game_state["respawn_count"] += 1
-            print(f"[DEBUG] {self.client_id} canlandı! Canlanma sayısı: {self.game_state['respawn_count']}")
+            pass
         else:
             # Oyun biter
             self.game_state["game_active"] = False
-            print(f"[DEBUG] {self.client_id} Time Attack oyunu bitti!")
     
     def activate_powerup(self, powerup_type):
         """Power-up aktivasyonu"""
@@ -337,7 +332,6 @@ class TimeAttackGame:
             # En yüksek skoru güncelle
             if self.game_state["score"] > self.game_state["high_score"]:
                 self.game_state["high_score"] = self.game_state["score"]
-            print(f"[DEBUG] {self.client_id} Time Attack süresi bitti! Skor: {self.game_state['score']}")
     
     def clear_expired_powerups(self):
         """Süresi dolmuş power-up'ları temizle"""
@@ -375,7 +369,6 @@ class TimeAttackGame:
         self.game_state["snake"] = [start_pos]
         self.game_state["direction"] = "RIGHT"
         self.game_state["respawn_count"] += 1
-        print(f"[DEBUG] {self.client_id} manuel canlanma! Canlanma sayısı: {self.game_state['respawn_count']}")
 
 # --- Modül fonksiyonları ---
 def create_time_attack_game(client_id, difficulty, board_width, board_height):
@@ -410,7 +403,6 @@ def update_all_time_attack_games():
                 # En yüksek skoru güncelle
                 if game_state["score"] > game_state["high_score"]:
                     game_state["high_score"] = game_state["score"]
-                print(f"[DEBUG] {client_id} Time Attack süresi bitti! Skor: {game_state['score']}")
 
 def clear_expired_powerups_all():
     """Tüm süresi dolmuş power-up'ları temizle"""
