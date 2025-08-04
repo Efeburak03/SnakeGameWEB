@@ -634,11 +634,6 @@
         }
         socket = io();
         
-        // Render loop'u sadece ilk kez başlat
-        if (!window.renderLoopStarted) {
-            startRenderLoop();
-            window.renderLoopStarted = true;
-        }
         socket.on('connect', () => {
             if (currentGameMode === 'timeAttack') {
                 socket.emit('start_time_attack', {client_id: nickname, difficulty: currentDifficulty});
@@ -764,9 +759,12 @@
     let animationFrameId = null;
     
     function startRenderLoop() {
+        // Eğer zaten çalışıyorsa, önce durdur
         if (animationFrameId) {
             cancelAnimationFrame(animationFrameId);
+            animationFrameId = null;
         }
+        
         let lastTime = 0;
         function renderLoop(currentTime) {
             // FPS kontrolü - sadece 60 FPS'de çalıştır
@@ -779,6 +777,7 @@
             // Animasyon zamanını güncelle (daha az sıklıkta)
             animationTime += 0.016;
             
+            // Sadece oyun aktifse çiz
             if (currentGameMode === 'captureTheFlag' && ctfGameState) {
                 drawCTF();
             } else if (currentGameMode === 'timeAttack' && timeAttackState) {
@@ -786,6 +785,7 @@
             } else if (gameState) {
                 draw();
             }
+            
             animationFrameId = requestAnimationFrame(renderLoop);
         }
         renderLoop(0);
@@ -1136,6 +1136,9 @@
         
         // Canvas'ı boyutlandır
         resizeGameCanvas();
+        
+        // Render loop'u başlat
+        startRenderLoop();
         
         // Bağlantıyı kur
         connect();
@@ -1516,6 +1519,9 @@
         // Ana menü tuşunu göster
         document.getElementById('main-menu-btn').style.display = 'block';
         
+        // Render loop'u başlat
+        startRenderLoop();
+        
         // Canlanma butonu event listener
         document.getElementById('respawn-btn').addEventListener('click', () => {
             if (socket && socket.connected) {
@@ -1824,6 +1830,9 @@
         
         // Ana menü tuşunu göster
         document.getElementById('main-menu-btn').style.display = 'block';
+        
+        // Render loop'u başlat
+        startRenderLoop();
         
         // Respawn butonu event listener
         document.getElementById('ctf-respawn-btn').addEventListener('click', () => {
@@ -2296,6 +2305,9 @@
             socket = null;
         }
         
+        // Render loop'u durdur
+        stopRenderLoop();
+        
         // Oyun durumlarını sıfırla
         gameState = null;
         timeAttackState = null;
@@ -2308,10 +2320,6 @@
         currentDifficulty = null;
         ctfTeam = null;
         selectedTeam = null;
-        
-        // Render loop'u durdur
-        stopRenderLoop();
-        window.renderLoopStarted = false;
         
         // Tüm UI elementlerini gizle
         document.getElementById('game-container').style.display = 'none';
@@ -2328,18 +2336,18 @@
         const ctfUI = document.getElementById('ctf-ui');
         if (ctfUI) ctfUI.remove();
         
-        // Ana menüyü göster
-        document.getElementById('ui').style.display = 'flex';
-        
-        // Matrix yağmurunu başlat
-        startMatrixRain();
-        
         // Canvas'ı temizle
         const canvas = document.getElementById('game');
         if (canvas) {
             const ctx = canvas.getContext('2d');
             ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
+        
+        // Ana menüyü göster
+        document.getElementById('ui').style.display = 'flex';
+        
+        // Matrix yağmurunu başlat
+        startMatrixRain();
     }
     
     // Oyun state güncellendiğinde restart butonunu göster/gizle
@@ -2358,10 +2366,8 @@
     // --- Başlat ---
     loadAssets(() => {
         resizeGameCanvas();
-        if (!window.renderLoopStarted) {
-            startRenderLoop(); // Render loop'u başlat
-            window.renderLoopStarted = true;
-        }
+        // Render loop'u başlat - sadece ana menü için
+        startRenderLoop();
     });
 
     // --- Tam ekran fonksiyonu ---
