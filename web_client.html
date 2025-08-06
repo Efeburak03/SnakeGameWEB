@@ -577,8 +577,6 @@
             ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
         
-        // Dalga efektleri (arka planda)
-        drawWaveEffect(ctx, animationTime);
         
         if (!gameState) {
             return;
@@ -598,6 +596,15 @@
                 // Particle efektleri
                 if (!frozen) {
                     createSnakeParticles(snake, color);
+                    
+                    // Speed power-up aktifse smoke efekti
+                    if (gameState.powerup_timers && gameState.powerup_timers[pid] && 
+                        gameState.powerup_timers[pid]["speed"] > 0 && snake.length > 0) {
+                        const head = snake[0];
+                        const headX = head[0] * CELL_SIZE + CELL_SIZE / 2;
+                        const headY = head[1] * CELL_SIZE + CELL_SIZE / 2;
+                        createSmokeEffect(headX, headY);
+                    }
                 }
             }
         }
@@ -745,6 +752,7 @@
         // Particle ve explosion efektlerini çiz
         updateAndDrawParticles(ctx);
         updateAndDrawExplosions(ctx);
+        updateAndDrawSmoke(ctx);
     }
 
     // --- Skor tablosu ---
@@ -1819,6 +1827,57 @@
         }
         
         ctx.restore();
+    }
+
+    // Smoke efekti sistemi
+    let smokeParticles = [];
+    
+    class SmokeParticle {
+        constructor(x, y) {
+            this.x = x;
+            this.y = y;
+            this.vx = (Math.random() - 0.5) * 2;
+            this.vy = (Math.random() - 0.5) * 2;
+            this.life = 1.0;
+            this.decay = 0.02;
+            this.size = Math.random() * 8 + 4;
+            this.opacity = 0.7;
+        }
+        
+        update() {
+            this.x += this.vx;
+            this.y += this.vy;
+            this.life -= this.decay;
+            this.size *= 1.02; // Smoke büyür
+            this.opacity *= 0.98;
+        }
+        
+        draw(ctx) {
+            if (this.life <= 0) return;
+            
+            ctx.save();
+            ctx.globalAlpha = this.opacity * this.life;
+            ctx.fillStyle = 'rgba(100, 100, 100, 0.8)';
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.restore();
+        }
+    }
+    
+    function createSmokeEffect(x, y) {
+        for (let i = 0; i < 3; i++) {
+            smokeParticles.push(new SmokeParticle(x, y));
+        }
+    }
+    
+    function updateAndDrawSmoke(ctx) {
+        smokeParticles = smokeParticles.filter(particle => particle.life > 0);
+        
+        for (const particle of smokeParticles) {
+            particle.update();
+            particle.draw(ctx);
+        }
     }
 
 
