@@ -5,7 +5,7 @@ import copy
 import os
 from flask import Flask, send_from_directory, request
 from flask_socketio import SocketIO, emit, disconnect
-from common import MSG_MOVE, MSG_STATE, MSG_RESTART, create_state_message, MAX_PLAYERS, get_snake_color, OBSTACLE_TYPES, POWERUP_TYPES, INITIAL_FOOD_COUNT
+from common import MSG_MOVE, MSG_STATE, MSG_RESTART, create_state_message, MAX_PLAYERS, get_snake_color, get_snake_color_info, OBSTACLE_TYPES, POWERUP_TYPES, INITIAL_FOOD_COUNT
 
 # Time Attack modülünü import et
 import time_attack_module
