@@ -466,6 +466,22 @@
         });
         
         socket.on('state', (state) => {
+            // Yem yeme kontrolü - önceki state ile karşılaştır
+            if (gameState && gameState.food && state.food) {
+                // Yem sayısı azaldıysa patlama efekti oluştur
+                if (state.food.length < gameState.food.length) {
+                    // Yenen yemi bul
+                    for (const oldFood of gameState.food) {
+                        if (!state.food.some(f => f[0] === oldFood[0] && f[1] === oldFood[1])) {
+                            const x = oldFood[0] * CELL_SIZE + CELL_SIZE / 2;
+                            const y = oldFood[1] * CELL_SIZE + CELL_SIZE / 2;
+                            createExplosion(x, y, '#ff0000');
+                            break;
+                        }
+                    }
+                }
+            }
+            
             gameState = state;
             if (!myId) myId = nickname;
             // Oyun durumu değiştiğinde readySent'i sıfırla
@@ -561,21 +577,27 @@
             ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
         
+        // Dalga efektleri (arka planda)
+        drawWaveEffect(ctx, animationTime);
+        
         if (!gameState) {
             return;
         }
         
-        // Yılanlar - optimize edilmiş
+        // Yılanlar - yeni efektlerle
         if (gameState.snakes) {
             for (const [pid, snake] of Object.entries(gameState.snakes)) {
                 if (!snake || snake.length === 0) continue;
                 
                 const frozen = gameState.powerup_timers && gameState.powerup_timers[pid] && gameState.powerup_timers[pid]["frozen"] > 0;
-                ctx.fillStyle = frozen ? '#888' : (pid === myId ? 'lime' : 'yellow');
+                const color = frozen ? '#888' : (pid === myId ? 'lime' : 'yellow');
                 
-                // Batch drawing için
-                for (const seg of snake) {
-                    ctx.fillRect(seg[0]*CELL_SIZE, seg[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                // Yeni efektli çizim
+                drawSnakeWithEffects(ctx, snake, color, pid === myId);
+                
+                // Particle efektleri
+                if (!frozen) {
+                    createSnakeParticles(snake, color);
                 }
             }
         }
@@ -685,23 +707,10 @@
             msgDiv.style.display = 'none';
         }
         
-        // Power-up'lar
+        // Power-up'lar - animasyonlu
         if (gameState.powerups) {
             for (const pu of gameState.powerups) {
-                const [x, y] = pu.pos;
-                let color = '#ccc';
-                if (pu.type === 'speed') color = 'blue';
-                else if (pu.type === 'shield') color = 'black';
-                else if (pu.type === 'invisible') color = 'gray';
-                else if (pu.type === 'reverse') color = 'white';
-                else if (pu.type === 'freeze') color = '#00c8ff';
-                else if (pu.type === 'giant') color = 'orange';
-                else if (pu.type === 'magnet') color = 'purple';
-                else if (pu.type === 'trail') color = '#00e6e6'; // Trail power-up için turkuaz
-                ctx.beginPath();
-                ctx.arc(x*CELL_SIZE+CELL_SIZE/2, y*CELL_SIZE+CELL_SIZE/2, CELL_SIZE/2.2, 0, 2*Math.PI);
-                ctx.fillStyle = color;
-                ctx.fill();
+                drawAnimatedPowerup(ctx, pu, animationTime);
             }
         }
         
@@ -732,6 +741,10 @@
                 }
             }
         }
+        
+        // Particle ve explosion efektlerini çiz
+        updateAndDrawParticles(ctx);
+        updateAndDrawExplosions(ctx);
     }
 
     // --- Skor tablosu ---
@@ -1530,6 +1543,283 @@
 
     // --- Tam ekran fonksiyonu ---
     // (Kaldırıldı)
+
+    // Particle sistemi için değişkenler
+    let particles = [];
+    
+    // Particle sınıfı
+    class Particle {
+        constructor(x, y, color) {
+            this.x = x;
+            this.y = y;
+            this.vx = (Math.random() - 0.5) * 4;
+            this.vy = (Math.random() - 0.5) * 4;
+            this.life = 1.0;
+            this.decay = 0.02;
+            this.color = color;
+            this.size = Math.random() * 3 + 1;
+        }
+        
+        update() {
+            this.x += this.vx;
+            this.y += this.vy;
+            this.life -= this.decay;
+            this.size *= 0.98;
+        }
+        
+        draw(ctx) {
+            if (this.life <= 0) return;
+            
+            ctx.save();
+            ctx.globalAlpha = this.life;
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.restore();
+        }
+    }
+    
+    // Yılan hareket ederken particle oluştur
+    function createSnakeParticles(snake, color) {
+        if (!snake || snake.length === 0) return;
+        
+        const head = snake[0];
+        const headX = head[0] * CELL_SIZE + CELL_SIZE / 2;
+        const headY = head[1] * CELL_SIZE + CELL_SIZE / 2;
+        
+        // Her 3 frame'de bir particle oluştur
+        if (Math.random() < 0.3) {
+            for (let i = 0; i < 2; i++) {
+                particles.push(new Particle(headX, headY, color));
+            }
+        }
+    }
+    
+    // Particle'ları güncelle ve çiz
+    function updateAndDrawParticles(ctx) {
+        particles = particles.filter(particle => particle.life > 0);
+        
+        for (const particle of particles) {
+            particle.update();
+            particle.draw(ctx);
+        }
+    }
+
+    // Gradient ve glow efektleri
+    function drawSnakeWithEffects(ctx, snake, color, isMySnake = false) {
+        if (!snake || snake.length === 0) return;
+        
+        // Glow efekti (sadece kendi yılanımız için)
+        if (isMySnake) {
+            ctx.save();
+            ctx.shadowColor = color;
+            ctx.shadowBlur = 15;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+        }
+        
+        // Gradient efekti
+        for (let i = 0; i < snake.length; i++) {
+            const seg = snake[i];
+            const x = seg[0] * CELL_SIZE;
+            const y = seg[1] * CELL_SIZE;
+            
+            // Gradient oluştur (baştan kuyruğa doğru)
+            const gradient = ctx.createLinearGradient(x, y, x + CELL_SIZE, y + CELL_SIZE);
+            const alpha = 1 - (i / snake.length) * 0.5; // Kuyruğa doğru şeffaflık
+            
+            if (isMySnake) {
+                gradient.addColorStop(0, `rgba(255, 255, 255, ${alpha})`);
+                gradient.addColorStop(0.5, color);
+                gradient.addColorStop(1, `rgba(0, 255, 0, ${alpha})`);
+            } else {
+                gradient.addColorStop(0, color);
+                gradient.addColorStop(1, `rgba(255, 255, 0, ${alpha})`);
+            }
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(x, y, CELL_SIZE, CELL_SIZE);
+            
+            // Baş için özel efekt
+            if (i === 0) {
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(x + CELL_SIZE/2, y + CELL_SIZE/2, CELL_SIZE/4, 0, 2*Math.PI);
+                ctx.fill();
+            }
+        }
+        
+        if (isMySnake) {
+            ctx.restore();
+        }
+    }
+
+    // Animasyonlu power-up efektleri
+    function drawAnimatedPowerup(ctx, powerup, time) {
+        const [x, y] = powerup.pos;
+        const centerX = x * CELL_SIZE + CELL_SIZE / 2;
+        const centerY = y * CELL_SIZE + CELL_SIZE / 2;
+        
+        // Power-up renkleri - daha parlak ve görünür
+        const powerupColors = {
+            'speed': '#0066ff',
+            'shield': '#ff6600',
+            'invisible': '#ffff00',
+            'reverse': '#ff0066',
+            'freeze': '#00ffff',
+            'giant': '#ff9900',
+            'magnet': '#cc00cc',
+            'trail': '#00ffcc'
+        };
+        
+        const color = powerupColors[powerup.type] || '#ff0000';
+        
+        // Yanıp sönen efekt
+        const pulse = 0.5 + 0.5 * Math.sin(time * 5);
+        const size = CELL_SIZE * (0.8 + pulse * 0.4);
+        
+        // Dış halka - daha görünür
+        ctx.save();
+        ctx.globalAlpha = 0.6;
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, size, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.restore();
+        
+        // İç halka - daha görünür
+        ctx.save();
+        ctx.globalAlpha = 0.9;
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, size * 0.6, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.restore();
+        
+        // Merkez - daha büyük
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, CELL_SIZE / 2.5, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // Dönen halkalar - daha görünür
+        const rotation = time * 2;
+        for (let i = 0; i < 3; i++) {
+            const angle = rotation + (i * Math.PI * 2 / 3);
+            const ringX = centerX + Math.cos(angle) * CELL_SIZE * 0.8;
+            const ringY = centerY + Math.sin(angle) * CELL_SIZE * 0.8;
+            
+            ctx.save();
+            ctx.globalAlpha = 0.8;
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(ringX, ringY, 4, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.restore();
+        }
+        
+        // Power-up tipini gösteren yazı
+        ctx.save();
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 2;
+        ctx.font = 'bold 10px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.strokeText(powerup.type.toUpperCase(), centerX, centerY);
+        ctx.fillText(powerup.type.toUpperCase(), centerX, centerY);
+        ctx.restore();
+        
+        // Dış border - daha görünür hale getirmek için
+        ctx.save();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, CELL_SIZE / 2 + 2, 0, 2 * Math.PI);
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    // Yem yeme patlama efekti
+    let explosionParticles = [];
+    
+    class ExplosionParticle {
+        constructor(x, y, color) {
+            this.x = x;
+            this.y = y;
+            this.vx = (Math.random() - 0.5) * 8;
+            this.vy = (Math.random() - 0.5) * 8;
+            this.life = 1.0;
+            this.decay = 0.05;
+            this.color = color;
+            this.size = Math.random() * 6 + 3;
+        }
+        
+        update() {
+            this.x += this.vx;
+            this.y += this.vy;
+            this.life -= this.decay;
+            this.size *= 0.95;
+        }
+        
+        draw(ctx) {
+            if (this.life <= 0) return;
+            
+            ctx.save();
+            ctx.globalAlpha = this.life;
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.restore();
+        }
+    }
+    
+    function createExplosion(x, y, color) {
+        for (let i = 0; i < 15; i++) {
+            explosionParticles.push(new ExplosionParticle(x, y, color));
+        }
+    }
+    
+    function updateAndDrawExplosions(ctx) {
+        explosionParticles = explosionParticles.filter(particle => particle.life > 0);
+        
+        for (const particle of explosionParticles) {
+            particle.update();
+            particle.draw(ctx);
+        }
+    }
+
+    // Dalga efektleri
+    function drawWaveEffect(ctx, time) {
+        const waveCount = 3;
+        const waveSpeed = 0.5;
+        const waveAmplitude = 2;
+        
+        ctx.save();
+        ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
+        ctx.lineWidth = 1;
+        
+        for (let i = 0; i < waveCount; i++) {
+            ctx.beginPath();
+            
+            for (let x = 0; x < canvas.width; x += 5) {
+                const waveOffset = (time * waveSpeed + i * Math.PI * 2 / waveCount) * 0.01;
+                const y = canvas.height / 2 + Math.sin(x * 0.02 + waveOffset) * waveAmplitude;
+                
+                if (x === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+            
+            ctx.stroke();
+        }
+        
+        ctx.restore();
+    }
 
 
     </script>
