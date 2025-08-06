@@ -32,6 +32,109 @@ def get_snake_color(client_id):
     idx = abs(hash(str(client_id))) % len(colors)
     return colors[idx]
 
+# Gelişmiş renk sistemi - her renk için özel efekt bilgileri
+SNAKE_COLORS = [
+    {
+        "name": "Yeşil",
+        "color": (0, 255, 0),
+        "hex": "#00ff00",
+        "effect": "nature",  # Doğa teması - yaprak efektleri
+        "particle_color": "#00ff00",
+        "glow_color": "#00ff40"
+    },
+    {
+        "name": "Sarı",
+        "color": (255, 255, 0),
+        "hex": "#ffff00", 
+        "effect": "fire",  # Ateş teması - ateş parçacıkları
+        "particle_color": "#ff6600",
+        "glow_color": "#ffaa00"
+    },
+    {
+        "name": "Camgöbeği",
+        "color": (0, 255, 255),
+        "hex": "#00ffff",
+        "effect": "ice",  # Buz teması - buz kristalleri
+        "particle_color": "#00ccff",
+        "glow_color": "#00ffff"
+    },
+    {
+        "name": "Mor",
+        "color": (255, 0, 255),
+        "hex": "#ff00ff",
+        "effect": "magic",  # Sihir teması - büyü parçacıkları
+        "particle_color": "#cc00ff",
+        "glow_color": "#ff00ff"
+    },
+    {
+        "name": "Turuncu",
+        "color": (255, 128, 0),
+        "hex": "#ff8000",
+        "effect": "energy",  # Enerji teması - enerji dalgaları
+        "particle_color": "#ff4400",
+        "glow_color": "#ff6600"
+    },
+    {
+        "name": "Mavi-Mor",
+        "color": (128, 0, 255),
+        "hex": "#8000ff",
+        "effect": "cosmic",  # Kozmik tema - yıldız parçacıkları
+        "particle_color": "#4400ff",
+        "glow_color": "#6600ff"
+    },
+    {
+        "name": "Kırmızı",
+        "color": (255, 0, 0),
+        "hex": "#ff0000",
+        "effect": "blood",  # Kan teması - kan damlaları
+        "particle_color": "#cc0000",
+        "glow_color": "#ff0000"
+    },
+    {
+        "name": "Açık Mavi",
+        "color": (0, 128, 255),
+        "hex": "#0080ff",
+        "effect": "water",  # Su teması - su damlaları
+        "particle_color": "#0066cc",
+        "glow_color": "#0080ff"
+    },
+
+    {
+        "name": "Altın",
+        "color": (255, 215, 0),
+        "hex": "#ffd700",
+        "effect": "gold",  # Altın teması - altın parçacıkları
+        "particle_color": "#ffcc00",
+        "glow_color": "#ffd700"
+    },
+    {
+        "name": "Gümüş",
+        "color": (192, 192, 192),
+        "hex": "#c0c0c0",
+        "effect": "metal",  # Metal teması - metal parçacıkları
+        "particle_color": "#a0a0a0",
+        "glow_color": "#c0c0c0"
+    },
+    {
+        "name": "Neon Yeşil",
+        "color": (57, 255, 20),
+        "hex": "#39ff14",
+        "effect": "neon",  # Neon teması - neon ışıkları
+        "particle_color": "#00ff00",
+        "glow_color": "#39ff14"
+    }
+]
+
+def get_snake_color_info(client_id):
+    """Oyuncuya rastgele renk bilgisi döndürür"""
+    idx = abs(hash(str(client_id))) % len(SNAKE_COLORS)
+    return SNAKE_COLORS[idx]
+
+def get_snake_color(client_id):
+    """Geriye uyumluluk için eski fonksiyon"""
+    color_info = get_snake_color_info(client_id)
+    return color_info["color"]
+
 # Oyun durumu mesajı oluşturucu
 def create_state_message(state):
     import json

@@ -76,6 +76,7 @@ game_state = {
     "golden_food": None,
     "active": {},
     "colors": {},
+    "color_info": {},  # Her oyuncu için renk bilgisi
     "obstacles": [],
     "scores": {},
     "portals": [],
@@ -149,20 +150,12 @@ def reset_snake(client_id):
     game_state["snakes"][client_id] = snake
     game_state["directions"][client_id] = "UP"
     game_state["active"][client_id] = True
-    # Kullanılan renkleri bul ve çakışmayı engelle
-    used_colors = set(game_state["colors"].values())
-    all_colors = [
-        (0, 255, 0),    # Yeşil
-        (255, 255, 0),  # Sarı
-        (0, 255, 255),  # Camgöbeği
-        (255, 0, 255),  # Mor
-        (255, 128, 0),  # Turuncu
-        (128, 0, 255),  # Mavi-mor
-        (255, 0, 0),    # Kırmızı
-        (0, 128, 255),  # Açık mavi
-    ]
-    color = next((c for c in all_colors if c not in used_colors), get_snake_color(client_id))
-    game_state["colors"][client_id] = color
+    
+    # Gelişmiş renk sistemi - her oyuncuya özel renk bilgisi
+    color_info = get_snake_color_info(client_id)
+    game_state["colors"][client_id] = color_info["color"]
+    game_state["color_info"][client_id] = color_info  # Renk bilgilerini de sakla
+    
     if client_id not in game_state["scores"]:
         game_state["scores"][client_id] = 0
     if client_id not in game_state["active_powerups"]:

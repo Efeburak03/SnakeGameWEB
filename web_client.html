@@ -146,6 +146,64 @@
             margin-right: 0;
             pointer-events: auto;
         }
+        
+        /* Renk bilgisi paneli */
+        #color-info-panel {
+            position: fixed;
+            top: 60px;
+            right: 20px;
+            background: rgba(34,34,34,0.85);
+            border-radius: 12px;
+            padding: 16px;
+            color: #fff;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            z-index: 20;
+            pointer-events: none;
+            min-width: 200px;
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        #color-info-panel h3 {
+            margin: 0 0 12px 0;
+            font-size: 1.1em;
+            color: #4caf50;
+            text-align: center;
+        }
+        
+        .color-display {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+        
+        .color-swatch {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.3);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .color-name {
+            font-weight: 600;
+            font-size: 1em;
+        }
+        
+        .effect-name {
+            font-size: 0.9em;
+            color: #ccc;
+            font-style: italic;
+        }
+        
+        .effect-description {
+            font-size: 0.8em;
+            color: #aaa;
+            margin-top: 8px;
+            text-align: center;
+            line-height: 1.3;
+        }
         @media (max-width: 900px) {
             #touch-controls {
                 display: flex !important;
@@ -383,6 +441,20 @@
     
 
     <div id="top-usernames" style="display:none;"></div>
+    
+    <!-- Renk bilgisi paneli -->
+    <div id="color-info-panel" style="display:none;">
+        <h3>🎨 Oyuncu Rengi</h3>
+        <div class="color-display">
+            <div class="color-swatch" id="color-swatch"></div>
+            <div>
+                <div class="color-name" id="color-name">-</div>
+                <div class="effect-name" id="effect-name">-</div>
+            </div>
+        </div>
+        <div class="effect-description" id="effect-description">-</div>
+    </div>
+    
     <div id="game-container" style="display:none; width:100vw; height:100vh;">
         <div style="position:relative; width:100vw; height:100vh;">
             <canvas id="game"></canvas>
@@ -489,6 +561,7 @@
             
             updateTopUsernames();
             updateRestartButton();
+            updateColorInfoPanel(); // Renk bilgisi panelini güncelle
         });
         
         // Time Attack event listener'ları
@@ -582,41 +655,61 @@
             return;
         }
         
-        // Yılanlar - yeni efektlerle
+        // Yılanlar - renk bazlı efektlerle
         if (gameState.snakes) {
             for (const [pid, snake] of Object.entries(gameState.snakes)) {
                 if (!snake || snake.length === 0) continue;
                 
                 const frozen = gameState.powerup_timers && gameState.powerup_timers[pid] && gameState.powerup_timers[pid]["frozen"] > 0;
-                const color = frozen ? '#888' : (pid === myId ? 'lime' : 'yellow');
                 
-                // Yeni efektli çizim
-                drawSnakeWithEffects(ctx, snake, color, pid === myId);
-                
-                // Particle efektleri
-                if (!frozen) {
-                    createSnakeParticles(snake, color);
-                    
-                                    // Speed power-up aktifse smoke efekti
-                if (gameState.powerup_timers && gameState.powerup_timers[pid] && 
-                    gameState.powerup_timers[pid]["speed"] > 0 && snake.length > 0) {
-                    const head = snake[0];
-                    const headX = head[0] * CELL_SIZE + CELL_SIZE / 2;
-                    const headY = head[1] * CELL_SIZE + CELL_SIZE / 2;
-                    createSmokeEffect(headX, headY);
-                }
-                
-                // Shield power-up aktifse aura efekti
-                if (gameState.powerup_timers && gameState.powerup_timers[pid] && 
-                    gameState.powerup_timers[pid]["shield"] > 0 && snake.length > 0) {
-                    const head = snake[0];
-                    const headX = head[0] * CELL_SIZE;
-                    const headY = head[1] * CELL_SIZE;
-                    createShieldAura(headX, headY, pid);
+                // Renk bilgilerini al
+                let colorInfo = null;
+                if (gameState.color_info && gameState.color_info[pid]) {
+                    colorInfo = gameState.color_info[pid];
                 } else {
-                    // Shield aktif değilse aura'yı kaldır
-                    removeShieldAura(pid);
+                    // Geriye uyumluluk için varsayılan renk
+                    const color = frozen ? '#888' : (pid === myId ? 'lime' : 'yellow');
+                    colorInfo = { hex: color, effect: "nature" };
                 }
+                
+                // Renk bazlı efektli çizim
+                if (colorInfo && colorInfo.effect) {
+                    drawSnakeWithColorEffects(ctx, snake, colorInfo, pid === myId);
+                } else {
+                    // Eski sistem için fallback
+                    const color = frozen ? '#888' : (pid === myId ? 'lime' : 'yellow');
+                    drawSnakeWithEffects(ctx, snake, color, pid === myId);
+                }
+                
+                // Renk bazlı parçacık efektleri
+                if (!frozen) {
+                    if (colorInfo && colorInfo.effect) {
+                        createColorBasedParticles(snake, colorInfo);
+                    } else {
+                        const color = frozen ? '#888' : (pid === myId ? 'lime' : 'yellow');
+                        createSnakeParticles(snake, color);
+                    }
+                    
+                    // Speed power-up aktifse smoke efekti
+                    if (gameState.powerup_timers && gameState.powerup_timers[pid] && 
+                        gameState.powerup_timers[pid]["speed"] > 0 && snake.length > 0) {
+                        const head = snake[0];
+                        const headX = head[0] * CELL_SIZE + CELL_SIZE / 2;
+                        const headY = head[1] * CELL_SIZE + CELL_SIZE / 2;
+                        createSmokeEffect(headX, headY);
+                    }
+                    
+                    // Shield power-up aktifse aura efekti
+                    if (gameState.powerup_timers && gameState.powerup_timers[pid] && 
+                        gameState.powerup_timers[pid]["shield"] > 0 && snake.length > 0) {
+                        const head = snake[0];
+                        const headX = head[0] * CELL_SIZE;
+                        const headY = head[1] * CELL_SIZE;
+                        createShieldAura(headX, headY, pid);
+                    } else {
+                        // Shield aktif değilse aura'yı kaldır
+                        removeShieldAura(pid);
+                    }
                 }
             }
         }
@@ -2007,7 +2100,404 @@
         }
     }
 
+    // Renk bazlı efekt sistemi
+    const COLOR_EFFECTS = {
+        "nature": {
+            name: "Doğa",
+            particles: "leaf",
+            glow: "#00ff40",
+            trail: "#00ff00"
+        },
+        "fire": {
+            name: "Ateş", 
+            particles: "fire",
+            glow: "#ffaa00",
+            trail: "#ff6600"
+        },
+        "ice": {
+            name: "Buz",
+            particles: "ice",
+            glow: "#00ffff", 
+            trail: "#00ccff"
+        },
+        "magic": {
+            name: "Sihir",
+            particles: "magic",
+            glow: "#ff00ff",
+            trail: "#cc00ff"
+        },
+        "energy": {
+            name: "Enerji",
+            particles: "energy", 
+            glow: "#ff6600",
+            trail: "#ff4400"
+        },
+        "cosmic": {
+            name: "Kozmik",
+            particles: "star",
+            glow: "#6600ff",
+            trail: "#4400ff"
+        },
+        "blood": {
+            name: "Kan",
+            particles: "blood",
+            glow: "#ff0000",
+            trail: "#cc0000"
+        },
+        "water": {
+            name: "Su",
+            particles: "water",
+            glow: "#0080ff",
+            trail: "#0066cc"
+        },
 
+        "gold": {
+            name: "Altın",
+            particles: "gold",
+            glow: "#ffd700",
+            trail: "#ffcc00"
+        },
+        "metal": {
+            name: "Metal",
+            particles: "metal",
+            glow: "#c0c0c0",
+            trail: "#a0a0a0"
+        },
+        "neon": {
+            name: "Neon",
+            particles: "neon",
+            glow: "#39ff14",
+            trail: "#00ff00"
+        }
+    };
+
+    // Renk bazlı parçacık sınıfları
+    class LeafParticle extends Particle {
+        constructor(x, y, color) {
+            super(x, y, color);
+            this.rotation = Math.random() * Math.PI * 2;
+            this.rotationSpeed = (Math.random() - 0.5) * 0.2;
+            this.size = Math.random() * 4 + 2;
+        }
+        
+        update() {
+            super.update();
+            this.rotation += this.rotationSpeed;
+        }
+        
+        draw(ctx) {
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            ctx.rotate(this.rotation);
+            ctx.globalAlpha = this.life / this.maxLife;
+            
+            // Yaprak şekli
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, this.size, this.size/2, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.restore();
+        }
+    }
+
+    class FireParticle extends Particle {
+        constructor(x, y, color) {
+            super(x, y, color);
+            this.size = Math.random() * 6 + 3;
+            this.flicker = 0;
+        }
+        
+        update() {
+            super.update();
+            this.flicker = Math.sin(Date.now() * 0.01) * 0.3 + 0.7;
+        }
+        
+        draw(ctx) {
+            ctx.save();
+            ctx.globalAlpha = (this.life / this.maxLife) * this.flicker;
+            
+            // Ateş efekti
+            const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size);
+            gradient.addColorStop(0, '#ffff00');
+            gradient.addColorStop(0.5, this.color);
+            gradient.addColorStop(1, 'transparent');
+            
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.restore();
+        }
+    }
+
+    class IceParticle extends Particle {
+        constructor(x, y, color) {
+            super(x, y, color);
+            this.size = Math.random() * 4 + 2;
+            this.rotation = Math.random() * Math.PI * 2;
+        }
+        
+        draw(ctx) {
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            ctx.rotate(this.rotation);
+            ctx.globalAlpha = this.life / this.maxLife;
+            
+            // Buz kristali
+            ctx.strokeStyle = this.color;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            for (let i = 0; i < 6; i++) {
+                const angle = (i * Math.PI) / 3;
+                const x = Math.cos(angle) * this.size;
+                const y = Math.sin(angle) * this.size;
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.stroke();
+            
+            ctx.restore();
+        }
+    }
+
+    class MagicParticle extends Particle {
+        constructor(x, y, color) {
+            super(x, y, color);
+            this.size = Math.random() * 5 + 3;
+            this.rotation = 0;
+        }
+        
+        update() {
+            super.update();
+            this.rotation += 0.1;
+        }
+        
+        draw(ctx) {
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            ctx.rotate(this.rotation);
+            ctx.globalAlpha = this.life / this.maxLife;
+            
+            // Büyü sembolü
+            ctx.strokeStyle = this.color;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(0, 0, this.size, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.moveTo(-this.size, 0);
+            ctx.lineTo(this.size, 0);
+            ctx.moveTo(0, -this.size);
+            ctx.lineTo(0, this.size);
+            ctx.stroke();
+            
+            ctx.restore();
+        }
+    }
+
+    class StarParticle extends Particle {
+        constructor(x, y, color) {
+            super(x, y, color);
+            this.size = Math.random() * 4 + 2;
+            this.rotation = Math.random() * Math.PI * 2;
+            this.twinkle = Math.random();
+        }
+        
+        update() {
+            super.update();
+            this.twinkle = Math.sin(Date.now() * 0.005 + this.rotation) * 0.5 + 0.5;
+        }
+        
+        draw(ctx) {
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            ctx.rotate(this.rotation);
+            ctx.globalAlpha = (this.life / this.maxLife) * this.twinkle;
+            
+            // Yıldız şekli
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            for (let i = 0; i < 5; i++) {
+                const angle = (i * Math.PI * 2) / 5 - Math.PI / 2;
+                const x = Math.cos(angle) * this.size;
+                const y = Math.sin(angle) * this.size;
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.fill();
+            
+            ctx.restore();
+        }
+    }
+
+
+
+    // Renk bazlı parçacık oluşturucu
+    function createColorBasedParticles(snake, colorInfo) {
+        if (!snake || snake.length === 0 || !colorInfo) return;
+        
+        const head = snake[0];
+        const headX = head[0] * CELL_SIZE + CELL_SIZE / 2;
+        const headY = head[1] * CELL_SIZE + CELL_SIZE / 2;
+        
+        // Her 3 frame'de bir particle oluştur
+        if (Math.random() < 0.3) {
+            const effect = COLOR_EFFECTS[colorInfo.effect];
+            if (!effect) return;
+            
+            for (let i = 0; i < 2; i++) {
+                let particle;
+                switch (colorInfo.effect) {
+                    case "nature":
+                        particle = new LeafParticle(headX, headY, effect.trail);
+                        break;
+                    case "fire":
+                        particle = new FireParticle(headX, headY, effect.trail);
+                        break;
+                    case "ice":
+                        particle = new IceParticle(headX, headY, effect.trail);
+                        break;
+                    case "magic":
+                        particle = new MagicParticle(headX, headY, effect.trail);
+                        break;
+                    case "cosmic":
+                        particle = new StarParticle(headX, headY, effect.trail);
+                        break;
+
+                    default:
+                        particle = new Particle(headX, headY, effect.trail);
+                }
+                particles.push(particle);
+            }
+        }
+    }
+
+    // Renk bazlı yılan çizimi
+    function drawSnakeWithColorEffects(ctx, snake, colorInfo, isMySnake = false) {
+        if (!snake || snake.length === 0 || !colorInfo) return;
+        
+        const effect = COLOR_EFFECTS[colorInfo.effect];
+        if (!effect) return;
+        
+        // Glow efekti (sadece kendi yılanımız için)
+        if (isMySnake) {
+            ctx.save();
+            ctx.shadowColor = effect.glow;
+            ctx.shadowBlur = 15;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+        }
+        
+        // Gradient efekti
+        for (let i = 0; i < snake.length; i++) {
+            const seg = snake[i];
+            const x = seg[0] * CELL_SIZE;
+            const y = seg[1] * CELL_SIZE;
+            
+            // Gradient oluştur (baştan kuyruğa doğru)
+            const gradient = ctx.createLinearGradient(x, y, x + CELL_SIZE, y + CELL_SIZE);
+            const alpha = 1 - (i / snake.length) * 0.5; // Kuyruğa doğru şeffaflık
+            
+            if (isMySnake) {
+                gradient.addColorStop(0, `rgba(255, 255, 255, ${alpha})`);
+                gradient.addColorStop(0.5, colorInfo.hex);
+                gradient.addColorStop(1, `${effect.trail}${Math.floor(alpha * 255).toString(16).padStart(2, '0')}`);
+            } else {
+                gradient.addColorStop(0, colorInfo.hex);
+                gradient.addColorStop(1, `${effect.trail}${Math.floor(alpha * 255).toString(16).padStart(2, '0')}`);
+            }
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(x, y, CELL_SIZE, CELL_SIZE);
+            
+            // Baş için özel efekt
+            if (i === 0) {
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(x + CELL_SIZE/2, y + CELL_SIZE/2, CELL_SIZE/4, 0, 2*Math.PI);
+                ctx.fill();
+            }
+        }
+        
+        if (isMySnake) {
+            ctx.restore();
+        }
+    }
+
+    // Yılan hareket ederken particle oluştur
+    function createSnakeParticles(snake, color) {
+        if (!snake || snake.length === 0) return;
+        
+        const head = snake[0];
+        const headX = head[0] * CELL_SIZE + CELL_SIZE / 2;
+        const headY = head[1] * CELL_SIZE + CELL_SIZE / 2;
+        
+        // Her 3 frame'de bir particle oluştur
+        if (Math.random() < 0.3) {
+            for (let i = 0; i < 2; i++) {
+                particles.push(new Particle(headX, headY, color));
+            }
+        }
+    }
+
+    // Renk bilgisi panelini güncelle
+    function updateColorInfoPanel() {
+        const panel = document.getElementById('color-info-panel');
+        const colorSwatch = document.getElementById('color-swatch');
+        const colorName = document.getElementById('color-name');
+        const effectName = document.getElementById('effect-name');
+        const effectDescription = document.getElementById('effect-description');
+        
+        if (!gameState || !myId || !gameState.color_info || !gameState.color_info[myId]) {
+            panel.style.display = 'none';
+            return;
+        }
+        
+        const colorInfo = gameState.color_info[myId];
+        const effect = COLOR_EFFECTS[colorInfo.effect];
+        
+        if (!effect) {
+            panel.style.display = 'none';
+            return;
+        }
+        
+        // Panel'i göster
+        panel.style.display = 'block';
+        
+        // Renk swatch'ını güncelle
+        colorSwatch.style.backgroundColor = colorInfo.hex;
+        
+        // Renk adını güncelle
+        colorName.textContent = colorInfo.name;
+        
+        // Efekt adını güncelle
+        effectName.textContent = `${effect.name} Teması`;
+        
+        // Efekt açıklamasını güncelle
+        const descriptions = {
+            "nature": "Doğa teması - yaprak parçacıkları ve yeşil efektler",
+            "fire": "Ateş teması - ateş parçacıkları ve turuncu efektler",
+            "ice": "Buz teması - buz kristalleri ve mavi efektler",
+            "magic": "Sihir teması - büyü parçacıkları ve mor efektler",
+            "energy": "Enerji teması - enerji dalgaları ve turuncu efektler",
+            "cosmic": "Kozmik tema - yıldız parçacıkları ve mavi-mor efektler",
+            "blood": "Kan teması - kan damlaları ve kırmızı efektler",
+            "water": "Su teması - su damlaları ve mavi efektler",
+
+            "gold": "Altın teması - altın parçacıkları ve sarı efektler",
+            "metal": "Metal teması - metal parçacıkları ve gümüş efektler",
+            "neon": "Neon teması - neon ışıkları ve parlak yeşil efektler"
+        };
+        
+        effectDescription.textContent = descriptions[colorInfo.effect] || "Özel efekt teması";
+    }
+
+    // Dokunmatik yön tuşları
     </script>
 </body>
 </html>
