@@ -597,14 +597,26 @@
                 if (!frozen) {
                     createSnakeParticles(snake, color);
                     
-                    // Speed power-up aktifse smoke efekti
-                    if (gameState.powerup_timers && gameState.powerup_timers[pid] && 
-                        gameState.powerup_timers[pid]["speed"] > 0 && snake.length > 0) {
-                        const head = snake[0];
-                        const headX = head[0] * CELL_SIZE + CELL_SIZE / 2;
-                        const headY = head[1] * CELL_SIZE + CELL_SIZE / 2;
-                        createSmokeEffect(headX, headY);
-                    }
+                                    // Speed power-up aktifse smoke efekti
+                if (gameState.powerup_timers && gameState.powerup_timers[pid] && 
+                    gameState.powerup_timers[pid]["speed"] > 0 && snake.length > 0) {
+                    const head = snake[0];
+                    const headX = head[0] * CELL_SIZE + CELL_SIZE / 2;
+                    const headY = head[1] * CELL_SIZE + CELL_SIZE / 2;
+                    createSmokeEffect(headX, headY);
+                }
+                
+                // Shield power-up aktifse aura efekti
+                if (gameState.powerup_timers && gameState.powerup_timers[pid] && 
+                    gameState.powerup_timers[pid]["shield"] > 0 && snake.length > 0) {
+                    const head = snake[0];
+                    const headX = head[0] * CELL_SIZE;
+                    const headY = head[1] * CELL_SIZE;
+                    createShieldAura(headX, headY, pid);
+                } else {
+                    // Shield aktif değilse aura'yı kaldır
+                    removeShieldAura(pid);
+                }
                 }
             }
         }
@@ -753,6 +765,7 @@
         updateAndDrawParticles(ctx);
         updateAndDrawExplosions(ctx);
         updateAndDrawSmoke(ctx);
+        updateAndDrawShieldAuras(ctx); // Shield aurasını çiz
     }
 
     // --- Skor tablosu ---
@@ -1831,6 +1844,120 @@
 
     // Smoke efekti sistemi
     let smokeParticles = [];
+    
+    // Shield Aura efekti sistemi
+    let shieldAuras = [];
+    
+    class ShieldAura {
+        constructor(x, y, playerId) {
+            this.x = x;
+            this.y = y;
+            this.playerId = playerId;
+            this.rotation = 0;
+            this.rotationSpeed = 0.05;
+            this.radius = CELL_SIZE * 1.5;
+            this.ringCount = 3;
+            this.pulsePhase = 0;
+            this.pulseSpeed = 0.1;
+        }
+        
+        update() {
+            this.rotation += this.rotationSpeed;
+            this.pulsePhase += this.pulseSpeed;
+        }
+        
+        draw(ctx) {
+            ctx.save();
+            
+            // Aura merkezi
+            const centerX = this.x + CELL_SIZE / 2;
+            const centerY = this.y + CELL_SIZE / 2;
+            
+            // Pulse efekti
+            const pulse = 0.8 + 0.2 * Math.sin(this.pulsePhase);
+            
+            // Çoklu halka efekti
+            for (let i = 0; i < this.ringCount; i++) {
+                const ringRadius = this.radius + i * 8;
+                const ringAlpha = (0.6 - i * 0.15) * pulse;
+                const ringRotation = this.rotation + i * 0.5;
+                
+                ctx.save();
+                ctx.translate(centerX, centerY);
+                ctx.rotate(ringRotation);
+                
+                // Dış halka (koruyucu)
+                ctx.strokeStyle = `rgba(0, 255, 255, ${ringAlpha})`;
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(0, 0, ringRadius, 0, 2 * Math.PI);
+                ctx.stroke();
+                
+                // İç halka (enerji)
+                ctx.strokeStyle = `rgba(0, 150, 255, ${ringAlpha * 0.7})`;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(0, 0, ringRadius - 4, 0, 2 * Math.PI);
+                ctx.stroke();
+                
+                // Koruyucu noktalar
+                const dotCount = 8;
+                for (let j = 0; j < dotCount; j++) {
+                    const angle = (j / dotCount) * 2 * Math.PI;
+                    const dotX = Math.cos(angle) * ringRadius;
+                    const dotY = Math.sin(angle) * ringRadius;
+                    
+                    ctx.fillStyle = `rgba(255, 255, 255, ${ringAlpha})`;
+                    ctx.beginPath();
+                    ctx.arc(dotX, dotY, 3, 0, 2 * Math.PI);
+                    ctx.fill();
+                }
+                
+                ctx.restore();
+            }
+            
+            // Merkez enerji efekti
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            ctx.rotate(-this.rotation * 0.5);
+            
+            const centerRadius = CELL_SIZE * 0.3;
+            const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, centerRadius);
+            gradient.addColorStop(0, 'rgba(0, 255, 255, 0.8)');
+            gradient.addColorStop(0.5, 'rgba(0, 150, 255, 0.4)');
+            gradient.addColorStop(1, 'rgba(0, 100, 255, 0)');
+            
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(0, 0, centerRadius, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            ctx.restore();
+            ctx.restore();
+        }
+    }
+    
+    function createShieldAura(x, y, playerId) {
+        // Eğer bu oyuncu için zaten aura varsa, güncelle
+        const existingAura = shieldAuras.find(aura => aura.playerId === playerId);
+        if (existingAura) {
+            existingAura.x = x;
+            existingAura.y = y;
+        } else {
+            shieldAuras.push(new ShieldAura(x, y, playerId));
+        }
+    }
+    
+    function updateAndDrawShieldAuras(ctx) {
+        for (const aura of shieldAuras) {
+            aura.update();
+            aura.draw(ctx);
+        }
+    }
+    
+    function removeShieldAura(playerId) {
+        shieldAuras = shieldAuras.filter(aura => aura.playerId !== playerId);
+    }
     
     class SmokeParticle {
         constructor(x, y) {
