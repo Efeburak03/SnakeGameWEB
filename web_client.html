@@ -685,32 +685,32 @@
                         // Kademeli görünürlük (mesafeye göre)
                         const visibility = Math.max(0.3, 1 - (distance / 4));
                         
-                        // Glow efekti
-                        const glowSize = size * 1.5;
+                        // Glow efekti - daha parlak
+                        const glowSize = size * 2.0;
                         const glowGradient = ctx.createRadialGradient(
                             x + size/2, y + size/2, 0,
                             x + size/2, y + size/2, glowSize/2
                         );
-                        glowGradient.addColorStop(0, `rgba(255, 100, 100, ${0.4 * visibility})`);
-                        glowGradient.addColorStop(0.5, `rgba(255, 150, 150, ${0.2 * visibility})`);
-                        glowGradient.addColorStop(1, 'rgba(255, 100, 100, 0)');
+                        glowGradient.addColorStop(0, `rgba(255, 150, 150, ${0.7 * visibility})`);
+                        glowGradient.addColorStop(0.5, `rgba(255, 200, 200, ${0.4 * visibility})`);
+                        glowGradient.addColorStop(1, 'rgba(255, 150, 150, 0)');
                         
                         ctx.fillStyle = glowGradient;
                         ctx.fillRect(x - glowSize/4, y - glowSize/4, size + glowSize/2, size + glowSize/2);
                         
-                        // Ana duvar - gradient ile
+                        // Ana duvar - gradient ile (daha parlak)
                         const wallGradient = ctx.createLinearGradient(x, y, x + size, y + size);
-                        wallGradient.addColorStop(0, `rgba(200, 50, 50, ${0.9 * visibility})`);
-                        wallGradient.addColorStop(0.5, `rgba(150, 30, 30, ${0.8 * visibility})`);
-                        wallGradient.addColorStop(1, `rgba(100, 20, 20, ${0.9 * visibility})`);
+                        wallGradient.addColorStop(0, `rgba(220, 80, 80, ${0.95 * visibility})`);
+                        wallGradient.addColorStop(0.5, `rgba(180, 60, 60, ${0.9 * visibility})`);
+                        wallGradient.addColorStop(1, `rgba(140, 40, 40, ${0.95 * visibility})`);
                         
                         ctx.fillStyle = wallGradient;
                         ctx.fillRect(x, y, size, size);
                         
-                        // Kenarlık - pulse animasyonu
-                        const borderAlpha = 0.7 + 0.3 * Math.sin(time);
-                        ctx.strokeStyle = `rgba(255, 200, 200, ${borderAlpha * visibility})`;
-                        ctx.lineWidth = 2;
+                        // Kenarlık - pulse animasyonu (daha parlak)
+                        const borderAlpha = 0.8 + 0.2 * Math.sin(time);
+                        ctx.strokeStyle = `rgba(255, 220, 220, ${borderAlpha * visibility})`;
+                        ctx.lineWidth = 3;
                         ctx.strokeRect(x + 1, y + 1, size - 2, size - 2);
                         
                         // İç detay - çapraz çizgiler
@@ -743,31 +743,125 @@
             }
         }
         
-        // Yemler
+        // Yemler - Uzay temalı kırmızı parıltılı yuvarlak
         if (gameState.food) {
             for (const [fx, fy] of gameState.food) {
-                if (assets.apple) {
-                    const size = CELL_SIZE * 1.2;
-                    const offset = (size - CELL_SIZE) / 2;
-                    ctx.drawImage(assets.apple, fx*CELL_SIZE - offset, fy*CELL_SIZE - offset, size, size);
-                } else { 
-                    ctx.fillStyle = 'red'; 
-                    ctx.fillRect(fx*CELL_SIZE, fy*CELL_SIZE, CELL_SIZE, CELL_SIZE); 
-                }
+                const x = fx * CELL_SIZE + CELL_SIZE/2;
+                const y = fy * CELL_SIZE + CELL_SIZE/2;
+                const radius = CELL_SIZE/2;
+                const time = Date.now() * 0.005;
+                
+                // Dış glow efekti - kırmızı parıltı
+                const glowRadius = radius * 1.8;
+                const glowGradient = ctx.createRadialGradient(x, y, 0, x, y, glowRadius);
+                glowGradient.addColorStop(0, 'rgba(255, 50, 50, 0.8)');
+                glowGradient.addColorStop(0.5, 'rgba(255, 100, 100, 0.4)');
+                glowGradient.addColorStop(1, 'rgba(255, 50, 50, 0)');
+                
+                ctx.fillStyle = glowGradient;
+                ctx.beginPath();
+                ctx.arc(x, y, glowRadius, 0, 2 * Math.PI);
+                ctx.fill();
+                
+                // Ana yem - gradient kırmızı daire
+                const foodGradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+                foodGradient.addColorStop(0, 'rgba(255, 80, 80, 1)');
+                foodGradient.addColorStop(0.7, 'rgba(200, 40, 40, 0.9)');
+                foodGradient.addColorStop(1, 'rgba(150, 20, 20, 0.8)');
+                
+                ctx.fillStyle = foodGradient;
+                ctx.beginPath();
+                ctx.arc(x, y, radius, 0, 2 * Math.PI);
+                ctx.fill();
+                
+                // İç parıltı - pulse animasyonu
+                const pulse = 0.6 + 0.4 * Math.sin(time * 2);
+                const innerRadius = radius * 0.6;
+                const innerGradient = ctx.createRadialGradient(x, y, 0, x, y, innerRadius);
+                innerGradient.addColorStop(0, `rgba(255, 150, 150, ${pulse})`);
+                innerGradient.addColorStop(1, 'rgba(255, 100, 100, 0)');
+                
+                ctx.fillStyle = innerGradient;
+                ctx.beginPath();
+                ctx.arc(x, y, innerRadius, 0, 2 * Math.PI);
+                ctx.fill();
+                
+                // Kenarlık - parıltılı çizgi
+                ctx.strokeStyle = `rgba(255, 200, 200, ${0.8 + 0.2 * Math.sin(time * 3)})`;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(x, y, radius, 0, 2 * Math.PI);
+                ctx.stroke();
             }
         } else {
             // Yem yok
         }
         
-        // Altın elma
+        // Altın elma - Sarı parıltılı yuvarlak
         if (gameState.golden_food) {
             const [gx, gy] = gameState.golden_food;
-            if (assets.golden) ctx.drawImage(assets.golden, gx*CELL_SIZE, gy*CELL_SIZE, CELL_SIZE, CELL_SIZE);
-            else { 
-                ctx.fillStyle = 'gold'; 
-                ctx.beginPath(); 
-                ctx.arc(gx*CELL_SIZE+CELL_SIZE/2, gy*CELL_SIZE+CELL_SIZE/2, CELL_SIZE/2, 0, 2*Math.PI); 
-                ctx.fill(); 
+            const x = gx * CELL_SIZE + CELL_SIZE/2;
+            const y = gy * CELL_SIZE + CELL_SIZE/2;
+            const radius = CELL_SIZE/2;
+            const time = Date.now() * 0.006;
+            
+            // Dış glow efekti - sarı parıltı
+            const glowRadius = radius * 2.0;
+            const glowGradient = ctx.createRadialGradient(x, y, 0, x, y, glowRadius);
+            glowGradient.addColorStop(0, 'rgba(255, 255, 50, 0.9)');
+            glowGradient.addColorStop(0.5, 'rgba(255, 255, 100, 0.5)');
+            glowGradient.addColorStop(1, 'rgba(255, 255, 50, 0)');
+            
+            ctx.fillStyle = glowGradient;
+            ctx.beginPath();
+            ctx.arc(x, y, glowRadius, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // Ana altın elma - gradient sarı daire
+            const goldenGradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+            goldenGradient.addColorStop(0, 'rgba(255, 255, 100, 1)');
+            goldenGradient.addColorStop(0.6, 'rgba(255, 215, 0, 0.95)');
+            goldenGradient.addColorStop(1, 'rgba(255, 165, 0, 0.9)');
+            
+            ctx.fillStyle = goldenGradient;
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // İç parıltı - pulse animasyonu
+            const pulse = 0.7 + 0.3 * Math.sin(time * 2.5);
+            const innerRadius = radius * 0.7;
+            const innerGradient = ctx.createRadialGradient(x, y, 0, x, y, innerRadius);
+            innerGradient.addColorStop(0, `rgba(255, 255, 200, ${pulse})`);
+            innerGradient.addColorStop(1, 'rgba(255, 255, 150, 0)');
+            
+            ctx.fillStyle = innerGradient;
+            ctx.beginPath();
+            ctx.arc(x, y, innerRadius, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // Kenarlık - parıltılı çizgi
+            ctx.strokeStyle = `rgba(255, 255, 220, ${0.9 + 0.1 * Math.sin(time * 3)})`;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, 2 * Math.PI);
+            ctx.stroke();
+            
+            // Dönen parıltı efektleri
+            const sparkleCount = 8;
+            for (let i = 0; i < sparkleCount; i++) {
+                const angle = time * 1.5 + (i * Math.PI * 2 / sparkleCount);
+                const sparkleRadius = radius * 1.3;
+                const sparkleX = x + Math.cos(angle) * sparkleRadius;
+                const sparkleY = y + Math.sin(angle) * sparkleRadius;
+                
+                ctx.save();
+                ctx.globalAlpha = 0.8 * pulse;
+                ctx.fillStyle = '#ffff80';
+                ctx.beginPath();
+                ctx.arc(sparkleX, sparkleY, 2, 0, 2 * Math.PI);
+                ctx.fill();
+                ctx.restore();
             }
         }
         
@@ -1529,13 +1623,71 @@
             }
         }
         
-        // Altın elma
+        // Altın elma - Sarı parıltılı yuvarlak (Time Attack)
         if (timeAttackState.golden_food) {
-            if (assets.golden) {
-                ctx.drawImage(assets.golden, timeAttackState.golden_food[0]*CELL_SIZE, timeAttackState.golden_food[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
-            } else {
-                ctx.fillStyle = 'gold';
-                ctx.fillRect(timeAttackState.golden_food[0]*CELL_SIZE, timeAttackState.golden_food[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+            const [gx, gy] = timeAttackState.golden_food;
+            const x = gx * CELL_SIZE + CELL_SIZE/2;
+            const y = gy * CELL_SIZE + CELL_SIZE/2;
+            const radius = CELL_SIZE/2;
+            const time = Date.now() * 0.006;
+            
+            // Dış glow efekti - sarı parıltı
+            const glowRadius = radius * 2.0;
+            const glowGradient = ctx.createRadialGradient(x, y, 0, x, y, glowRadius);
+            glowGradient.addColorStop(0, 'rgba(255, 255, 50, 0.9)');
+            glowGradient.addColorStop(0.5, 'rgba(255, 255, 100, 0.5)');
+            glowGradient.addColorStop(1, 'rgba(255, 255, 50, 0)');
+            
+            ctx.fillStyle = glowGradient;
+            ctx.beginPath();
+            ctx.arc(x, y, glowRadius, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // Ana altın elma - gradient sarı daire
+            const goldenGradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+            goldenGradient.addColorStop(0, 'rgba(255, 255, 100, 1)');
+            goldenGradient.addColorStop(0.6, 'rgba(255, 215, 0, 0.95)');
+            goldenGradient.addColorStop(1, 'rgba(255, 165, 0, 0.9)');
+            
+            ctx.fillStyle = goldenGradient;
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // İç parıltı - pulse animasyonu
+            const pulse = 0.7 + 0.3 * Math.sin(time * 2.5);
+            const innerRadius = radius * 0.7;
+            const innerGradient = ctx.createRadialGradient(x, y, 0, x, y, innerRadius);
+            innerGradient.addColorStop(0, `rgba(255, 255, 200, ${pulse})`);
+            innerGradient.addColorStop(1, 'rgba(255, 255, 150, 0)');
+            
+            ctx.fillStyle = innerGradient;
+            ctx.beginPath();
+            ctx.arc(x, y, innerRadius, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // Kenarlık - parıltılı çizgi
+            ctx.strokeStyle = `rgba(255, 255, 220, ${0.9 + 0.1 * Math.sin(time * 3)})`;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, 2 * Math.PI);
+            ctx.stroke();
+            
+            // Dönen parıltı efektleri
+            const sparkleCount = 8;
+            for (let i = 0; i < sparkleCount; i++) {
+                const angle = time * 1.5 + (i * Math.PI * 2 / sparkleCount);
+                const sparkleRadius = radius * 1.3;
+                const sparkleX = x + Math.cos(angle) * sparkleRadius;
+                const sparkleY = y + Math.sin(angle) * sparkleRadius;
+                
+                ctx.save();
+                ctx.globalAlpha = 0.8 * pulse;
+                ctx.fillStyle = '#ffff80';
+                ctx.beginPath();
+                ctx.arc(sparkleX, sparkleY, 2, 0, 2 * Math.PI);
+                ctx.fill();
+                ctx.restore();
             }
         }
         
