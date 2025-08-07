@@ -758,43 +758,91 @@
             }
         }
         
-        // Magnet efektleri - manyetik alan çizgileri ve çekim izi
+        // Magnet efektleri - gelişmiş manyetik alan ve çekim efektleri
         if (gameState.magnet_effects) {
             for (const [playerId, effect] of Object.entries(gameState.magnet_effects)) {
                 const headPos = effect.head_pos;
                 const headX = headPos[0] * CELL_SIZE + CELL_SIZE/2;
                 const headY = headPos[1] * CELL_SIZE + CELL_SIZE/2;
                 
-                // Manyetik alan çizgileri - yılanın başının etrafında dönen çizgiler
+                const time = Date.now() * 0.005;
+                const radius = CELL_SIZE * 2;
+                
+                // Gelişmiş manyetik aura - gradient ve pulse efekti
                 ctx.save();
-                ctx.strokeStyle = '#800080'; // Mor renk
+                const pulse = 0.7 + 0.3 * Math.sin(time * 3);
+                
+                // Dış manyetik halka - gradient
+                const outerGradient = ctx.createRadialGradient(headX, headY, 0, headX, headY, radius);
+                outerGradient.addColorStop(0, 'rgba(204, 0, 204, 0.8)');
+                outerGradient.addColorStop(0.5, 'rgba(128, 0, 128, 0.6)');
+                outerGradient.addColorStop(1, 'rgba(64, 0, 64, 0)');
+                
+                ctx.fillStyle = outerGradient;
+                ctx.globalAlpha = pulse;
+                ctx.beginPath();
+                ctx.arc(headX, headY, radius, 0, 2 * Math.PI);
+                ctx.fill();
+                
+                // İç manyetik halka - daha parlak
+                const innerGradient = ctx.createRadialGradient(headX, headY, 0, headX, headY, radius * 0.6);
+                innerGradient.addColorStop(0, 'rgba(255, 0, 255, 0.9)');
+                innerGradient.addColorStop(0.7, 'rgba(204, 0, 204, 0.7)');
+                innerGradient.addColorStop(1, 'rgba(128, 0, 128, 0)');
+                
+                ctx.fillStyle = innerGradient;
+                ctx.globalAlpha = pulse * 0.8;
+                ctx.beginPath();
+                ctx.arc(headX, headY, radius * 0.6, 0, 2 * Math.PI);
+                ctx.fill();
+                
+                // Dönen manyetik parçacıklar
+                const particleCount = 12;
+                for (let i = 0; i < particleCount; i++) {
+                    const angle = time * 2 + (i * Math.PI * 2 / particleCount);
+                    const particleRadius = radius * 0.8;
+                    const particleX = headX + Math.cos(angle) * particleRadius;
+                    const particleY = headY + Math.sin(angle) * particleRadius;
+                    
+                    ctx.save();
+                    ctx.globalAlpha = 0.8 * pulse;
+                    ctx.fillStyle = '#ff00ff';
+                    ctx.beginPath();
+                    ctx.arc(particleX, particleY, 3, 0, 2 * Math.PI);
+                    ctx.fill();
+                    
+                    // Parçacık glow efekti
+                    ctx.shadowColor = '#ff00ff';
+                    ctx.shadowBlur = 8;
+                    ctx.beginPath();
+                    ctx.arc(particleX, particleY, 1, 0, 2 * Math.PI);
+                    ctx.fill();
+                    ctx.restore();
+                }
+                
+                // Manyetik alan çizgileri - daha gelişmiş
+                ctx.strokeStyle = '#ff00ff';
                 ctx.lineWidth = 2;
-                ctx.globalAlpha = 0.7;
+                ctx.globalAlpha = 0.6 * pulse;
                 
-                const time = Date.now() * 0.005; // Animasyon için zaman
-                const radius = CELL_SIZE * 1.5; // Manyetik alan yarıçapı
-                
-                // Dönen manyetik alan çizgileri
                 for (let i = 0; i < 8; i++) {
                     const angle = time + (i * Math.PI / 4);
-                    const startX = headX + Math.cos(angle) * (radius * 0.3);
-                    const startY = headY + Math.sin(angle) * (radius * 0.3);
+                    const startX = headX + Math.cos(angle) * (radius * 0.2);
+                    const startY = headY + Math.sin(angle) * (radius * 0.2);
                     const endX = headX + Math.cos(angle) * radius;
                     const endY = headY + Math.sin(angle) * radius;
                     
+                    // Gradient çizgi
+                    const lineGradient = ctx.createLinearGradient(startX, startY, endX, endY);
+                    lineGradient.addColorStop(0, 'rgba(255, 0, 255, 0.9)');
+                    lineGradient.addColorStop(1, 'rgba(128, 0, 128, 0.3)');
+                    
+                    ctx.strokeStyle = lineGradient;
                     ctx.beginPath();
                     ctx.moveTo(startX, startY);
                     ctx.lineTo(endX, endY);
                     ctx.stroke();
                 }
-                
-                // Manyetik aura - yılanın başının etrafında parlayan halka
-                ctx.strokeStyle = '#cc00cc';
-                ctx.lineWidth = 3;
-                ctx.globalAlpha = 0.5 + 0.3 * Math.sin(time * 2);
-                ctx.beginPath();
-                ctx.arc(headX, headY, radius * 0.8, 0, 2 * Math.PI);
-                ctx.stroke();
                 
                 ctx.restore();
                 
@@ -805,59 +853,93 @@
                         const endPos = foodEffect.end_pos;
                         const progress = foodEffect.progress || 0;
                         
-                        // Yem pozisyonunu hesapla (başlangıçtan bitişe doğru)
+                        // Yem pozisyonunu hesapla
                         const currentX = startPos[0] + (endPos[0] - startPos[0]) * progress;
                         const currentY = startPos[1] + (endPos[1] - startPos[1]) * progress;
                         const foodX = currentX * CELL_SIZE + CELL_SIZE/2;
                         const foodY = currentY * CELL_SIZE + CELL_SIZE/2;
                         
-                        // Çekim izi - yemin arkasında bıraktığı iz
+                        // Çekim izi - gelişmiş gradient iz
                         ctx.save();
-                        ctx.strokeStyle = '#800080';
-                        ctx.lineWidth = 3;
-                        ctx.globalAlpha = 0.6 * (1 - progress);
-                        
-                        // İz çizgisi
-                        const trailLength = 10;
+                        const trailLength = 15;
                         for (let i = 0; i < trailLength; i++) {
-                            const trailProgress = progress - (i * 0.05);
+                            const trailProgress = progress - (i * 0.03);
                             if (trailProgress > 0) {
                                 const trailX = startPos[0] + (endPos[0] - startPos[0]) * trailProgress;
                                 const trailY = startPos[1] + (endPos[1] - startPos[1]) * trailProgress;
                                 const trailScreenX = trailX * CELL_SIZE + CELL_SIZE/2;
                                 const trailScreenY = trailY * CELL_SIZE + CELL_SIZE/2;
                                 
-                                ctx.globalAlpha = 0.6 * (1 - trailProgress) * (1 - i / trailLength);
+                                const trailAlpha = 0.8 * (1 - trailProgress) * (1 - i / trailLength);
+                                const trailSize = 4 * (1 - i / trailLength);
+                                
+                                // Gradient trail
+                                const trailGradient = ctx.createRadialGradient(trailScreenX, trailScreenY, 0, trailScreenX, trailScreenY, trailSize);
+                                trailGradient.addColorStop(0, `rgba(255, 0, 255, ${trailAlpha})`);
+                                trailGradient.addColorStop(0.5, `rgba(204, 0, 204, ${trailAlpha * 0.7})`);
+                                trailGradient.addColorStop(1, `rgba(128, 0, 128, 0)`);
+                                
+                                ctx.fillStyle = trailGradient;
                                 ctx.beginPath();
-                                ctx.arc(trailScreenX, trailScreenY, 2, 0, 2 * Math.PI);
+                                ctx.arc(trailScreenX, trailScreenY, trailSize, 0, 2 * Math.PI);
                                 ctx.fill();
                             }
                         }
+                        ctx.restore();
                         
-                        // Çekilen yem - manyetik parçacıklarla
+                        // Çekilen yem - gelişmiş manyetik efektler
                         ctx.save();
-                        ctx.fillStyle = '#ff0066'; // Parlak kırmızı
-                        ctx.globalAlpha = 0.8;
+                        
+                        // Yem glow efekti
+                        ctx.shadowColor = '#ff00ff';
+                        ctx.shadowBlur = 15;
+                        ctx.fillStyle = '#ff0066';
+                        ctx.globalAlpha = 0.9;
                         ctx.beginPath();
-                        ctx.arc(foodX, foodY, CELL_SIZE/2 * (1 + 0.2 * Math.sin(Date.now() * 0.01)), 0, 2*Math.PI);
+                        ctx.arc(foodX, foodY, CELL_SIZE/2 * (1 + 0.3 * Math.sin(Date.now() * 0.01)), 0, 2*Math.PI);
                         ctx.fill();
                         
-                        // Yemin etrafında manyetik parçacıklar
-                        ctx.strokeStyle = '#cc00cc';
-                        ctx.lineWidth = 1;
-                        ctx.globalAlpha = 0.6;
-                        for (let i = 0; i < 6; i++) {
-                            const particleAngle = Date.now() * 0.005 + (i * Math.PI / 3);
-                            const particleRadius = CELL_SIZE * 0.8;
+                        // Yemin etrafında dönen manyetik parçacıklar
+                        const foodParticleCount = 8;
+                        for (let i = 0; i < foodParticleCount; i++) {
+                            const particleAngle = Date.now() * 0.008 + (i * Math.PI * 2 / foodParticleCount);
+                            const particleRadius = CELL_SIZE * 1.2;
                             const particleX = foodX + Math.cos(particleAngle) * particleRadius;
                             const particleY = foodY + Math.sin(particleAngle) * particleRadius;
                             
+                            ctx.save();
+                            ctx.globalAlpha = 0.8 * Math.sin(Date.now() * 0.01 + i);
+                            ctx.fillStyle = '#ff00ff';
+                            ctx.beginPath();
+                            ctx.arc(particleX, particleY, 2, 0, 2 * Math.PI);
+                            ctx.fill();
+                            
+                            // Parçacık glow
+                            ctx.shadowColor = '#ff00ff';
+                            ctx.shadowBlur = 6;
                             ctx.beginPath();
                             ctx.arc(particleX, particleY, 1, 0, 2 * Math.PI);
                             ctx.fill();
+                            ctx.restore();
                         }
                         
-                        ctx.restore();
+                        // Yem etrafında manyetik halkalar
+                        const ringCount = 3;
+                        for (let i = 0; i < ringCount; i++) {
+                            const ringRadius = CELL_SIZE * (0.8 + i * 0.3);
+                            const ringAlpha = 0.4 * (1 - i / ringCount);
+                            const ringRotation = Date.now() * 0.003 + i * 0.5;
+                            
+                            ctx.save();
+                            ctx.strokeStyle = `rgba(255, 0, 255, ${ringAlpha})`;
+                            ctx.lineWidth = 2;
+                            ctx.globalAlpha = ringAlpha;
+                            ctx.beginPath();
+                            ctx.arc(foodX, foodY, ringRadius, 0, 2 * Math.PI);
+                            ctx.stroke();
+                            ctx.restore();
+                        }
+                        
                         ctx.restore();
                     }
                 }
