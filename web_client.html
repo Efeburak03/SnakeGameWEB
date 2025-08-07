@@ -670,14 +670,58 @@
                 else if (obs.type === 'hidden_wall') {
                     // Gizli duvarlar yılanın başının 4 blok yakınında görünür
                     let show = false;
+                    let distance = 0;
                     if (gameState.snakes && myId && gameState.snakes[myId] && gameState.snakes[myId].length > 0) {
                         const [hx, hy] = gameState.snakes[myId][0];
-                        const dist = Math.abs(hx - ox) + Math.abs(hy - oy);
-                        if (dist <= 4) show = true;
+                        distance = Math.abs(hx - ox) + Math.abs(hy - oy);
+                        if (distance <= 4) show = true;
                     }
                     if (show) {
-                        ctx.fillStyle = '#555';
-                        ctx.fillRect(ox*CELL_SIZE, oy*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                        const x = ox * CELL_SIZE;
+                        const y = oy * CELL_SIZE;
+                        const size = CELL_SIZE;
+                        const time = Date.now() * 0.003;
+                        
+                        // Kademeli görünürlük (mesafeye göre)
+                        const visibility = Math.max(0.3, 1 - (distance / 4));
+                        
+                        // Glow efekti
+                        const glowSize = size * 1.5;
+                        const glowGradient = ctx.createRadialGradient(
+                            x + size/2, y + size/2, 0,
+                            x + size/2, y + size/2, glowSize/2
+                        );
+                        glowGradient.addColorStop(0, `rgba(255, 100, 100, ${0.4 * visibility})`);
+                        glowGradient.addColorStop(0.5, `rgba(255, 150, 150, ${0.2 * visibility})`);
+                        glowGradient.addColorStop(1, 'rgba(255, 100, 100, 0)');
+                        
+                        ctx.fillStyle = glowGradient;
+                        ctx.fillRect(x - glowSize/4, y - glowSize/4, size + glowSize/2, size + glowSize/2);
+                        
+                        // Ana duvar - gradient ile
+                        const wallGradient = ctx.createLinearGradient(x, y, x + size, y + size);
+                        wallGradient.addColorStop(0, `rgba(200, 50, 50, ${0.9 * visibility})`);
+                        wallGradient.addColorStop(0.5, `rgba(150, 30, 30, ${0.8 * visibility})`);
+                        wallGradient.addColorStop(1, `rgba(100, 20, 20, ${0.9 * visibility})`);
+                        
+                        ctx.fillStyle = wallGradient;
+                        ctx.fillRect(x, y, size, size);
+                        
+                        // Kenarlık - pulse animasyonu
+                        const borderAlpha = 0.7 + 0.3 * Math.sin(time);
+                        ctx.strokeStyle = `rgba(255, 200, 200, ${borderAlpha * visibility})`;
+                        ctx.lineWidth = 2;
+                        ctx.strokeRect(x + 1, y + 1, size - 2, size - 2);
+                        
+                        // İç detay - çapraz çizgiler
+                        ctx.strokeStyle = `rgba(255, 255, 255, ${0.3 * visibility})`;
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.moveTo(x + 3, y + 3);
+                        ctx.lineTo(x + size - 3, y + size - 3);
+                        ctx.moveTo(x + size - 3, y + 3);
+                        ctx.lineTo(x + 3, y + size - 3);
+                        ctx.stroke();
                     }
                 }
             }
