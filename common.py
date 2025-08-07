@@ -144,7 +144,7 @@ def create_state_message(state):
 OBSTACLE_TYPES = [
     {"type": "wall", "color": (128, 128, 128)},
     {"type": "slow", "color": (0, 255, 0)},
-    {"type": "poison", "color": (255, 0, 0)},
+    {"type": "enemy", "color": (255, 0, 0)},
     {"type": "hidden_wall", "color": (80, 80, 80)},
 ]
 

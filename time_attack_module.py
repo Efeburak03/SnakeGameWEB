@@ -88,9 +88,9 @@ class TimeAttackGame:
     
     def _place_obstacles(self):
         """Engelleri yerleştir"""
-        # Sabit engel sayıları: 11 çalı, 9 kutu
+        # Sabit engel sayıları: 11 çalı, 9 enemy
         slow_count = 11
-        poison_count = 9
+        enemy_count = 9
         
         # Çalı engelleri yerleştir
         for _ in range(slow_count):
@@ -106,8 +106,8 @@ class TimeAttackGame:
                 pos = random.choice(empty)
                 self.game_state["obstacles"].append({"pos": pos, "type": "slow"})
         
-        # Kutu engelleri yerleştir
-        for _ in range(poison_count):
+        # Enemy engelleri yerleştir
+        for _ in range(enemy_count):
             occupied = set()
             occupied.update(self.game_state["snake"])
             occupied.update(self.game_state["food"])
@@ -118,7 +118,7 @@ class TimeAttackGame:
                     if (x, y) not in occupied]
             if empty:
                 pos = random.choice(empty)
-                self.game_state["obstacles"].append({"pos": pos, "type": "poison"})
+                self.game_state["obstacles"].append({"pos": pos, "type": "enemy"})
     
     def _place_portals(self):
         """Portalları yerleştir"""
@@ -207,8 +207,8 @@ class TimeAttackGame:
                     # Yavaşlatma etkisi için hareket hızını azalt
                     # Bu etki client tarafında işlenecek
                     pass
-                elif obs["type"] == "poison":
-                    # Zehir engelleri yılanı kısaltır
+                elif obs["type"] == "enemy":
+                    # Enemy engelleri yılanı kısaltır
                     if len(self.game_state["snake"]) > 1:
                         self.game_state["snake"].pop()
                     else:

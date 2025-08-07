@@ -14,15 +14,6 @@ BOARD_WIDTH = 60   # Enine daha geniş
 BOARD_HEIGHT = 35 # 700/20 = 35 satır
 TICK_RATE = 0.05  # saniye, 30 FPS
 
-# Power-up türleri ve renkleri:
-#   speed      : Mavi        (0, 0, 255)
-#   shield     : Siyah       (0, 0, 0)
-#   invisible  : Gri         (128, 128, 128)
-#   reverse    : Beyaz       (255, 255, 255)
-#   freeze     : Açık Mavi   (0, 200, 255)
-#   giant      : Turuncu     (255, 128, 0)
-#   magnet     : Mor         (180, 0, 255)
-# POWERUP_TYPES artık common.py'den geliyor
 
 def random_powerup(snakes, foods, obstacles, portals, powerups):
     occupied = set()
@@ -112,9 +103,9 @@ def place_obstacles():
     for _ in range(15):  # Çimen (slow) - sayıyı artırdık
         pos = empty[idx]; idx += 1
         obstacles.append({"pos": pos, "type": "slow"})
-    for _ in range(7):  # Kutu (poison)
+    for _ in range(7):  # Enemy (enemy)
         pos = empty[idx]; idx += 1
-        obstacles.append({"pos": pos, "type": "poison"})
+        obstacles.append({"pos": pos, "type": "enemy"})
     for _ in range(7):  # Gizli duvar
         pos = empty[idx]; idx += 1
         obstacles.append({"pos": pos, "type": "hidden_wall"})
@@ -532,8 +523,8 @@ def move_snake(client_id):
                 if obs["type"] == "slow":
                     # Çalı engelleri sadece yavaşlatma yapar, elenme yapmaz
                     pass
-                elif obs["type"] == "poison":
-                    # Kutu engeli puan eksiltir
+                elif obs["type"] == "enemy":
+                    # Enemy engeli puan eksiltir
                     current_score = game_state["scores"].get(client_id, 0)
                     if current_score > 0:
                         game_state["scores"][client_id] = current_score - 1
