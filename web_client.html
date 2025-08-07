@@ -147,63 +147,7 @@
             pointer-events: auto;
         }
         
-        /* Renk bilgisi paneli */
-        #color-info-panel {
-            position: fixed;
-            top: 60px;
-            right: 20px;
-            background: rgba(34,34,34,0.85);
-            border-radius: 12px;
-            padding: 16px;
-            color: #fff;
-            font-family: 'Segoe UI', Arial, sans-serif;
-            z-index: 20;
-            pointer-events: none;
-            min-width: 200px;
-            backdrop-filter: blur(8px);
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        
-        #color-info-panel h3 {
-            margin: 0 0 12px 0;
-            font-size: 1.1em;
-            color: #4caf50;
-            text-align: center;
-        }
-        
-        .color-display {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 8px;
-        }
-        
-        .color-swatch {
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            border: 2px solid rgba(255,255,255,0.3);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-        }
-        
-        .color-name {
-            font-weight: 600;
-            font-size: 1em;
-        }
-        
-        .effect-name {
-            font-size: 0.9em;
-            color: #ccc;
-            font-style: italic;
-        }
-        
-        .effect-description {
-            font-size: 0.8em;
-            color: #aaa;
-            margin-top: 8px;
-            text-align: center;
-            line-height: 1.3;
-        }
+
         @media (max-width: 900px) {
             #touch-controls {
                 display: flex !important;
@@ -442,18 +386,7 @@
 
     <div id="top-usernames" style="display:none;"></div>
     
-    <!-- Renk bilgisi paneli -->
-    <div id="color-info-panel" style="display:none;">
-        <h3>🎨 Oyuncu Rengi</h3>
-        <div class="color-display">
-            <div class="color-swatch" id="color-swatch"></div>
-            <div>
-                <div class="color-name" id="color-name">-</div>
-                <div class="effect-name" id="effect-name">-</div>
-            </div>
-        </div>
-        <div class="effect-description" id="effect-description">-</div>
-    </div>
+
     
     <div id="game-container" style="display:none; width:100vw; height:100vh;">
         <div style="position:relative; width:100vw; height:100vh;">
@@ -561,7 +494,6 @@
             
             updateTopUsernames();
             updateRestartButton();
-            updateColorInfoPanel(); // Renk bilgisi panelini güncelle
         });
         
         // Time Attack event listener'ları
@@ -826,12 +758,47 @@
             }
         }
         
-        // Magnet efektleri - sadece yemlerin hareketi
+        // Magnet efektleri - manyetik alan çizgileri ve çekim izi
         if (gameState.magnet_effects) {
             for (const [playerId, effect] of Object.entries(gameState.magnet_effects)) {
                 const headPos = effect.head_pos;
+                const headX = headPos[0] * CELL_SIZE + CELL_SIZE/2;
+                const headY = headPos[1] * CELL_SIZE + CELL_SIZE/2;
                 
-                // Çekilen yemler için sadece hareket efekti
+                // Manyetik alan çizgileri - yılanın başının etrafında dönen çizgiler
+                ctx.save();
+                ctx.strokeStyle = '#800080'; // Mor renk
+                ctx.lineWidth = 2;
+                ctx.globalAlpha = 0.7;
+                
+                const time = Date.now() * 0.005; // Animasyon için zaman
+                const radius = CELL_SIZE * 1.5; // Manyetik alan yarıçapı
+                
+                // Dönen manyetik alan çizgileri
+                for (let i = 0; i < 8; i++) {
+                    const angle = time + (i * Math.PI / 4);
+                    const startX = headX + Math.cos(angle) * (radius * 0.3);
+                    const startY = headY + Math.sin(angle) * (radius * 0.3);
+                    const endX = headX + Math.cos(angle) * radius;
+                    const endY = headY + Math.sin(angle) * radius;
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(startX, startY);
+                    ctx.lineTo(endX, endY);
+                    ctx.stroke();
+                }
+                
+                // Manyetik aura - yılanın başının etrafında parlayan halka
+                ctx.strokeStyle = '#cc00cc';
+                ctx.lineWidth = 3;
+                ctx.globalAlpha = 0.5 + 0.3 * Math.sin(time * 2);
+                ctx.beginPath();
+                ctx.arc(headX, headY, radius * 0.8, 0, 2 * Math.PI);
+                ctx.stroke();
+                
+                ctx.restore();
+                
+                // Çekilen yemler için gelişmiş efektler
                 if (effect.attracted_foods) {
                     for (const foodEffect of effect.attracted_foods) {
                         const startPos = foodEffect.start_pos;
@@ -841,13 +808,56 @@
                         // Yem pozisyonunu hesapla (başlangıçtan bitişe doğru)
                         const currentX = startPos[0] + (endPos[0] - startPos[0]) * progress;
                         const currentY = startPos[1] + (endPos[1] - startPos[1]) * progress;
+                        const foodX = currentX * CELL_SIZE + CELL_SIZE/2;
+                        const foodY = currentY * CELL_SIZE + CELL_SIZE/2;
                         
-                        // Çekilen yem - sadece basit kırmızı daire
+                        // Çekim izi - yemin arkasında bıraktığı iz
                         ctx.save();
-                        ctx.fillStyle = 'red';
+                        ctx.strokeStyle = '#800080';
+                        ctx.lineWidth = 3;
+                        ctx.globalAlpha = 0.6 * (1 - progress);
+                        
+                        // İz çizgisi
+                        const trailLength = 10;
+                        for (let i = 0; i < trailLength; i++) {
+                            const trailProgress = progress - (i * 0.05);
+                            if (trailProgress > 0) {
+                                const trailX = startPos[0] + (endPos[0] - startPos[0]) * trailProgress;
+                                const trailY = startPos[1] + (endPos[1] - startPos[1]) * trailProgress;
+                                const trailScreenX = trailX * CELL_SIZE + CELL_SIZE/2;
+                                const trailScreenY = trailY * CELL_SIZE + CELL_SIZE/2;
+                                
+                                ctx.globalAlpha = 0.6 * (1 - trailProgress) * (1 - i / trailLength);
+                                ctx.beginPath();
+                                ctx.arc(trailScreenX, trailScreenY, 2, 0, 2 * Math.PI);
+                                ctx.fill();
+                            }
+                        }
+                        
+                        // Çekilen yem - manyetik parçacıklarla
+                        ctx.save();
+                        ctx.fillStyle = '#ff0066'; // Parlak kırmızı
+                        ctx.globalAlpha = 0.8;
                         ctx.beginPath();
-                        ctx.arc(currentX*CELL_SIZE + CELL_SIZE/2, currentY*CELL_SIZE + CELL_SIZE/2, CELL_SIZE/2, 0, 2*Math.PI);
+                        ctx.arc(foodX, foodY, CELL_SIZE/2 * (1 + 0.2 * Math.sin(Date.now() * 0.01)), 0, 2*Math.PI);
                         ctx.fill();
+                        
+                        // Yemin etrafında manyetik parçacıklar
+                        ctx.strokeStyle = '#cc00cc';
+                        ctx.lineWidth = 1;
+                        ctx.globalAlpha = 0.6;
+                        for (let i = 0; i < 6; i++) {
+                            const particleAngle = Date.now() * 0.005 + (i * Math.PI / 3);
+                            const particleRadius = CELL_SIZE * 0.8;
+                            const particleX = foodX + Math.cos(particleAngle) * particleRadius;
+                            const particleY = foodY + Math.sin(particleAngle) * particleRadius;
+                            
+                            ctx.beginPath();
+                            ctx.arc(particleX, particleY, 1, 0, 2 * Math.PI);
+                            ctx.fill();
+                        }
+                        
+                        ctx.restore();
                         ctx.restore();
                     }
                 }
@@ -2445,57 +2455,7 @@
         }
     }
 
-    // Renk bilgisi panelini güncelle
-    function updateColorInfoPanel() {
-        const panel = document.getElementById('color-info-panel');
-        const colorSwatch = document.getElementById('color-swatch');
-        const colorName = document.getElementById('color-name');
-        const effectName = document.getElementById('effect-name');
-        const effectDescription = document.getElementById('effect-description');
-        
-        if (!gameState || !myId || !gameState.color_info || !gameState.color_info[myId]) {
-            panel.style.display = 'none';
-            return;
-        }
-        
-        const colorInfo = gameState.color_info[myId];
-        const effect = COLOR_EFFECTS[colorInfo.effect];
-        
-        if (!effect) {
-            panel.style.display = 'none';
-            return;
-        }
-        
-        // Panel'i göster
-        panel.style.display = 'block';
-        
-        // Renk swatch'ını güncelle
-        colorSwatch.style.backgroundColor = colorInfo.hex;
-        
-        // Renk adını güncelle
-        colorName.textContent = colorInfo.name;
-        
-        // Efekt adını güncelle
-        effectName.textContent = `${effect.name} Teması`;
-        
-        // Efekt açıklamasını güncelle
-        const descriptions = {
-            "nature": "Doğa teması - yaprak parçacıkları ve yeşil efektler",
-            "fire": "Ateş teması - ateş parçacıkları ve turuncu efektler",
-            "ice": "Buz teması - buz kristalleri ve mavi efektler",
-            "magic": "Sihir teması - büyü parçacıkları ve mor efektler",
-            "energy": "Enerji teması - enerji dalgaları ve turuncu efektler",
-            "cosmic": "Kozmik tema - yıldız parçacıkları ve mavi-mor efektler",
-            "blood": "Kan teması - kan damlaları ve kırmızı efektler",
-            "water": "Su teması - su damlaları ve mavi efektler",
 
-            "gold": "Altın teması - altın parçacıkları ve sarı efektler",
-            "metal": "Metal teması - metal parçacıkları ve gümüş efektler",
-            "neon": "Neon teması - neon ışıkları ve parlak yeşil efektler"
-        };
-        
-        effectDescription.textContent = descriptions[colorInfo.effect] || "Özel efekt teması";
-    }
 
     // Dokunmatik yön tuşları
     </script>
