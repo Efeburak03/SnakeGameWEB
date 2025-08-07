@@ -439,7 +439,7 @@
         apple: 'assets/elma.png',
         golden: 'assets/golden_apple.png',
         grass: 'assets/çimen.png',
-        box: 'assets/kutu.png',
+        enemy: 'assets/enemy.png',
         portal: 'assets/portal.png',
         bg: 'assets/bg5.jpg',
         eagle: 'assets/Eagle_500kg.png',
@@ -665,8 +665,106 @@
                 const [ox, oy] = obs.pos;
                 const size = CELL_SIZE * 1.5;
                 const offset = (size - CELL_SIZE) / 2;
-                if (obs.type === 'slow' && assets.grass) ctx.drawImage(assets.grass, ox*CELL_SIZE - offset, oy*CELL_SIZE - offset, size, size);
-                else if (obs.type === 'poison' && assets.box) ctx.drawImage(assets.box, ox*CELL_SIZE - offset, oy*CELL_SIZE - offset, size, size);
+                if (obs.type === 'slow') {
+                    // Etkileşimli Mavi Duman Efekti
+                    const x = ox * CELL_SIZE + CELL_SIZE/2;
+                    const y = oy * CELL_SIZE + CELL_SIZE/2;
+                    const radius = CELL_SIZE/2;
+                    const time = Date.now() * 0.004;
+                    
+                    // Yılanın mesafesini hesapla
+                    let distance = 999;
+                    let intensity = 0.3; // Minimum yoğunluk
+                    if (gameState.snakes && myId && gameState.snakes[myId] && gameState.snakes[myId].length > 0) {
+                        const [hx, hy] = gameState.snakes[myId][0];
+                        distance = Math.abs(hx - ox) + Math.abs(hy - oy);
+                        
+                        // Mesafeye göre yoğunluk hesapla (yakın = yoğun)
+                        if (distance <= 3) {
+                            intensity = 1.0; // Tam yoğunluk
+                        } else if (distance <= 6) {
+                            intensity = 0.3 + 0.7 * (1 - (distance - 3) / 3);
+                        }
+                    }
+                    
+                    // Dış glow efekti - mavi duman
+                    const glowRadius = radius * 2.2 * intensity;
+                    const glowGradient = ctx.createRadialGradient(x, y, 0, x, y, glowRadius);
+                    glowGradient.addColorStop(0, `rgba(100, 150, 255, ${0.8 * intensity})`);
+                    glowGradient.addColorStop(0.4, `rgba(80, 120, 220, ${0.6 * intensity})`);
+                    glowGradient.addColorStop(0.7, `rgba(60, 100, 200, ${0.4 * intensity})`);
+                    glowGradient.addColorStop(1, 'rgba(40, 80, 180, 0)');
+                    
+                    ctx.fillStyle = glowGradient;
+                    ctx.beginPath();
+                    ctx.arc(x, y, glowRadius, 0, 2 * Math.PI);
+                    ctx.fill();
+                    
+                    // Ana duman - gradient mavi daire
+                    const smokeGradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+                    smokeGradient.addColorStop(0, `rgba(120, 180, 255, ${0.9 * intensity})`);
+                    smokeGradient.addColorStop(0.5, `rgba(100, 150, 230, ${0.8 * intensity})`);
+                    smokeGradient.addColorStop(1, `rgba(80, 120, 200, ${0.7 * intensity})`);
+                    
+                    ctx.fillStyle = smokeGradient;
+                    ctx.beginPath();
+                    ctx.arc(x, y, radius, 0, 2 * Math.PI);
+                    ctx.fill();
+                    
+                    // İç parıltı - pulse animasyonu
+                    const pulse = 0.6 + 0.4 * Math.sin(time * 2);
+                    const innerRadius = radius * 0.6;
+                    const innerGradient = ctx.createRadialGradient(x, y, 0, x, y, innerRadius);
+                    innerGradient.addColorStop(0, `rgba(150, 200, 255, ${pulse * intensity})`);
+                    innerGradient.addColorStop(1, 'rgba(120, 180, 255, 0)');
+                    
+                    ctx.fillStyle = innerGradient;
+                    ctx.beginPath();
+                    ctx.arc(x, y, innerRadius, 0, 2 * Math.PI);
+                    ctx.fill();
+                    
+                    // Kenarlık - manyetik alan efekti
+                    const borderAlpha = 0.7 + 0.3 * Math.sin(time * 1.5);
+                    ctx.strokeStyle = `rgba(100, 150, 255, ${borderAlpha * intensity})`;
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(x, y, radius, 0, 2 * Math.PI);
+                    ctx.stroke();
+                    
+                    // Dönen manyetik parçacıklar (yakın mesafede)
+                    if (distance <= 4) {
+                        const particleCount = Math.floor(6 * intensity);
+                        for (let i = 0; i < particleCount; i++) {
+                            const angle = time * 0.8 + (i * Math.PI * 2 / particleCount);
+                            const particleRadius = radius * 1.4;
+                            const particleX = x + Math.cos(angle) * particleRadius;
+                            const particleY = y + Math.sin(angle) * particleRadius;
+                            
+                            ctx.save();
+                            ctx.globalAlpha = 0.8 * intensity;
+                            ctx.fillStyle = '#80b0ff';
+                            ctx.beginPath();
+                            ctx.arc(particleX, particleY, 2, 0, 2 * Math.PI);
+                            ctx.fill();
+                            ctx.restore();
+                        }
+                    }
+                    
+                    // Çekim efekti - yılan çok yakınsa
+                    if (distance <= 2) {
+                        const attractionRadius = radius * 3;
+                        const attractionGradient = ctx.createRadialGradient(x, y, 0, x, y, attractionRadius);
+                        attractionGradient.addColorStop(0, `rgba(100, 150, 255, ${0.3 * intensity})`);
+                        attractionGradient.addColorStop(1, 'rgba(100, 150, 255, 0)');
+                        
+                        ctx.fillStyle = attractionGradient;
+                        ctx.beginPath();
+                        ctx.arc(x, y, attractionRadius, 0, 2 * Math.PI);
+                        ctx.fill();
+                    }
+                } else if (obs.type === 'poison' && assets.box) {
+                    ctx.drawImage(assets.box, ox*CELL_SIZE - offset, oy*CELL_SIZE - offset, size, size);
+                }
                 else if (obs.type === 'hidden_wall') {
                     // Gizli duvarlar yılanın başının 4 blok yakınında görünür
                     let show = false;
@@ -685,32 +783,33 @@
                         // Kademeli görünürlük (mesafeye göre)
                         const visibility = Math.max(0.3, 1 - (distance / 4));
                         
-                        // Glow efekti - daha parlak
-                        const glowSize = size * 2.0;
+                        // Glow efekti - çok daha parlak
+                        const glowSize = size * 2.5;
                         const glowGradient = ctx.createRadialGradient(
                             x + size/2, y + size/2, 0,
                             x + size/2, y + size/2, glowSize/2
                         );
-                        glowGradient.addColorStop(0, `rgba(255, 150, 150, ${0.7 * visibility})`);
-                        glowGradient.addColorStop(0.5, `rgba(255, 200, 200, ${0.4 * visibility})`);
+                        glowGradient.addColorStop(0, `rgba(255, 120, 120, ${0.9 * visibility})`);
+                        glowGradient.addColorStop(0.3, `rgba(255, 180, 180, ${0.7 * visibility})`);
+                        glowGradient.addColorStop(0.6, `rgba(255, 200, 200, ${0.5 * visibility})`);
                         glowGradient.addColorStop(1, 'rgba(255, 150, 150, 0)');
                         
                         ctx.fillStyle = glowGradient;
                         ctx.fillRect(x - glowSize/4, y - glowSize/4, size + glowSize/2, size + glowSize/2);
                         
-                        // Ana duvar - gradient ile (daha parlak)
+                        // Ana duvar - gradient ile (çok daha parlak)
                         const wallGradient = ctx.createLinearGradient(x, y, x + size, y + size);
-                        wallGradient.addColorStop(0, `rgba(220, 80, 80, ${0.95 * visibility})`);
-                        wallGradient.addColorStop(0.5, `rgba(180, 60, 60, ${0.9 * visibility})`);
-                        wallGradient.addColorStop(1, `rgba(140, 40, 40, ${0.95 * visibility})`);
+                        wallGradient.addColorStop(0, `rgba(255, 100, 100, ${0.98 * visibility})`);
+                        wallGradient.addColorStop(0.5, `rgba(220, 70, 70, ${0.95 * visibility})`);
+                        wallGradient.addColorStop(1, `rgba(180, 50, 50, ${0.98 * visibility})`);
                         
                         ctx.fillStyle = wallGradient;
                         ctx.fillRect(x, y, size, size);
                         
-                        // Kenarlık - pulse animasyonu (daha parlak)
-                        const borderAlpha = 0.8 + 0.2 * Math.sin(time);
-                        ctx.strokeStyle = `rgba(255, 220, 220, ${borderAlpha * visibility})`;
-                        ctx.lineWidth = 3;
+                        // Kenarlık - pulse animasyonu (çok daha parlak)
+                        const borderAlpha = 0.9 + 0.1 * Math.sin(time);
+                        ctx.strokeStyle = `rgba(255, 240, 240, ${borderAlpha * visibility})`;
+                        ctx.lineWidth = 4;
                         ctx.strokeRect(x + 1, y + 1, size - 2, size - 2);
                         
                         // İç detay - çapraz çizgiler
@@ -751,11 +850,12 @@
                 const radius = CELL_SIZE/2;
                 const time = Date.now() * 0.005;
                 
-                // Dış glow efekti - kırmızı parıltı
-                const glowRadius = radius * 1.8;
+                // Dış glow efekti - kırmızı parıltı (daha parlak)
+                const glowRadius = radius * 2.2;
                 const glowGradient = ctx.createRadialGradient(x, y, 0, x, y, glowRadius);
-                glowGradient.addColorStop(0, 'rgba(255, 50, 50, 0.8)');
-                glowGradient.addColorStop(0.5, 'rgba(255, 100, 100, 0.4)');
+                glowGradient.addColorStop(0, 'rgba(255, 30, 30, 1.0)');
+                glowGradient.addColorStop(0.3, 'rgba(255, 60, 60, 0.8)');
+                glowGradient.addColorStop(0.6, 'rgba(255, 100, 100, 0.5)');
                 glowGradient.addColorStop(1, 'rgba(255, 50, 50, 0)');
                 
                 ctx.fillStyle = glowGradient;
@@ -763,32 +863,32 @@
                 ctx.arc(x, y, glowRadius, 0, 2 * Math.PI);
                 ctx.fill();
                 
-                // Ana yem - gradient kırmızı daire
+                // Ana yem - gradient kırmızı daire (daha parlak)
                 const foodGradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
-                foodGradient.addColorStop(0, 'rgba(255, 80, 80, 1)');
-                foodGradient.addColorStop(0.7, 'rgba(200, 40, 40, 0.9)');
-                foodGradient.addColorStop(1, 'rgba(150, 20, 20, 0.8)');
+                foodGradient.addColorStop(0, 'rgba(255, 100, 100, 1)');
+                foodGradient.addColorStop(0.5, 'rgba(255, 60, 60, 0.95)');
+                foodGradient.addColorStop(1, 'rgba(220, 30, 30, 0.9)');
                 
                 ctx.fillStyle = foodGradient;
                 ctx.beginPath();
                 ctx.arc(x, y, radius, 0, 2 * Math.PI);
                 ctx.fill();
                 
-                // İç parıltı - pulse animasyonu
-                const pulse = 0.6 + 0.4 * Math.sin(time * 2);
-                const innerRadius = radius * 0.6;
+                // İç parıltı - pulse animasyonu (daha parlak)
+                const pulse = 0.7 + 0.3 * Math.sin(time * 2);
+                const innerRadius = radius * 0.7;
                 const innerGradient = ctx.createRadialGradient(x, y, 0, x, y, innerRadius);
-                innerGradient.addColorStop(0, `rgba(255, 150, 150, ${pulse})`);
-                innerGradient.addColorStop(1, 'rgba(255, 100, 100, 0)');
+                innerGradient.addColorStop(0, `rgba(255, 200, 200, ${pulse})`);
+                innerGradient.addColorStop(1, 'rgba(255, 150, 150, 0)');
                 
                 ctx.fillStyle = innerGradient;
                 ctx.beginPath();
                 ctx.arc(x, y, innerRadius, 0, 2 * Math.PI);
                 ctx.fill();
                 
-                // Kenarlık - parıltılı çizgi
-                ctx.strokeStyle = `rgba(255, 200, 200, ${0.8 + 0.2 * Math.sin(time * 3)})`;
-                ctx.lineWidth = 2;
+                // Kenarlık - parıltılı çizgi (daha parlak)
+                ctx.strokeStyle = `rgba(255, 220, 220, ${0.9 + 0.1 * Math.sin(time * 3)})`;
+                ctx.lineWidth = 3;
                 ctx.beginPath();
                 ctx.arc(x, y, radius, 0, 2 * Math.PI);
                 ctx.stroke();
@@ -1697,8 +1797,103 @@
                 const [ox, oy] = obs.pos;
                 const size = CELL_SIZE * 1.5;
                 const offset = (size - CELL_SIZE) / 2;
-                if ((obs.type === 'grass' || obs.type === 'slow') && assets.grass) {
-                    ctx.drawImage(assets.grass, ox*CELL_SIZE - offset, oy*CELL_SIZE - offset, size, size);
+                if (obs.type === 'grass' || obs.type === 'slow') {
+                    // Etkileşimli Mavi Duman Efekti (Time Attack)
+                    const x = ox * CELL_SIZE + CELL_SIZE/2;
+                    const y = oy * CELL_SIZE + CELL_SIZE/2;
+                    const radius = CELL_SIZE/2;
+                    const time = Date.now() * 0.004;
+                    
+                    // Yılanın mesafesini hesapla
+                    let distance = 999;
+                    let intensity = 0.3; // Minimum yoğunluk
+                    if (timeAttackState.snake && timeAttackState.snake.length > 0) {
+                        const [hx, hy] = timeAttackState.snake[0];
+                        distance = Math.abs(hx - ox) + Math.abs(hy - oy);
+                        
+                        // Mesafeye göre yoğunluk hesapla (yakın = yoğun)
+                        if (distance <= 3) {
+                            intensity = 1.0; // Tam yoğunluk
+                        } else if (distance <= 6) {
+                            intensity = 0.3 + 0.7 * (1 - (distance - 3) / 3);
+                        }
+                    }
+                    
+                    // Dış glow efekti - mavi duman
+                    const glowRadius = radius * 2.2 * intensity;
+                    const glowGradient = ctx.createRadialGradient(x, y, 0, x, y, glowRadius);
+                    glowGradient.addColorStop(0, `rgba(100, 150, 255, ${0.8 * intensity})`);
+                    glowGradient.addColorStop(0.4, `rgba(80, 120, 220, ${0.6 * intensity})`);
+                    glowGradient.addColorStop(0.7, `rgba(60, 100, 200, ${0.4 * intensity})`);
+                    glowGradient.addColorStop(1, 'rgba(40, 80, 180, 0)');
+                    
+                    ctx.fillStyle = glowGradient;
+                    ctx.beginPath();
+                    ctx.arc(x, y, glowRadius, 0, 2 * Math.PI);
+                    ctx.fill();
+                    
+                    // Ana duman - gradient mavi daire
+                    const smokeGradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+                    smokeGradient.addColorStop(0, `rgba(120, 180, 255, ${0.9 * intensity})`);
+                    smokeGradient.addColorStop(0.5, `rgba(100, 150, 230, ${0.8 * intensity})`);
+                    smokeGradient.addColorStop(1, `rgba(80, 120, 200, ${0.7 * intensity})`);
+                    
+                    ctx.fillStyle = smokeGradient;
+                    ctx.beginPath();
+                    ctx.arc(x, y, radius, 0, 2 * Math.PI);
+                    ctx.fill();
+                    
+                    // İç parıltı - pulse animasyonu
+                    const pulse = 0.6 + 0.4 * Math.sin(time * 2);
+                    const innerRadius = radius * 0.6;
+                    const innerGradient = ctx.createRadialGradient(x, y, 0, x, y, innerRadius);
+                    innerGradient.addColorStop(0, `rgba(150, 200, 255, ${pulse * intensity})`);
+                    innerGradient.addColorStop(1, 'rgba(120, 180, 255, 0)');
+                    
+                    ctx.fillStyle = innerGradient;
+                    ctx.beginPath();
+                    ctx.arc(x, y, innerRadius, 0, 2 * Math.PI);
+                    ctx.fill();
+                    
+                    // Kenarlık - manyetik alan efekti
+                    const borderAlpha = 0.7 + 0.3 * Math.sin(time * 1.5);
+                    ctx.strokeStyle = `rgba(100, 150, 255, ${borderAlpha * intensity})`;
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(x, y, radius, 0, 2 * Math.PI);
+                    ctx.stroke();
+                    
+                    // Dönen manyetik parçacıklar (yakın mesafede)
+                    if (distance <= 4) {
+                        const particleCount = Math.floor(6 * intensity);
+                        for (let i = 0; i < particleCount; i++) {
+                            const angle = time * 0.8 + (i * Math.PI * 2 / particleCount);
+                            const particleRadius = radius * 1.4;
+                            const particleX = x + Math.cos(angle) * particleRadius;
+                            const particleY = y + Math.sin(angle) * particleRadius;
+                            
+                            ctx.save();
+                            ctx.globalAlpha = 0.8 * intensity;
+                            ctx.fillStyle = '#80b0ff';
+                            ctx.beginPath();
+                            ctx.arc(particleX, particleY, 2, 0, 2 * Math.PI);
+                            ctx.fill();
+                            ctx.restore();
+                        }
+                    }
+                    
+                    // Çekim efekti - yılan çok yakınsa
+                    if (distance <= 2) {
+                        const attractionRadius = radius * 3;
+                        const attractionGradient = ctx.createRadialGradient(x, y, 0, x, y, attractionRadius);
+                        attractionGradient.addColorStop(0, `rgba(100, 150, 255, ${0.3 * intensity})`);
+                        attractionGradient.addColorStop(1, 'rgba(100, 150, 255, 0)');
+                        
+                        ctx.fillStyle = attractionGradient;
+                        ctx.beginPath();
+                        ctx.arc(x, y, attractionRadius, 0, 2 * Math.PI);
+                        ctx.fill();
+                    }
                 } else if (obs.type === 'poison' && assets.box) {
                     ctx.drawImage(assets.box, ox*CELL_SIZE - offset, oy*CELL_SIZE - offset, size, size);
                 } else if (obs.type === 'hidden_wall') {
