@@ -216,6 +216,34 @@
             text-align: center;
         }
         
+                       /* Loading Overlay Stilleri */
+               #loading-overlay {
+                   position: fixed;
+                   top: 0;
+                   left: 0;
+                   width: 100vw;
+                   height: 100vh;
+                   background: #000;
+                   display: flex;
+                   align-items: center;
+                   justify-content: center;
+                   z-index: 9999;
+                   opacity: 0;
+                   visibility: hidden;
+                   transition: opacity 0.3s ease, visibility 0.3s ease;
+               }
+               #loading-overlay.show {
+                   opacity: 1;
+                   visibility: visible;
+               }
+               .loading-text {
+                   color: #ff8c00;
+                   font-size: 2em;
+                   font-family: 'Segoe UI', Arial, sans-serif;
+                   text-align: center;
+                   font-weight: bold;
+               }
+
         /* Mod ve Zorluk Seçimi Stilleri */
         #mode-ui, #difficulty-ui {
             display: flex;
@@ -386,7 +414,10 @@
 
     <div id="top-usernames" style="display:none;"></div>
     
-
+               <!-- Loading Overlay -->
+           <div id="loading-overlay">
+               <div class="loading-text">(LODAING...)</div>
+           </div>
     
     <div id="game-container" style="display:none; width:100vw; height:100vh;">
         <div style="position:relative; width:100vw; height:100vh;">
@@ -471,6 +502,10 @@
         });
         
         socket.on('state', (state) => {
+            // Loading overlay'i gizle
+            const loadingOverlay = document.getElementById('loading-overlay');
+            loadingOverlay.classList.remove('show');
+            
             // Yem yeme kontrolü - önceki state ile karşılaştır
             if (gameState && gameState.food && state.food) {
                 // Yem sayısı azaldıysa patlama efekti oluştur
@@ -498,6 +533,10 @@
         
         // Time Attack event listener'ları
         socket.on('time_attack_started', (data) => {
+            // Loading overlay'i gizle
+            const loadingOverlay = document.getElementById('loading-overlay');
+            loadingOverlay.classList.remove('show');
+            
             currentGameMode = 'timeAttack';
             currentDifficulty = data.difficulty;
             showTimeAttackUI();
@@ -515,6 +554,10 @@
 
         
         socket.on('error', (err) => {
+            // Loading overlay'i gizle
+            const loadingOverlay = document.getElementById('loading-overlay');
+            loadingOverlay.classList.remove('show');
+            
             const errorDiv = document.getElementById('ui-error');
             errorDiv.textContent = err.message || 'Bağlantı hatası!';
             document.getElementById('ui').style.display = 'flex';
@@ -523,6 +566,10 @@
         });
         
         socket.on('disconnect', () => {
+            // Loading overlay'i gizle
+            const loadingOverlay = document.getElementById('loading-overlay');
+            loadingOverlay.classList.remove('show');
+            
             setTimeout(connect, 1000);
         });
         
@@ -1319,6 +1366,12 @@
     function startGameMode() {
         document.getElementById('mode-ui').style.display = 'none';
         document.getElementById('difficulty-ui').style.display = 'none';
+        
+        // Loading overlay'i göster
+        const loadingOverlay = document.getElementById('loading-overlay');
+        loadingOverlay.classList.add('show');
+        
+        // Oyun container'ını hazırla ama henüz gösterme
         document.getElementById('game-container').style.display = 'flex';
         document.getElementById('top-usernames').style.display = 'flex';
         started = true;
