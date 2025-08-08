@@ -730,7 +730,7 @@
             loadingOverlay.classList.remove('show');
             // Ana menüye dönüşte tekrar bağlanma
             if (!suppressAutoReconnect) {
-                setTimeout(connect, 1000);
+            setTimeout(connect, 1000);
             }
         });
         
@@ -780,7 +780,7 @@
         const b = num & 255;
         return `rgba(${r},${g},${b},${alpha})`;
     }
-
+    
     
     function stopRenderLoop() {
         if (animationFrameId) {
@@ -1245,7 +1245,7 @@
             if (!winnerName || winnerName === '-') winnerName = 'Yok';
             // Süre bitince kazanan ve puanı göster
             if (readySent) {
-                msgDiv.querySelector('span').textContent =
+            msgDiv.querySelector('span').textContent =
                     'Süre bitti! Kazanan: ' + winnerName + (winnerScore !== '' ? ' (' + winnerScore + ' puan)' : '') + '\n' +
                     'Oyuna başlamak için hazır ol';
             } else {
@@ -2054,12 +2054,12 @@
             for (const [i, seg] of timeAttackState.snake.entries()) {
                 const x = seg[0] * CELL_SIZE;
                 const y = seg[1] * CELL_SIZE;
-                
+                        
                 // Baş için özel çizim
                 if (i === 0) {
                     ctx.fillStyle = snakeColor;
-                    ctx.fillRect(x, y, CELL_SIZE, CELL_SIZE);
-                    
+                ctx.fillRect(x, y, CELL_SIZE, CELL_SIZE);
+                        
                     // Baş için glow efekti
                     if (!isFrozen && colorInfo.effect) {
                         const eff = (typeof COLOR_EFFECTS !== 'undefined') ? COLOR_EFFECTS[colorInfo.effect] : null;
@@ -2072,10 +2072,10 @@
                     }
                 } else {
                     // Vücut için normal çizim
-                    ctx.fillStyle = snakeColor;
-                    ctx.fillRect(x, y, CELL_SIZE, CELL_SIZE);
+                        ctx.fillStyle = snakeColor;
+                        ctx.fillRect(x, y, CELL_SIZE, CELL_SIZE);
+                    }
                 }
-            }
             
             // Speed power-up aktifse nebula smoke efekti (Time Attack)
             if (timeAttackState.active_powerups && timeAttackState.active_powerups[myId] && 
@@ -2616,7 +2616,7 @@
             socket.emit('time_attack_move', {client_id: myId, direction: direction});
         }
     }
-   
+    
     // Oyun state güncellendiğinde restart butonunu göster/gizle
     function updateRestartButton() {
         const restart = document.getElementById('btn-restart');
@@ -3069,26 +3069,23 @@
         constructor(x, y) {
             this.x = x;
             this.y = y;
-            this.vx = (Math.random() - 0.5) * 3;
-            this.vy = (Math.random() - 0.5) * 3;
-            this.life = 1.5;
-            this.decay = 0.015;
-            this.size = Math.random() * 12 + 6;
-            this.opacity = 0.9;
+            this.vx = (Math.random() - 0.5) * 2;
+            this.vy = (Math.random() - 0.5) * 2;
+            this.life = 0.8; // Daha kısa yaşam süresi
+            this.decay = 0.03; // Daha hızlı yok olma
+            this.size = Math.random() * 8 + 4; // Daha küçük boyut
+            this.opacity = 0.6; // Daha düşük opaklık
             
-            // Nebula renkleri - parlak ve canlı
+            // Daha gerçekçi duman renkleri
             this.colors = [
-                '#ff00ff', // Magenta
-                '#00ffff', // Cyan
-                '#ffff00', // Sarı
-                '#ff0080', // Pembe
-                '#8000ff', // Mor
-                '#00ff80', // Neon yeşil
-                '#ff8000', // Turuncu
-                '#0080ff'  // Mavi
+                '#666666', // Gri
+                '#888888', // Açık gri
+                '#aaaaaa', // Çok açık gri
+                '#999999', // Orta gri
+                '#777777'  // Koyu gri
             ];
             this.color = this.colors[Math.floor(Math.random() * this.colors.length)];
-            this.pulseSpeed = Math.random() * 0.1 + 0.05;
+            this.pulseSpeed = Math.random() * 0.05 + 0.02; // Daha yavaş pulse
             this.pulsePhase = Math.random() * Math.PI * 2;
         }
         
@@ -3096,8 +3093,8 @@
             this.x += this.vx;
             this.y += this.vy;
             this.life -= this.decay;
-            this.size *= 1.03; // Nebula dumanı daha hızlı büyür
-            this.opacity *= 0.99;
+            this.size *= 1.01; // Daha yavaş büyüme
+            this.opacity *= 0.95; // Daha hızlı solma
             this.pulsePhase += this.pulseSpeed;
         }
         
@@ -3107,12 +3104,12 @@
             ctx.save();
             
             // Pulse efekti
-            const pulse = 0.8 + 0.2 * Math.sin(this.pulsePhase);
+            const pulse = 0.9 + 0.1 * Math.sin(this.pulsePhase);
             const alpha = this.opacity * this.life * pulse;
             
-            // Glow efekti
+            // Minimal glow efekti
             ctx.shadowColor = this.color;
-            ctx.shadowBlur = 15;
+            ctx.shadowBlur = 5; // Daha az blur
             
             // Ana parçacık
             ctx.globalAlpha = alpha;
@@ -3121,18 +3118,11 @@
             ctx.arc(this.x, this.y, this.size, 0, 2 * Math.PI);
             ctx.fill();
             
-            // İç parçacık (daha parlak)
-            ctx.globalAlpha = alpha * 0.7;
-            ctx.fillStyle = '#ffffff';
+            // İç parçacık (daha az parlak)
+            ctx.globalAlpha = alpha * 0.5;
+            ctx.fillStyle = '#cccccc';
             ctx.beginPath();
-            ctx.arc(this.x, this.y, this.size * 0.6, 0, 2 * Math.PI);
-            ctx.fill();
-            
-            // Dış halka (glow efekti)
-            ctx.globalAlpha = alpha * 0.3;
-            ctx.fillStyle = this.color;
-            ctx.beginPath();
-            ctx.arc(this.x, this.y, this.size * 1.5, 0, 2 * Math.PI);
+            ctx.arc(this.x, this.y, this.size * 0.7, 0, 2 * Math.PI);
             ctx.fill();
             
             ctx.shadowBlur = 0;
@@ -3142,14 +3132,14 @@
     
     function createSmokeEffect(x, y, type = 'normal') {
         if (type === 'nebula') {
-            // Nebula duman efekti - parlak ve renkli
-            for (let i = 0; i < 5; i++) {
+            // Duman efekti - daha az parçacık
+            for (let i = 0; i < 2; i++) {
                 smokeParticles.push(new NebulaSmokeParticle(x, y));
             }
         } else {
             // Normal duman efekti
-            for (let i = 0; i < 3; i++) {
-                smokeParticles.push(new SmokeParticle(x, y));
+        for (let i = 0; i < 3; i++) {
+            smokeParticles.push(new SmokeParticle(x, y));
             }
         }
     }
