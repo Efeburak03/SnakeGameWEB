@@ -1068,9 +1068,16 @@
             let winnerName = gameState.winner_id;
             let winnerScore = gameState.scores && winnerName ? gameState.scores[winnerName] : '';
             if (!winnerName || winnerName === '-') winnerName = 'Yok';
-            msgDiv.querySelector('span').textContent =
-                'Oyun Bitti! Kazanan: ' + winnerName + (winnerScore !== '' ? ' (' + winnerScore + ' puan)' : '') + '\n' +
-                'Devam için Enter (tüm oyuncular)';
+            // Süre bitince kazanan ve puanı göster
+            if (readySent) {
+                msgDiv.querySelector('span').textContent =
+                    'Süre bitti! Kazanan: ' + winnerName + (winnerScore !== '' ? ' (' + winnerScore + ' puan)' : '') + '\n' +
+                    'Oyuna başlamak için hazır ol';
+            } else {
+                msgDiv.querySelector('span').textContent =
+                    'Süre bitti! Kazanan: ' + winnerName + (winnerScore !== '' ? ' (' + winnerScore + ' puan)' : '') + '\n' +
+                    "Başlamak için Enter'a basın";
+            }
         } else {
             msgDiv.style.display = 'none';
         }
@@ -1511,6 +1518,8 @@
                     if (!readySent) {
                         socket.emit('ready', {client_id: myId});
                         readySent = true;
+                        // Mesajı hemen güncelle
+                        updateRestartButton();
                     }
                 }
             }
@@ -2270,17 +2279,7 @@
             socket.emit('time_attack_move', {client_id: myId, direction: direction});
         }
     }
-    
-
-    
-
-        
-        
-
-    
-    
-
-    
+   
     // Oyun state güncellendiğinde restart butonunu göster/gizle
     function updateRestartButton() {
         const restart = document.getElementById('btn-restart');
