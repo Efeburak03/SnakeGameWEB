@@ -1,117 +1,117 @@
 # common.py
 
-# Mesaj tipleri
+# Message types
 MSG_MOVE = 'move'
 MSG_STATE = 'state'
 MSG_RESTART = 'restart'
 READY_MSG = 'ready'
 
-# Maksimum oyuncu sayısı
+# Maximum number of players
 MAX_PLAYERS = 8
 
-# Oyun alanı sabitleri
-BOARD_WIDTH = 60   # Enine daha geniş
-BOARD_HEIGHT = 35  # 700/20 = 35 satır
+# Game board constants
+BOARD_WIDTH = 60   # Wider horizontally
+BOARD_HEIGHT = 35  # 700/20 = 35 rows
 START_LENGTH = 3
-TICK_RATE = 0.05   # saniye, 20 FPS
+TICK_RATE = 0.05   # seconds, 20 FPS
 MAX_SNAKE_LENGTH = 10
 
-# Yılan renkleri (her oyuncuya farklı renk)
+# Snake colors (different color for each player)
 def get_snake_color(client_id):
     colors = [
-        (0, 255, 0),    # Yeşil
-        (255, 255, 0),  # Sarı
-        (0, 255, 255),  # Camgöbeği
-        (255, 0, 255),  # Mor
-        (255, 128, 0),  # Turuncu
-        (128, 0, 255),  # Mavi-mor
-        (255, 0, 0),    # Kırmızı
-        (0, 128, 255),  # Açık mavi
+        (0, 255, 0),    # Green
+        (255, 255, 0),  # Yellow
+        (0, 255, 255),  # Cyan
+        (255, 0, 255),  # Purple
+        (255, 128, 0),  # Orange
+        (128, 0, 255),  # Blue-purple
+        (255, 0, 0),    # Red
+        (0, 128, 255),  # Light blue
     ]
-    # client_id string ise hashle, int ise direkt kullan
+    # Hash client_id if string, use directly if int
     idx = abs(hash(str(client_id))) % len(colors)
     return colors[idx]
 
-# Gelişmiş renk sistemi - her renk için özel efekt bilgileri
+# Advanced color system - special effect information for each color
 SNAKE_COLORS = [
     {
-        "name": "Yeşil",
+        "name": "Green",
         "color": (0, 255, 0),
         "hex": "#00ff00",
-        "effect": "nature",  # Doğa teması - yaprak efektleri
+        "effect": "nature",  # Nature theme - leaf effects
         "particle_color": "#00ff00",
         "glow_color": "#00ff40"
     },
     {
-        "name": "Sarı",
+        "name": "Yellow",
         "color": (255, 255, 0),
         "hex": "#ffff00", 
-        "effect": "fire",  # Ateş teması - ateş parçacıkları
+        "effect": "fire",  # Fire theme - fire particles
         "particle_color": "#ff6600",
         "glow_color": "#ffaa00"
     },
     {
-        "name": "Camgöbeği",
+        "name": "Cyan",
         "color": (0, 255, 255),
         "hex": "#00ffff",
-        "effect": "ice",  # Buz teması - buz kristalleri
+        "effect": "ice",  # Ice theme - ice crystals
         "particle_color": "#00ccff",
         "glow_color": "#00ffff"
     },
     {
-        "name": "Mor",
+        "name": "Purple",
         "color": (255, 0, 255),
         "hex": "#ff00ff",
-        "effect": "magic",  # Sihir teması - büyü parçacıkları
+        "effect": "magic",  # Magic theme - magic particles
         "particle_color": "#cc00ff",
         "glow_color": "#ff00ff"
     },
     {
-        "name": "Turuncu",
+        "name": "Orange",
         "color": (255, 128, 0),
         "hex": "#ff8000",
-        "effect": "energy",  # Enerji teması - enerji dalgaları
+        "effect": "energy",  # Energy theme - energy waves
         "particle_color": "#ff4400",
         "glow_color": "#ff6600"
     },
     {
-        "name": "Mavi-Mor",
+        "name": "Blue-Purple",
         "color": (128, 0, 255),
         "hex": "#8000ff",
-        "effect": "cosmic",  # Kozmik tema - yıldız parçacıkları
+        "effect": "cosmic",  # Cosmic theme - star particles
         "particle_color": "#4400ff",
         "glow_color": "#6600ff"
     },
     {
-        "name": "Kırmızı",
+        "name": "Red",
         "color": (255, 0, 0),
         "hex": "#ff0000",
-        "effect": "blood",  # Kan teması - kan damlaları
+        "effect": "blood",  # Blood theme - blood drops
         "particle_color": "#cc0000",
         "glow_color": "#ff0000"
     },
     {
-        "name": "Açık Mavi",
+        "name": "Light Blue",
         "color": (0, 128, 255),
         "hex": "#0080ff",
-        "effect": "water",  # Su teması - su damlaları
+        "effect": "water",  # Water theme - water drops
         "particle_color": "#0066cc",
         "glow_color": "#0080ff"
     },
 
     {
-        "name": "Altın",
+        "name": "Gold",
         "color": (255, 215, 0),
         "hex": "#ffd700",
-        "effect": "gold",  # Altın teması - altın parçacıkları
+        "effect": "gold",  # Gold theme - gold particles
         "particle_color": "#ffcc00",
         "glow_color": "#ffd700"
     },
     {
-        "name": "Gümüş",
+        "name": "Silver",
         "color": (192, 192, 192),
         "hex": "#c0c0c0",
-        "effect": "metal",  # Metal teması - metal parçacıkları
+        "effect": "metal",  # Metal theme - metal particles
         "particle_color": "#a0a0a0",
         "glow_color": "#c0c0c0"
     },

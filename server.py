@@ -694,7 +694,7 @@ async def ws_handler(websocket):
                 # Tüm oyuncuları elendir
                 for cid in list(game_state["snakes"].keys()):
                     eliminate_snake(cid)
-                print("Easter egg tetiklendi! Tüm oyuncular elendi.")
+                print("Easter egg triggered! All players eliminated.")
     except Exception as e:
         print("WebSocket bağlantı hatası:", e)
     finally:
@@ -1197,11 +1197,11 @@ def on_start_time_attack(data):
     
     # Client ID kontrolü
     if not client_id or client_id == 'null' or client_id == '':
-        emit('error', {"message": "Geçersiz kullanıcı adı!"})
+        emit('error', {"message": "Invalid username!"})
         return
     
     if difficulty not in time_attack_module.TIME_ATTACK_CONFIG["difficulties"]:
-        emit('error', {"message": "Geçersiz zorluk seviyesi!"})
+        emit('error', {"message": "Invalid difficulty level!"})
         return
     
     # Time Attack oyunu oluştur
@@ -1312,7 +1312,7 @@ def on_chat_message(data):
     message = data.get('message', '').strip()
     
     if not message or not player_name:
-        emit('chat_error', {"message": "Geçersiz mesaj!"})
+        emit('chat_error', {"message": "Invalid message!"})
         return
     
     # Whisper kontrolü (/dm username message)
@@ -1324,7 +1324,7 @@ def on_chat_message(data):
             target_id = get_player_by_name(target_name)
             
             if not target_id:
-                emit('chat_error', {"message": f"'{target_name}' adlı oyuncu bulunamadı!"})
+                emit('chat_error', {"message": f"Player '{target_name}' not found!"})
                 return
             
             if target_id == sid:

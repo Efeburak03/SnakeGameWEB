@@ -60,7 +60,7 @@ class TimeAttackGame:
             "trails": []  # İz bırakıcı power-up için
         }
         
-        # Oyunu başlat
+        # Start the game
         self._place_food()
         self._place_obstacles()
         self._place_portals()
@@ -329,7 +329,7 @@ class TimeAttackGame:
         
         # Trail power-up için özel işlem
         if powerup_type == "trail":
-            # Trail'i temizle (yeni trail başlat)
+            # Clear trail (start new trail)
             self.game_state["trails"] = []
     
     def has_powerup(self, powerup_type):
@@ -343,21 +343,21 @@ class TimeAttackGame:
         return time.time() < self.game_state["active_powerups"][self.client_id][powerup_type]
     
     def update_time(self):
-        """Süreyi güncelle"""
+        """Update time"""
         current_time = time.time()
         elapsed = current_time - self.game_state["start_time"]
         self.game_state["time_left"] = max(0, self.game_state["time_left"] - elapsed)
         self.game_state["start_time"] = current_time
         
-        # Süre bittiyse oyunu bitir
+        # End game if time is up
         if self.game_state["time_left"] <= 0:
             self.game_state["game_active"] = False
-            # En yüksek skoru güncelle
+            # Update high score
             if self.game_state["score"] > self.game_state["high_score"]:
                 self.game_state["high_score"] = self.game_state["score"]
     
     def clear_expired_powerups(self):
-        """Süresi dolmuş power-up'ları temizle"""
+        """Clear expired power-ups"""
         current_time = time.time()
         if self.client_id in self.game_state["active_powerups"]:
             expired = []
@@ -366,18 +366,18 @@ class TimeAttackGame:
                     expired.append(powerup_type)
             for powerup_type in expired:
                 del self.game_state["active_powerups"][self.client_id][powerup_type]
-                # Trail power-up bittiyse trail'i temizle
+                # Clear trail if trail power-up expired
                 if powerup_type == "trail":
                     self.game_state["trails"] = []
     
     def set_direction(self, direction):
-        """Yön ayarla"""
-        # Ters kontrol power-up kontrolü
+        """Set direction"""
+        # Reverse control power-up check
         if self.has_powerup("reverse"):
             OPP = {"UP":"DOWN","DOWN":"UP","LEFT":"RIGHT","RIGHT":"LEFT"}
             direction = OPP.get(direction, direction)
         
-        # Yön kontrolü
+        # Direction control
         current_dir = self.game_state["direction"]
         OPPOSITE_DIRECTIONS = {"UP": "DOWN", "DOWN": "UP", "LEFT": "RIGHT", "RIGHT": "LEFT"}
         if OPPOSITE_DIRECTIONS.get(current_dir) == direction:
@@ -386,11 +386,11 @@ class TimeAttackGame:
         self.game_state["direction"] = direction
     
     def manual_respawn(self):
-        """Manuel canlanma"""
+        """Manual respawn"""
         if not self.game_state["game_active"]:
             return
         
-        # Rastgele güvenli pozisyonda canlan
+        # Respawn at random safe position
         start_pos = self._find_safe_start_position()
         self.game_state["snake"] = [start_pos]
         self.game_state["direction"] = "RIGHT"
@@ -398,40 +398,40 @@ class TimeAttackGame:
 
 # --- Modül fonksiyonları ---
 def create_time_attack_game(client_id, difficulty, board_width, board_height):
-    """Time Attack oyunu oluştur"""
+    """Create Time Attack game"""
     return TimeAttackGame(client_id, difficulty, board_width, board_height)
 
 def get_time_attack_game(client_id):
-    """Time Attack oyununu getir"""
+    """Get Time Attack game"""
     if client_id in time_attack_games:
-        # Game state'i döndür, class instance'ı değil
+        # Return game state, not class instance
         return time_attack_games[client_id]
     return None
 
 def remove_time_attack_game(client_id):
-    """Time Attack oyununu kaldır"""
+    """Remove Time Attack game"""
     if client_id in time_attack_games:
         del time_attack_games[client_id]
 
 def update_all_time_attack_games():
-    """Tüm Time Attack oyunlarını güncelle"""
+    """Update all Time Attack games"""
     for client_id, game_state in list(time_attack_games.items()):
         if game_state["game_active"]:
-            # Süreyi güncelle
+            # Update time
             current_time = time.time()
             elapsed = current_time - game_state["start_time"]
             game_state["time_left"] = max(0, game_state["time_left"] - elapsed)
             game_state["start_time"] = current_time
             
-            # Süre bittiyse oyunu bitir
+            # End game if time is up
             if game_state["time_left"] <= 0:
                 game_state["game_active"] = False
-                # En yüksek skoru güncelle
+                # Update high score
                 if game_state["score"] > game_state["high_score"]:
                     game_state["high_score"] = game_state["score"]
 
 def clear_expired_powerups_all():
-    """Tüm süresi dolmuş power-up'ları temizle"""
+    """Clear all expired power-ups"""
     current_time = time.time()
     for client_id, game_state in time_attack_games.items():
         if client_id in game_state["active_powerups"]:
