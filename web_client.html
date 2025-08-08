@@ -703,13 +703,25 @@
                         createSnakeParticles(snake, color);
                     }
                     
-                    // Speed power-up aktifse smoke efekti
+                    // Speed power-up aktifse nebula smoke efekti
                     if (gameState.powerup_timers && gameState.powerup_timers[pid] && 
                         gameState.powerup_timers[pid]["speed"] > 0 && snake.length > 0) {
                         const head = snake[0];
-                        const headX = head[0] * CELL_SIZE + CELL_SIZE / 2;
-                        const headY = head[1] * CELL_SIZE + CELL_SIZE / 2;
-                        createSmokeEffect(headX, headY);
+                        let smokeX = head[0] * CELL_SIZE + CELL_SIZE / 2;
+                        let smokeY = head[1] * CELL_SIZE + CELL_SIZE / 2;
+                        
+                        // Yılanın hareket yönünü hesapla ve dumanı arkasından çıkar
+                        if (snake.length > 1) {
+                            const neck = snake[1];
+                            const dx = head[0] - neck[0];
+                            const dy = head[1] - neck[1];
+                            
+                            // Dumanı yılanın arkasından çıkar
+                            smokeX = head[0] * CELL_SIZE + CELL_SIZE / 2 - dx * CELL_SIZE * 0.3;
+                            smokeY = head[1] * CELL_SIZE + CELL_SIZE / 2 - dy * CELL_SIZE * 0.3;
+                        }
+                        
+                        createSmokeEffect(smokeX, smokeY, 'nebula');
                     }
                     
                     // Shield power-up aktifse aura efekti
@@ -1925,6 +1937,27 @@
                     ctx.fillRect(x, y, CELL_SIZE, CELL_SIZE);
                 }
             }
+            
+            // Speed power-up aktifse nebula smoke efekti (Time Attack)
+            if (timeAttackState.active_powerups && timeAttackState.active_powerups[myId] && 
+                timeAttackState.active_powerups[myId].speed && timeAttackState.snake && timeAttackState.snake.length > 0) {
+                const head = timeAttackState.snake[0];
+                let smokeX = head[0] * CELL_SIZE + CELL_SIZE / 2;
+                let smokeY = head[1] * CELL_SIZE + CELL_SIZE / 2;
+                
+                // Yılanın hareket yönünü hesapla ve dumanı arkasından çıkar
+                if (timeAttackState.snake.length > 1) {
+                    const neck = timeAttackState.snake[1];
+                    const dx = head[0] - neck[0];
+                    const dy = head[1] - neck[1];
+                    
+                    // Dumanı yılanın arkasından çıkar
+                    smokeX = head[0] * CELL_SIZE + CELL_SIZE / 2 - dx * CELL_SIZE * 0.3;
+                    smokeY = head[1] * CELL_SIZE + CELL_SIZE / 2 - dy * CELL_SIZE * 0.3;
+                }
+                
+                createSmokeEffect(smokeX, smokeY, 'nebula');
+            }
         }
         
         // Trail sistemi (Time Attack için)
@@ -2893,9 +2926,92 @@
         }
     }
     
-    function createSmokeEffect(x, y) {
-        for (let i = 0; i < 3; i++) {
-            smokeParticles.push(new SmokeParticle(x, y));
+    class NebulaSmokeParticle {
+        constructor(x, y) {
+            this.x = x;
+            this.y = y;
+            this.vx = (Math.random() - 0.5) * 3;
+            this.vy = (Math.random() - 0.5) * 3;
+            this.life = 1.5;
+            this.decay = 0.015;
+            this.size = Math.random() * 12 + 6;
+            this.opacity = 0.9;
+            
+            // Nebula renkleri - parlak ve canlı
+            this.colors = [
+                '#ff00ff', // Magenta
+                '#00ffff', // Cyan
+                '#ffff00', // Sarı
+                '#ff0080', // Pembe
+                '#8000ff', // Mor
+                '#00ff80', // Neon yeşil
+                '#ff8000', // Turuncu
+                '#0080ff'  // Mavi
+            ];
+            this.color = this.colors[Math.floor(Math.random() * this.colors.length)];
+            this.pulseSpeed = Math.random() * 0.1 + 0.05;
+            this.pulsePhase = Math.random() * Math.PI * 2;
+        }
+        
+        update() {
+            this.x += this.vx;
+            this.y += this.vy;
+            this.life -= this.decay;
+            this.size *= 1.03; // Nebula dumanı daha hızlı büyür
+            this.opacity *= 0.99;
+            this.pulsePhase += this.pulseSpeed;
+        }
+        
+        draw(ctx) {
+            if (this.life <= 0) return;
+            
+            ctx.save();
+            
+            // Pulse efekti
+            const pulse = 0.8 + 0.2 * Math.sin(this.pulsePhase);
+            const alpha = this.opacity * this.life * pulse;
+            
+            // Glow efekti
+            ctx.shadowColor = this.color;
+            ctx.shadowBlur = 15;
+            
+            // Ana parçacık
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // İç parçacık (daha parlak)
+            ctx.globalAlpha = alpha * 0.7;
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size * 0.6, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // Dış halka (glow efekti)
+            ctx.globalAlpha = alpha * 0.3;
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size * 1.5, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            ctx.shadowBlur = 0;
+            ctx.restore();
+        }
+    }
+    
+    function createSmokeEffect(x, y, type = 'normal') {
+        if (type === 'nebula') {
+            // Nebula duman efekti - parlak ve renkli
+            for (let i = 0; i < 5; i++) {
+                smokeParticles.push(new NebulaSmokeParticle(x, y));
+            }
+        } else {
+            // Normal duman efekti
+            for (let i = 0; i < 3; i++) {
+                smokeParticles.push(new SmokeParticle(x, y));
+            }
         }
     }
     
