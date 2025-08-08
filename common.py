@@ -169,7 +169,7 @@ TIME_ATTACK_CONSTANTS = {
     "MAX_SNAKE_LENGTH": 10,           # Time Attack'ta maksimum yılan uzunluğu
     "FOOD_COUNT": 3,                  # Time Attack'ta maksimum yem sayısı
     "MAX_POWERUPS": 2,                # Time Attack'ta maksimum power-up sayısı
-    "GOLDEN_FOOD_CHANCE": 0.02,       # Altın elma çıkma olasılığı (%2)
+    "GOLDEN_FOOD_CHANCE": 0.01,       # Altın elma çıkma olasılığı (%1)
     "POWERUP_SPAWN_CHANCE": 0.02,     # Power-up çıkma olasılığı (%2) - artırıldı
     "FOOD_BONUS_TIME": 5,             # Yem yendiğinde +5 saniye
     "GOLDEN_FOOD_BONUS_TIME": 15,     # Altın elma yendiğinde +15 saniye

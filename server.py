@@ -217,6 +217,8 @@ GAME_DURATION = 120  # saniye (2 dakika)
 game_timer = None
 waiting_for_restart = False
 winner_id = None
+# Klasik mod için altın elma çıkma olasılığı (varsayılan %0.5)
+GOLDEN_FOOD_CHANCE_CLASSIC = 0.005
 
 def all_players_ready():
     # Tüm aktif olmayan oyuncular hazır komutu gönderdiyse True döner
@@ -318,8 +320,8 @@ async def game_loop():
                 same_type_count = sum(1 for p in game_state["powerups"] if p["type"] == pu["type"])
                 if same_type_count < 2:
                     game_state["powerups"].append(pu)
-            # Altın elma üretimi
-            if game_state["golden_food"] is None and random.random() < 0.01:
+            # Altın elma üretimi (klasik mod)
+            if game_state["golden_food"] is None and random.random() < GOLDEN_FOOD_CHANCE_CLASSIC:
                 game_state["golden_food"] = random_food(
                     game_state["snakes"],
                     game_state["food"],
@@ -765,7 +767,7 @@ def game_loop():
                 same_type_count = sum(1 for p in game_state["powerups"] if p["type"] == pu["type"])
                 if same_type_count < 2:
                     game_state["powerups"].append(pu)
-            if game_state["golden_food"] is None and random.random() < 0.01:
+            if game_state["golden_food"] is None and random.random() < GOLDEN_FOOD_CHANCE_CLASSIC:
                 game_state["golden_food"] = random_food(
                     game_state["snakes"],
                     game_state["food"],

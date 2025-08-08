@@ -630,6 +630,18 @@
         renderLoop(0);
     }
     
+    // Hex rengi alfa ile RGBA biçimine çevirir
+    function hexToRgba(hex, alpha) {
+        if (!hex) return `rgba(255,255,255,${alpha})`;
+        let h = hex.replace('#', '');
+        if (h.length === 3) h = h.split('').map(c => c + c).join('');
+        const num = parseInt(h, 16);
+        const r = (num >> 16) & 255;
+        const g = (num >> 8) & 255;
+        const b = num & 255;
+        return `rgba(${r},${g},${b},${alpha})`;
+    }
+
     
     function stopRenderLoop() {
         if (animationFrameId) {
@@ -715,17 +727,29 @@
             }
         }
         
-        // İzler (trails) - optimize edilmiş
+        // İzler (trails) - her yılanın kendi rengine göre renklendir
         if (gameState.trails) {
-            ctx.globalAlpha = 0.5;
-            ctx.fillStyle = 'rgba(0,255,200,0.5)';
             for (const [pid, trail] of Object.entries(gameState.trails)) {
                 if (!trail || trail.length === 0) continue;
+
+                const isFrozen = !!(gameState.powerup_timers && gameState.powerup_timers[pid] && gameState.powerup_timers[pid]["frozen"] > 0);
+
+                // Öncelik: color_info.effect.trail → color_info.hex → varsayılan(myId lime / diğerleri yellow)
+                let colorHex = null;
+                if (!isFrozen && gameState.color_info && gameState.color_info[pid]) {
+                    const ci = gameState.color_info[pid];
+                    const eff = (typeof COLOR_EFFECTS !== 'undefined') ? COLOR_EFFECTS[ci.effect] : null;
+                    colorHex = (eff && eff.trail) ? eff.trail : (ci.hex || null);
+                }
+                if (!colorHex) {
+                    colorHex = isFrozen ? '#888888' : (pid === myId ? 'lime' : 'yellow');
+                }
+
+                ctx.fillStyle = hexToRgba(colorHex, 0.5);
                 for (const seg of trail) {
-                    ctx.fillRect(seg[0]*CELL_SIZE, seg[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                    ctx.fillRect(seg[0] * CELL_SIZE, seg[1] * CELL_SIZE, CELL_SIZE, CELL_SIZE);
                 }
             }
-            ctx.globalAlpha = 1.0;
         }
         
         // Engeller (yılanlardan sonra çiz)
