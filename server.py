@@ -218,7 +218,7 @@ game_timer = None
 waiting_for_restart = False
 winner_id = None
 # Klasik mod için altın elma çıkma olasılığı (varsayılan %0.5)
-GOLDEN_FOOD_CHANCE_CLASSIC = 0.005
+GOLDEN_FOOD_CHANCE_CLASSIC = 0.003
 
 def all_players_ready():
     # Tüm aktif olmayan oyuncular hazır komutu gönderdiyse True döner
@@ -555,7 +555,7 @@ def move_snake(client_id):
     out_of_bounds = not (0 <= new_head[0] < BOARD_WIDTH and 0 <= new_head[1] < BOARD_HEIGHT)
     if out_of_bounds:
         if shielded:
-            game_state["active_powerups"][client_id] = [p for p in game_state["active_powerups"][client_id] if p["type"] != "shield"]
+            # Shield aktifken duvardan geç, shield'i kaldırma
             nx, ny = new_head
             if nx < 0:
                 nx = BOARD_WIDTH - 1
@@ -572,7 +572,7 @@ def move_snake(client_id):
     for other_id, other_snake in game_state["snakes"].items():
         if other_id != client_id and new_head in other_snake:
             if shielded:
-                game_state["active_powerups"][client_id] = [p for p in game_state["active_powerups"][client_id] if p["type"] != "shield"]
+                # Shield aktifken diğer yılandan geç, shield'i kaldırma
                 break
             else:
                 eliminate_snake(client_id)
@@ -580,7 +580,8 @@ def move_snake(client_id):
     # Kendine çarpma kontrolü - yılanın kuyruğu hariç kontrol et
     if new_head in snake[:-1]:  # Son eleman (kuyruk) hariç kontrol et
         if shielded:
-            game_state["active_powerups"][client_id] = [p for p in game_state["active_powerups"][client_id] if p["type"] != "shield"]
+            # Shield aktifken kendine çarpmadan geç, shield'i kaldırma
+            pass
         else:
             eliminate_snake(client_id)
             return
@@ -904,9 +905,7 @@ def game_loop():
                 out_of_bounds = not (0 <= new_head[0] < BOARD_WIDTH and 0 <= new_head[1] < BOARD_HEIGHT)
                 if out_of_bounds:
                     if shielded:
-                        # Zırh varsa duvardan geç
-                        if client_id in ta_game_state["active_powerups"]:
-                            ta_game_state["active_powerups"][client_id] = [p for p in ta_game_state["active_powerups"][client_id] if p["type"] != "shield"]
+                        # Shield aktifken duvardan geç, shield'i kaldırma
                         nx, ny = new_head
                         if nx < 0:
                             nx = BOARD_WIDTH - 1
@@ -925,9 +924,8 @@ def game_loop():
                 # Kendine çarpma kontrolü - yılanın kuyruğu hariç kontrol et
                 if new_head in ta_game_state["snake"][:-1]:  # Son eleman (kuyruk) hariç kontrol et
                     if shielded:
-                        # Zırh varsa zırhı kullan ve devam et
-                        if client_id in ta_game_state["active_powerups"]:
-                            ta_game_state["active_powerups"][client_id] = [p for p in ta_game_state["active_powerups"][client_id] if p["type"] != "shield"]
+                        # Shield aktifken kendine çarpmadan geç, shield'i kaldırma
+                        pass
                     else:
                         # Zırh yoksa elen
                         ta_game_state["game_active"] = False
@@ -1151,6 +1149,10 @@ def on_join(data):
         return
     reset_snake(client_id)
     clients[sid] = client_id
+    # İlk oyuncu klasik moda girince süreyi başlat (sonraki oyuncularda sıfırlama yapma)
+    global game_timer
+    if game_timer is None:
+        reset_game()
 
 @socketio.on('move')
 def on_move(data):
