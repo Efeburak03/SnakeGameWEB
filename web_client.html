@@ -361,6 +361,22 @@
 
 
 
+        /* Ana Menü butonu */
+        .main-menu-btn {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            padding: 8px 12px;
+            background: #ff8c00;
+            color: #000;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 10;
+            display: none;
+        }
+
     </style>
 </head>
 <body>
@@ -416,13 +432,14 @@
     
                <!-- Loading Overlay -->
            <div id="loading-overlay">
-               <div class="loading-text">(LODAING...)</div>
+               <div class="loading-text">LODAING...</div>
            </div>
     
     <div id="game-container" style="display:none; width:100vw; height:100vh;">
         <div style="position:relative; width:100vw; height:100vh;">
             <canvas id="game"></canvas>
             <div id="game-message" class="game-message" style="display:none;"><span></span></div>
+            <button id="main-menu-btn" class="main-menu-btn">Ana Menü</button>
         </div>
     </div>
     <div id="rotate-warning">Lütfen cihazınızı yatay konuma çevirin.<br/>Please rotate your device.</div>
@@ -446,6 +463,7 @@
     const canvas = document.getElementById('game');
     const ctx = canvas.getContext('2d');
     let socket = null;
+    let suppressAutoReconnect = false;
     let myId = null;
     let gameState = null;
     let started = false;
@@ -493,6 +511,8 @@
         socket = io();
         
         socket.on('connect', () => {
+            // Oyun başlatılırken yeniden bağlanmaya izin ver
+            suppressAutoReconnect = false;
             if (currentGameMode === 'timeAttack') {
                 socket.emit('start_time_attack', {client_id: nickname, difficulty: currentDifficulty});
 
@@ -569,8 +589,10 @@
             // Loading overlay'i gizle
             const loadingOverlay = document.getElementById('loading-overlay');
             loadingOverlay.classList.remove('show');
-            
-            setTimeout(connect, 1000);
+            // Ana menüye dönüşte tekrar bağlanma
+            if (!suppressAutoReconnect) {
+                setTimeout(connect, 1000);
+            }
         });
         
 
@@ -1374,6 +1396,7 @@
         // Oyun container'ını hazırla ama henüz gösterme
         document.getElementById('game-container').style.display = 'flex';
         document.getElementById('top-usernames').style.display = 'flex';
+        document.getElementById('main-menu-btn').style.display = 'inline-block';
         started = true;
         currentDirection = null;
         
@@ -1390,6 +1413,60 @@
         
         // Bağlantıyı kur
         connect();
+    }
+
+    // Tam sıfırlama ve ana menüye dönüş
+    function resetToMainMenu() {
+        // Otomatik yeniden bağlanmayı kapat
+        suppressAutoReconnect = true;
+        // Sunucuya düzgün ayrıl (disconnect event tetiklenecek)
+        try {
+            if (socket) {
+                socket.disconnect();
+            }
+        } catch (e) {}
+
+        // Render loop'u durdur ve canvas'ı temizle
+        stopRenderLoop();
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Tüm client-side state'i temizle
+        gameState = null;
+        timeAttackState = null;
+        currentGameMode = null;
+        currentDifficulty = null;
+        started = false;
+        readySent = false;
+        eliminationTime = null;
+        currentDirection = null;
+        myId = null;
+
+        // UI temizliği
+        document.getElementById('top-usernames').style.display = 'none';
+        document.getElementById('top-usernames').innerHTML = '';
+        document.getElementById('game-container').style.display = 'none';
+        document.getElementById('mode-ui').style.display = 'none';
+        document.getElementById('difficulty-ui').style.display = 'none';
+        document.getElementById('main-menu-btn').style.display = 'none';
+
+        // Loading overlay sakla
+        const loadingOverlay = document.getElementById('loading-overlay');
+        loadingOverlay.classList.remove('show');
+
+        // Time Attack özel UI temizliği
+        const timeAttackUI = document.getElementById('time-attack-ui');
+        if (timeAttackUI) timeAttackUI.remove();
+        hideRespawnMessage();
+        hideEagleEggScreen();
+
+        // Kullanıcı adı ekranına dön ve input'u temizle
+        const input = document.getElementById('nicknameInput');
+        if (input) input.value = '';
+        nickname = '';
+        document.getElementById('ui').style.display = 'flex';
+
+        // Arka plan efektini durdur
+        stopMatrixRain();
     }
 
     // Easter egg: yukarı, sağ, aşağı, aşağı, aşağı kombinasyonu
@@ -1493,6 +1570,11 @@
         // Zorluk seçimi başlat butonu
         document.getElementById('difficultyStartBtn').addEventListener('click', selectDifficulty);
         
+        // Ana Menü butonu
+        const mainMenuBtn = document.getElementById('main-menu-btn');
+        if (mainMenuBtn) {
+            mainMenuBtn.addEventListener('click', resetToMainMenu);
+        }
 
         
 
@@ -2179,15 +2261,7 @@
         
         document.getElementById('back-to-menu-btn').addEventListener('click', () => {
             modal.remove();
-            // Ana menüye dön
-            document.getElementById('ui').style.display = 'flex';
-            document.getElementById('game-container').style.display = 'none';
-            document.getElementById('top-usernames').style.display = 'none';
-            const timeAttackUI = document.getElementById('time-attack-ui');
-            if (timeAttackUI) timeAttackUI.remove();
-            currentGameMode = null;
-            currentDifficulty = null;
-            timeAttackState = null;
+            resetToMainMenu();
         });
     }
     
