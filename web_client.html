@@ -377,6 +377,107 @@
             display: none;
         }
 
+        /* Chat Sistemi Stilleri */
+        #chat-container {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: 300px;
+            height: 200px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid #4caf50;
+            border-radius: 8px;
+            z-index: 1000;
+            display: none;
+            flex-direction: column;
+            backdrop-filter: blur(5px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        #chat-container:hover {
+            background: rgba(0, 0, 0, 0.8);
+        }
+        #chat-header {
+            background: rgba(76, 175, 80, 0.3);
+            padding: 8px 12px;
+            border-bottom: 1px solid #4caf50;
+            border-radius: 8px 8px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: move;
+            font-weight: bold;
+            color: #fff;
+        }
+        #chat-close {
+            background: none;
+            border: none;
+            color: #fff;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 0;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #chat-close:hover {
+            color: #ff6b6b;
+        }
+        #chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+            color: #fff;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        .chat-message {
+            margin-bottom: 4px;
+            word-wrap: break-word;
+        }
+        .chat-message .timestamp {
+            color: #888;
+            font-size: 10px;
+            margin-right: 4px;
+        }
+        .chat-message .player-name {
+            font-weight: bold;
+            margin-right: 4px;
+        }
+        .chat-message .message-text {
+            color: #fff;
+        }
+        .chat-message.whisper {
+            color: #ffd700;
+            font-style: italic;
+        }
+        #chat-input-container {
+            padding: 8px;
+            border-top: 1px solid #4caf50;
+            border-radius: 0 0 8px 8px;
+        }
+        #chat-input {
+            width: 100%;
+            padding: 6px 8px;
+            border: 1px solid #4caf50;
+            border-radius: 4px;
+            background: rgba(0, 0, 0, 0.5);
+            color: #fff;
+            font-size: 12px;
+            outline: none;
+        }
+        #chat-input:focus {
+            border-color: #66bb6a;
+            background: rgba(0, 0, 0, 0.7);
+        }
+        .chat-error {
+            color: #ff6b6b;
+            font-size: 11px;
+            margin-top: 4px;
+            display: none;
+        }
+
     </style>
 </head>
 <body>
@@ -442,6 +543,19 @@
             <button id="main-menu-btn" class="main-menu-btn">Ana Menü</button>
         </div>
     </div>
+    
+    <!-- Chat Container -->
+    <div id="chat-container">
+        <div id="chat-header">
+            <span>Chat</span>
+            <button id="chat-close">×</button>
+        </div>
+        <div id="chat-messages"></div>
+        <div id="chat-input-container">
+            <input type="text" id="chat-input" placeholder="Mesajınızı yazın..." maxlength="100">
+            <div class="chat-error" id="chat-error"></div>
+        </div>
+    </div>
     <div id="rotate-warning">Lütfen cihazınızı yatay konuma çevirin.<br/>Please rotate your device.</div>
     <div id="touch-controls">
         <div style="display:flex; flex-direction:column; align-items:center; justify-content:flex-end;">
@@ -482,6 +596,15 @@
     
     let selectedTeam = null;
     let animationTime = 0; // Magnet efektleri için animasyon zamanı
+    
+    // Chat sistemi değişkenleri
+    let chatVisible = false;
+    let chatDragging = false;
+    let chatDragStart = { x: 0, y: 0 };
+    let chatContainer = null;
+    let chatInput = null;
+    let chatMessages = null;
+    let chatError = null;
 
     // --- Görselleri yükle ---
     const assetFiles = {
@@ -583,6 +706,22 @@
             document.getElementById('ui').style.display = 'flex';
             document.getElementById('game-container').style.display = 'none';
             document.getElementById('top-usernames').style.display = 'none';
+        });
+        
+        // Chat Socket.IO event listeners
+        socket.on('chat_message', (chatData) => {
+            addChatMessage(chatData);
+        });
+        
+        socket.on('chat_history', (messages) => {
+            chatMessages.innerHTML = '';
+            messages.forEach(msg => {
+                addChatMessage(msg);
+            });
+        });
+        
+        socket.on('chat_error', (error) => {
+            showChatError(error.message);
         });
         
         socket.on('disconnect', () => {
@@ -3372,6 +3511,151 @@
 
 
     // Dokunmatik yön tuşları
+    
+    // Chat sistemi fonksiyonları
+    function initChat() {
+        chatContainer = document.getElementById('chat-container');
+        chatInput = document.getElementById('chat-input');
+        chatMessages = document.getElementById('chat-messages');
+        chatError = document.getElementById('chat-error');
+        
+        // Chat toggle butonu
+        document.getElementById('chat-close').addEventListener('click', () => {
+            toggleChat();
+        });
+        
+        // Chat input event listener
+        chatInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                sendChatMessage();
+            }
+        });
+        
+
+        
+        // Chat drag functionality
+        const chatHeader = document.getElementById('chat-header');
+        chatHeader.addEventListener('mousedown', startChatDrag);
+        document.addEventListener('mousemove', onChatDrag);
+        document.addEventListener('mouseup', stopChatDrag);
+        
+        // Chat hover effect
+        chatContainer.addEventListener('mouseenter', () => {
+            if (!chatVisible) {
+                chatContainer.style.display = 'flex';
+            }
+        });
+        
+        chatContainer.addEventListener('mouseleave', () => {
+            if (!chatVisible) {
+                chatContainer.style.display = 'none';
+            }
+        });
+    }
+    
+    function toggleChat() {
+        chatVisible = !chatVisible;
+        if (chatVisible) {
+            chatContainer.style.display = 'flex';
+            // Chat geçmişini iste
+            socket.emit('get_chat_history');
+        } else {
+            chatContainer.style.display = 'none';
+        }
+    }
+    
+    function sendChatMessage() {
+        const message = chatInput.value.trim();
+        if (message.length === 0) return;
+        
+        socket.emit('chat_message', {
+            message: message,
+            player_name: nickname
+        });
+        
+        chatInput.value = '';
+        hideChatError();
+    }
+    
+    function addChatMessage(chatData) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'chat-message';
+        
+        if (chatData.type === 'whisper') {
+            messageDiv.classList.add('whisper');
+        }
+        
+        const timestamp = new Date().toLocaleTimeString('tr-TR', { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+        });
+        
+        let messageText = '';
+        if (chatData.type === 'whisper') {
+            messageText = `<span class="timestamp">[${timestamp}]</span><span class="player-name" style="color: ${chatData.sender_color}">${chatData.sender_name}</span> fısıldadı: <span class="message-text">${chatData.message}</span>`;
+        } else {
+            messageText = `<span class="timestamp">[${timestamp}]</span><span class="player-name" style="color: ${chatData.sender_color}">${chatData.sender_name}</span>: <span class="message-text">${chatData.message}</span>`;
+        }
+        
+        messageDiv.innerHTML = messageText;
+        chatMessages.appendChild(messageDiv);
+        
+        // Auto-scroll to bottom
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+    
+    function showChatError(message) {
+        chatError.textContent = message;
+        chatError.style.display = 'block';
+    }
+    
+    function hideChatError() {
+        chatError.style.display = 'none';
+    }
+    
+    function startChatDrag(e) {
+        if (e.target.id === 'chat-close') return;
+        chatDragging = true;
+        chatDragStart = {
+            x: e.clientX - chatContainer.offsetLeft,
+            y: e.clientY - chatContainer.offsetTop
+        };
+        e.preventDefault();
+    }
+    
+    function onChatDrag(e) {
+        if (!chatDragging) return;
+        
+        const newX = e.clientX - chatDragStart.x;
+        const newY = e.clientY - chatDragStart.y;
+        
+        // Ekran sınırları içinde tut
+        const maxX = window.innerWidth - chatContainer.offsetWidth;
+        const maxY = window.innerHeight - chatContainer.offsetHeight;
+        
+        chatContainer.style.left = Math.max(0, Math.min(newX, maxX)) + 'px';
+        chatContainer.style.top = Math.max(0, Math.min(newY, maxY)) + 'px';
+        chatContainer.style.bottom = 'auto';
+        chatContainer.style.right = 'auto';
+    }
+    
+    function stopChatDrag() {
+        chatDragging = false;
+    }
+    
+    // T tuşu ile chat toggle
+    document.addEventListener('keydown', (e) => {
+        if (e.key.toLowerCase() === 't' && !e.ctrlKey && !e.altKey && !e.metaKey) {
+            e.preventDefault();
+            toggleChat();
+        }
+    });
+    
+    // Chat sistemini başlat
+    document.addEventListener('DOMContentLoaded', () => {
+        initChat();
+    });
     </script>
 </body>
 </html>

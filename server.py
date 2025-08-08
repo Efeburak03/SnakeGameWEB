@@ -76,6 +76,12 @@ game_state = {
     "trails": {},  # İz bırakıcı power-up için: {client_id: [(x, y), ...]}
 }
 
+# Chat sistemi değişkenleri
+chat_messages = []
+MAX_CHAT_MESSAGES = 50
+chat_throttle = {}  # {client_id: last_message_time}
+CHAT_THROTTLE_TIME = 1.0  # saniye
+
 def get_all_empty_cells():
     occupied = set()
     for snake in game_state["snakes"].values():
@@ -245,6 +251,8 @@ def reset_game():
     game_timer = time.time()
     waiting_for_restart = False
     winner_id = None
+    # Chat mesajlarını temizle
+    clear_chat_messages()
 
 # --- Oyun döngüsünde süre ve bitiş kontrolü ---
 async def game_loop():
@@ -1245,8 +1253,106 @@ def on_time_attack_respawn(data):
     game_state["respawn_count"] += 1
     game_state["game_active"] = True  # Oyunu tekrar aktif hale getir
 
+# --- Chat sistemi fonksiyonları ---
+def add_chat_message(player_id, player_name, message, message_type="global", target_player=None):
+    """Chat mesajı ekle ve spam koruması uygula"""
+    current_time = time.time()
+    
+    # Spam koruması
+    if player_id in chat_throttle:
+        if current_time - chat_throttle[player_id] < CHAT_THROTTLE_TIME:
+            return False, "Çok hızlı mesaj gönderiyorsunuz!"
+    
+    chat_throttle[player_id] = current_time
+    
+    # Oyuncu rengini al - socket ID'den client ID'ye çevir
+    client_id = clients.get(player_id)
+    player_color = game_state["colors"].get(client_id, "#ffffff") if client_id else "#ffffff"
+    
+    chat_data = {
+        "sender_id": player_id,
+        "sender_name": player_name,
+        "sender_color": player_color,
+        "message": message,
+        "type": message_type,
+        "timestamp": current_time
+    }
+    
+    if message_type == "whisper" and target_player:
+        chat_data["target_player"] = target_player
+    
+    chat_messages.append(chat_data)
+    
+    # Maksimum mesaj sayısını kontrol et
+    if len(chat_messages) > MAX_CHAT_MESSAGES:
+        chat_messages.pop(0)
+    
+    return True, chat_data
+
+def clear_chat_messages():
+    """Chat mesajlarını temizle"""
+    global chat_messages
+    chat_messages.clear()
+
+def get_player_by_name(player_name):
+    """İsim ile oyuncu socket ID'sini bul"""
+    for sid, nickname in clients.items():
+        if nickname == player_name:
+            return sid
+    return None
+
 # --- Capture the Flag Event Handler'ları ---
 
+# --- Chat Event Handler'ları ---
+@socketio.on('chat_message')
+def on_chat_message(data):
+    """Chat mesajı al ve işle"""
+    sid = request.sid
+    player_name = data.get('player_name')
+    message = data.get('message', '').strip()
+    
+    if not message or not player_name:
+        emit('chat_error', {"message": "Geçersiz mesaj!"})
+        return
+    
+    # Whisper kontrolü (/dm username message)
+    if message.startswith('/dm '):
+        parts = message.split(' ', 2)
+        if len(parts) >= 3:
+            target_name = parts[1]
+            whisper_message = parts[2]
+            target_id = get_player_by_name(target_name)
+            
+            if not target_id:
+                emit('chat_error', {"message": f"'{target_name}' adlı oyuncu bulunamadı!"})
+                return
+            
+            if target_id == sid:
+                emit('chat_error', {"message": "Kendinize fısıldayamazsınız!"})
+                return
+            
+            success, chat_data = add_chat_message(sid, player_name, whisper_message, "whisper", target_id)
+            if success:
+                # Sadece gönderen ve alıcıya gönder
+                emit('chat_message', chat_data)
+                socketio.emit('chat_message', chat_data, room=target_id)
+            else:
+                emit('chat_error', {"message": chat_data})
+        else:
+            emit('chat_error', {"message": "Fısıldama formatı: /dm kullanıcı_adı mesaj"})
+        return
+    
+    # Global mesaj
+    success, chat_data = add_chat_message(sid, player_name, message, "global")
+    if success:
+        socketio.emit('chat_message', chat_data)
+    else:
+        emit('chat_error', {"message": chat_data})
+
+@socketio.on('get_chat_history')
+def on_get_chat_history():
+    """Chat geçmişini gönder"""
+    emit('chat_history', chat_messages)
 
 @socketio.on('disconnect')
 def on_disconnect():
