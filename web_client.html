@@ -1269,7 +1269,7 @@
                             ctx.arc(particleX, particleY, 2, 0, 2 * Math.PI);
                             ctx.fill();
                             
-                            // Parçacık glow
+                            // Parçacık glow efekti
                             ctx.shadowColor = '#ff00ff';
                             ctx.shadowBlur = 6;
                             ctx.beginPath();
@@ -1888,22 +1888,116 @@
         
         // Yılan
         if (timeAttackState.snake) {
-            ctx.fillStyle = 'lime';
+            // Klasik moddaki renk sistemi
+            const colorInfo = timeAttackState.color_info || { hex: '#00ff00' };
+            const isFrozen = !!(timeAttackState.active_powerups && 
+                               timeAttackState.active_powerups[myId] && 
+                               timeAttackState.active_powerups[myId].freeze);
+            
+            // Renk belirleme
+            let snakeColor = colorInfo.hex || '#00ff00';
+            if (isFrozen) {
+                snakeColor = '#888888';  // Donmuşsa gri
+            }
+            
             for (const [i, seg] of timeAttackState.snake.entries()) {
                 const x = seg[0] * CELL_SIZE;
                 const y = seg[1] * CELL_SIZE;
+                
+                // Baş için özel çizim
+                if (i === 0) {
+                    ctx.fillStyle = snakeColor;
+                    ctx.fillRect(x, y, CELL_SIZE, CELL_SIZE);
+                    
+                    // Baş için glow efekti
+                    if (!isFrozen && colorInfo.effect) {
+                        const eff = (typeof COLOR_EFFECTS !== 'undefined') ? COLOR_EFFECTS[colorInfo.effect] : null;
+                        if (eff) {
+                            ctx.shadowColor = eff.glow;
+                            ctx.shadowBlur = 10;
+                            ctx.fillRect(x, y, CELL_SIZE, CELL_SIZE);
+                            ctx.shadowBlur = 0;
+                        }
+                    }
+                } else {
+                    // Vücut için normal çizim
+                    ctx.fillStyle = snakeColor;
+                    ctx.fillRect(x, y, CELL_SIZE, CELL_SIZE);
+                }
+            }
+        }
+        
+        // Trail sistemi (Time Attack için)
+        if (timeAttackState.trails && timeAttackState.trails.length > 0) {
+            const colorInfo = timeAttackState.color_info || { hex: '#00ff00' };
+            const isFrozen = !!(timeAttackState.active_powerups && 
+                               timeAttackState.active_powerups[myId] && 
+                               timeAttackState.active_powerups[myId].freeze);
+            
+            // Trail rengi belirleme
+            let trailColor = colorInfo.hex || '#00ff00';
+            if (isFrozen) {
+                trailColor = '#888888';
+            } else if (colorInfo.effect && typeof COLOR_EFFECTS !== 'undefined') {
+                const eff = COLOR_EFFECTS[colorInfo.effect];
+                if (eff) {
+                    trailColor = eff.trail;
+                }
+            }
+            
+            ctx.globalAlpha = 0.5;
+            ctx.fillStyle = hexToRgba(trailColor, 0.5);
+            for (const trail of timeAttackState.trails) {
+                const x = trail[0] * CELL_SIZE;
+                const y = trail[1] * CELL_SIZE;
                 ctx.fillRect(x, y, CELL_SIZE, CELL_SIZE);
             }
+            ctx.globalAlpha = 1.0;
         }
         
         // Yemler
         if (timeAttackState.food) {
             for (const food of timeAttackState.food) {
-                if (assets.apple) {
-                    ctx.drawImage(assets.apple, food[0]*CELL_SIZE, food[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
-                } else {
-                    ctx.fillStyle = 'red';
-                    ctx.fillRect(food[0]*CELL_SIZE, food[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                const [fx, fy] = food;
+                const x = fx * CELL_SIZE + CELL_SIZE/2;
+                const y = fy * CELL_SIZE + CELL_SIZE/2;
+                const radius = CELL_SIZE/2 - 2;
+                
+                // Rastgele yem şekli (klasik moddaki gibi)
+                const foodType = Math.abs(fx + fy) % 4; // 4 farklı yem tipi
+                
+                switch(foodType) {
+                    case 0: // Kırmızı elma
+                        ctx.fillStyle = '#ff0000';
+                        ctx.beginPath();
+                        ctx.arc(x, y, radius, 0, 2 * Math.PI);
+                        ctx.fill();
+                        // Elma sapı
+                        ctx.fillStyle = '#8B4513';
+                        ctx.fillRect(x - 1, y - radius - 2, 2, 3);
+                        break;
+                        
+                    case 1: // Yeşil elma
+                        ctx.fillStyle = '#00ff00';
+                        ctx.beginPath();
+                        ctx.arc(x, y, radius, 0, 2 * Math.PI);
+                        ctx.fill();
+                        // Elma sapı
+                        ctx.fillStyle = '#8B4513';
+                        ctx.fillRect(x - 1, y - radius - 2, 2, 3);
+                        break;
+                        
+                    case 2: // Mavi yuvarlak
+                        ctx.fillStyle = '#0080ff';
+                        ctx.beginPath();
+                        ctx.arc(x, y, radius, 0, 2 * Math.PI);
+                        ctx.fill();
+                        break;
+                        
+                    case 3: // Mor kare
+                        ctx.fillStyle = '#8000ff';
+                        ctx.fillRect(fx*CELL_SIZE + 2, fy*CELL_SIZE + 2, CELL_SIZE - 4, CELL_SIZE - 4);
+                        break;
                 }
             }
         }
@@ -2148,7 +2242,9 @@
                     'shield': '#000',      // Siyah
                     'speed': '#00f',       // Mavi
                     'reverse': '#fff',     // Beyaz
-                    'magnet': '#800080'    // Mor
+                    'magnet': '#800080',   // Mor
+                    'freeze': '#00ffff',   // Camgöbeği
+                    'trail': '#ff6600'     // Turuncu
                 };
                 
                 // Power-up yuvarlak arka planı
@@ -2206,6 +2302,30 @@
             difficultyDisplay.textContent = `Zorluk: ${difficultyNames[timeAttackState.difficulty] || '--'}`;
         }
         
+        // Power-up efektlerini göster (klasik moddaki gibi)
+        if (timeAttackState.active_powerups && timeAttackState.active_powerups[myId]) {
+            const powerups = timeAttackState.active_powerups[myId];
+            let effectText = '';
+            
+            if (powerups.shield) effectText += '🛡️ Shield ';
+            if (powerups.speed) effectText += '⚡ Speed ';
+            if (powerups.reverse) effectText += '🔄 Reverse ';
+            if (powerups.magnet) effectText += '🧲 Magnet ';
+            if (powerups.freeze) effectText += '❄️ Freeze ';
+            if (powerups.trail) effectText += '🌊 Trail ';
+            
+            if (effectText) {
+                // Power-up efekt mesajını göster
+                const effectDiv = document.getElementById('powerup-effect') || createPowerupEffectDiv();
+                effectDiv.textContent = effectText;
+                effectDiv.style.display = 'block';
+            }
+        } else {
+            // Power-up efekti yoksa gizle
+            const effectDiv = document.getElementById('powerup-effect');
+            if (effectDiv) effectDiv.style.display = 'none';
+        }
+        
         // Oyun durduysa canlanma mesajı göster
         if (!timeAttackState.game_active) {
             // Süre bittiyse sonuç göster
@@ -2216,6 +2336,27 @@
                 showRespawnMessage();
             }
         }
+    }
+    
+    function createPowerupEffectDiv() {
+        const div = document.createElement('div');
+        div.id = 'powerup-effect';
+        div.style.cssText = `
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 16px;
+            font-weight: bold;
+            z-index: 1000;
+            display: none;
+        `;
+        document.body.appendChild(div);
+        return div;
     }
     
     function showRespawnMessage() {

@@ -4,7 +4,7 @@ import time
 import copy
 
 # Time Attack konfigürasyonu (common.py'dan alınacak)
-from common import TIME_ATTACK_DIFFICULTIES, TIME_ATTACK_CONSTANTS, TIME_ATTACK_ALLOWED_POWERUPS
+from common import TIME_ATTACK_DIFFICULTIES, TIME_ATTACK_CONSTANTS, TIME_ATTACK_ALLOWED_POWERUPS, get_snake_color_info
 
 TIME_ATTACK_CONFIG = {
     "difficulties": TIME_ATTACK_DIFFICULTIES,
@@ -25,6 +25,9 @@ class TimeAttackGame:
         self.board_width = board_width
         self.board_height = board_height
         self.config = TIME_ATTACK_CONFIG["difficulties"][difficulty]
+        
+        # Renk bilgisi al (klasik moddaki gibi)
+        color_info = get_snake_color_info(client_id)
         
         # Oyun durumu
         # Rastgele güvenli başlangıç pozisyonu bul
@@ -50,7 +53,11 @@ class TimeAttackGame:
             "start_time": time.time(),
             "game_active": True,
             "high_score": 0,
-            "respawn_count": 0
+            "respawn_count": 0,
+            # Klasik moddaki renk sistemi
+            "color": color_info["color"],
+            "color_info": color_info,
+            "trails": []  # İz bırakıcı power-up için
         }
         
         # Oyunu başlat
@@ -261,33 +268,44 @@ class TimeAttackGame:
             if new_head == tuple(powerup["pos"]):
                 self.activate_powerup(powerup["type"])
                 self.game_state["powerups"].pop(i)
-                self.game_state["time_left"] += TIME_ATTACK_CONSTANTS["POWERUP_BONUS_TIME"]
                 break
         
-        # Yılanı güncelle
+        # Trail sistemi (klasik moddaki gibi)
+        # Trail power-up aktifse iz bırak
+        if self.has_powerup("trail"):
+            # Son pozisyonu trail'e ekle
+            if len(self.game_state["trails"]) >= 10:  # Maksimum 10 trail
+                self.game_state["trails"].pop(0)
+            self.game_state["trails"].append(head)
+        
+        # Yeni başı ekle
         self.game_state["snake"].insert(0, new_head)
+        
+        # Yem yemediyse kuyruğu kısalt
         if not food_eaten:
             self.game_state["snake"].pop()
         
-        # Yılan uzunluğu kontrolü
-        if len(self.game_state["snake"]) > TIME_ATTACK_CONSTANTS["MAX_SNAKE_LENGTH"]:
-            self.game_state["snake"] = self.game_state["snake"][:TIME_ATTACK_CONSTANTS["MAX_SNAKE_LENGTH"]]
-        
-        # Yeni yem ekle
-        if food_eaten and len(self.game_state["food"]) < TIME_ATTACK_CONFIG["food_count"]:
+        # Yeni yem yerleştir
+        if not food_eaten:
             new_food = self._random_food()
-            self.game_state["food"].append(new_food)
+            if new_food:
+                self.game_state["food"].append(new_food)
         
-        # Altın elma olasılığı
-        if random.random() < TIME_ATTACK_CONFIG["golden_food_chance"] and not self.game_state["golden_food"]:
+        # Altın elma üretimi (klasik moddaki gibi)
+        if (self.game_state["golden_food"] is None and 
+            random.random() < TIME_ATTACK_CONFIG["golden_food_chance"]):
             self.game_state["golden_food"] = self._random_food()
         
-        # Power-up olasılığı
+        # Power-up üretimi
         if (len(self.game_state["powerups"]) < TIME_ATTACK_CONFIG["max_powerups"] and 
-            random.random() < 0.01):  # %1 olasılık
-            powerup_type = random.choice(TIME_ATTACK_CONFIG["allowed_powerups"])
+            random.random() < 0.01):  # %1 şans
             powerup_pos = self._random_food()
-            self.game_state["powerups"].append({"pos": powerup_pos, "type": powerup_type})
+            if powerup_pos:
+                powerup_type = random.choice(TIME_ATTACK_CONFIG["allowed_powerups"])
+                self.game_state["powerups"].append({
+                    "pos": powerup_pos,
+                    "type": powerup_type
+                })
     
     def eliminate_snake(self):
         """Yılanı ele"""
@@ -308,6 +326,11 @@ class TimeAttackGame:
             self.game_state["active_powerups"][self.client_id] = {}
         
         self.game_state["active_powerups"][self.client_id][powerup_type] = time.time() + TIME_ATTACK_CONSTANTS["POWERUP_DURATION"]
+        
+        # Trail power-up için özel işlem
+        if powerup_type == "trail":
+            # Trail'i temizle (yeni trail başlat)
+            self.game_state["trails"] = []
     
     def has_powerup(self, powerup_type):
         """Power-up kontrolü"""
@@ -343,6 +366,9 @@ class TimeAttackGame:
                     expired.append(powerup_type)
             for powerup_type in expired:
                 del self.game_state["active_powerups"][self.client_id][powerup_type]
+                # Trail power-up bittiyse trail'i temizle
+                if powerup_type == "trail":
+                    self.game_state["trails"] = []
     
     def set_direction(self, direction):
         """Yön ayarla"""
