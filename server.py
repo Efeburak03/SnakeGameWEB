@@ -273,8 +273,6 @@ async def game_loop():
         if game_timer is None:
             game_started = False
         clear_expired_powerups()
-        global move_queue
-        new_queue = []
         now = time.time()
         # Oyun süresi kontrolü
         if not waiting_for_restart and game_timer is not None and now - game_timer >= GAME_DURATION:
@@ -294,23 +292,27 @@ async def game_loop():
             reset_game()
         # Normal oyun akışı
         if not waiting_for_restart:
-            for msg in move_queue:
-                cid = msg["client_id"]
+            # Her oyuncu için buffer'daki komutları sırayla işle
+            for client_id in list(player_move_buffers.keys()):
+                if client_id not in player_move_buffers or not player_move_buffers[client_id]:
+                    continue
+                
+                # Buffer'dan bir komut al
+                msg = player_move_buffers[client_id].pop(0)
                 direction = msg["direction"]
-                if has_powerup(cid, "reverse"):
+                
+                # Reverse power-up kontrolü
+                if has_powerup(client_id, "reverse"):
                     OPP = {"UP":"DOWN","DOWN":"UP","LEFT":"RIGHT","RIGHT":"LEFT"}
                     direction = OPP.get(direction, direction)
-                msg["direction"] = direction
-                new_queue.append(msg)
-            move_queue = new_queue
-            while move_queue:
-                msg = move_queue.pop(0)
-                client_id = msg["client_id"]
-                direction = msg["direction"]
+                
+                # Ters yön kontrolü
                 current_dir = game_state["directions"].get(client_id)
                 OPPOSITE_DIRECTIONS = {"UP": "DOWN", "DOWN": "UP", "LEFT": "RIGHT", "RIGHT": "LEFT"}
                 if current_dir and OPPOSITE_DIRECTIONS.get(current_dir) == direction:
                     continue
+                
+                # Yönü güncelle
                 if client_id in game_state["snakes"]:
                     game_state["directions"][client_id] = direction
                 else:
@@ -645,7 +647,9 @@ def move_snake(client_id):
             eliminate_snake(client_id)
             return
 
-move_queue = []
+# Hareket buffer sistemi - her oyuncu için son hareket komutlarını sakla
+player_move_buffers = {}  # client_id: [move_commands]
+MAX_BUFFER_SIZE = 3  # Her oyuncu için maksimum 3 komut sakla
 clients = {}  # sid: client_id
 
 READY_MSG = "ready"
