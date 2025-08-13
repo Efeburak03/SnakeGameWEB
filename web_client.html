@@ -1039,10 +1039,10 @@
                         const x = ox * CELL_SIZE;
                         const y = oy * CELL_SIZE;
                         const size = CELL_SIZE;
-                        const time = Date.now() * 0.005; // Daha hızlı animasyon
+                        const time = Date.now() * 0.003; // Daha yavaş animasyon
                         
-                        // Kademeli görünürlük (mesafeye göre) - daha parlak
-                        const visibility = Math.max(0.5, 1 - (distance / 6)); // Minimum görünürlüğü artırdık
+                        // Kademeli görünürlük (mesafeye göre) - daha yumuşak geçiş
+                        const visibility = Math.max(0.65, 1 - (distance / 8)); // Başlangıç parlaklığını artırdık, mesafeyi uzattık
                         
                         // ÇOK DAHA PARLAK Glow efekti
                         const glowSize = size * 3.5; // Glow boyutunu artırdık
@@ -1070,7 +1070,7 @@
                         ctx.fillRect(x, y, size, size);
                         
                         // ÇOK DAHA PARLAK Kenarlık - pulse animasyonu
-                        const borderAlpha = 0.95 + 0.05 * Math.sin(time * 2); // Daha hızlı pulse
+                        const borderAlpha = 0.95 + 0.05 * Math.sin(time * 1.2); // Daha yavaş pulse
                         ctx.strokeStyle = `rgba(255, 255, 255, ${borderAlpha * visibility})`; // Beyaz kenarlık
                         ctx.lineWidth = 5; // Daha kalın kenarlık
                         ctx.strokeRect(x + 1, y + 1, size - 2, size - 2);
@@ -2398,10 +2398,10 @@
                         const x = ox * CELL_SIZE;
                         const y = oy * CELL_SIZE;
                         const size = CELL_SIZE;
-                        const time = Date.now() * 0.005; // Daha hızlı animasyon
+                        const time = Date.now() * 0.003; // Daha yavaş animasyon
                         
-                        // Kademeli görünürlük (mesafeye göre) - daha parlak
-                        const visibility = Math.max(0.5, 1 - (distance / 6)); // Minimum görünürlüğü artırdık
+                        // Kademeli görünürlük (mesafeye göre) - daha yumuşak geçiş
+                        const visibility = Math.max(0.65, 1 - (distance / 8)); // Başlangıç parlaklığını artırdık, mesafeyi uzattık
                         
                         // ÇOK DAHA PARLAK Glow efekti
                         const glowSize = size * 3.5; // Glow boyutunu artırdık
