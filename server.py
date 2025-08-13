@@ -585,14 +585,6 @@ def move_snake(client_id):
             else:
                 eliminate_snake(client_id)
                 return
-    # Kendine çarpma kontrolü - yılanın kuyruğu hariç kontrol et
-    if new_head in snake[:-1]:  # Son eleman (kuyruk) hariç kontrol et
-        if shielded:
-            # Shield aktifken kendine çarpmadan geç, shield'i kaldırma
-            pass
-        else:
-            eliminate_snake(client_id)
-            return
     # --- Hareketli yem kontrolü ---
     # Büyüme kontrolü
     ate_food = False
@@ -613,10 +605,23 @@ def move_snake(client_id):
     if not ate_food:
         snake.insert(0, new_head)
         snake.pop()
+    
     # Uzunluk sınırı uygula
     if len(snake) > MAX_SNAKE_LENGTH:
         snake = snake[:MAX_SNAKE_LENGTH]
+    
+    # Yılanı güncelle
     game_state["snakes"][client_id] = snake
+    
+    # Kendine çarpma kontrolü - YILAN GÜNCELLENDİKTEN SONRA
+    # Yeni baş pozisyonu yılanın vücudunun geri kalanıyla çakışıyor mu kontrol et
+    if len(snake) > 1 and snake[0] in snake[1:]:  # Baş, vücudun geri kalanında var mı?
+        if shielded:
+            # Shield aktifken kendine çarpmadan geç, shield'i kaldırma
+            pass
+        else:
+            eliminate_snake(client_id)
+            return
     # --- TRAIL POWER-UP GÜNCELLEME ---
     # Eğer oyuncuda trail power-up varsa, iz güncelle
     if has_powerup(client_id, "trail"):
