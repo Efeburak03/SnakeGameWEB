@@ -494,6 +494,17 @@ def move_snake(client_id):
     elif direction == "RIGHT":
         head_x += 1
     new_head = (head_x, head_y)
+    
+    # --- Kendine çarpma kontrolü - YENİ BAŞ POZİSYONU HESAPLANDIKTAN SONRA, VÜCUDA EKLENMEDEN ÖNCE ---
+    # Yeni baş pozisyonu yılanın mevcut vücuduyla çakışıyor mu kontrol et
+    if len(snake) > 1 and new_head in snake[1:]:  # Yeni baş, mevcut vücudun geri kalanında var mı?
+        if shielded:
+            # Shield aktifken kendine çarpmadan geç, shield'i kaldırma
+            pass
+        else:
+            eliminate_snake(client_id)
+            return
+    
     # --- Altın elma kontrolü ---
     if game_state.get("golden_food") and new_head == tuple(game_state["golden_food"]):
         snake.insert(0, new_head)
@@ -614,16 +625,6 @@ def move_snake(client_id):
     
     # Yılanı güncelle
     game_state["snakes"][client_id] = snake
-    
-    # Kendine çarpma kontrolü - YILAN GÜNCELLENDİKTEN SONRA
-    # Yeni baş pozisyonu yılanın vücudunun geri kalanıyla çakışıyor mu kontrol et
-    if len(snake) > 1 and snake[0] in snake[1:]:  # Baş, vücudun geri kalanında var mı?
-        if shielded:
-            # Shield aktifken kendine çarpmadan geç, shield'i kaldırma
-            pass
-        else:
-            eliminate_snake(client_id)
-            return
     # --- TRAIL POWER-UP GÜNCELLEME ---
     # Eğer oyuncuda trail power-up varsa, iz güncelle
     if has_powerup(client_id, "trail"):
