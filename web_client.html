@@ -1027,61 +1027,82 @@
                     ctx.drawImage(assets.enemy, ox*CELL_SIZE - offset, oy*CELL_SIZE - offset, size, size);
                 }
                 else if (obs.type === 'hidden_wall') {
-                    // Gizli duvarlar yılanın başının 4 blok yakınında görünür
+                    // Gizli duvarlar yılanın başının 6 blok yakınında görünür (daha uzak mesafe)
                     let show = false;
                     let distance = 0;
                     if (gameState.snakes && myId && gameState.snakes[myId] && gameState.snakes[myId].length > 0) {
                         const [hx, hy] = gameState.snakes[myId][0];
                         distance = Math.abs(hx - ox) + Math.abs(hy - oy);
-                        if (distance <= 4) show = true;
+                        if (distance <= 6) show = true; // Mesafeyi 4'ten 6'ya çıkardık
                     }
                     if (show) {
                         const x = ox * CELL_SIZE;
                         const y = oy * CELL_SIZE;
                         const size = CELL_SIZE;
-                        const time = Date.now() * 0.003;
+                        const time = Date.now() * 0.005; // Daha hızlı animasyon
                         
-                        // Kademeli görünürlük (mesafeye göre)
-                        const visibility = Math.max(0.3, 1 - (distance / 4));
+                        // Kademeli görünürlük (mesafeye göre) - daha parlak
+                        const visibility = Math.max(0.5, 1 - (distance / 6)); // Minimum görünürlüğü artırdık
                         
-                        // Glow efekti - çok daha parlak
-                        const glowSize = size * 2.5;
+                        // ÇOK DAHA PARLAK Glow efekti
+                        const glowSize = size * 3.5; // Glow boyutunu artırdık
                         const glowGradient = ctx.createRadialGradient(
                             x + size/2, y + size/2, 0,
                             x + size/2, y + size/2, glowSize/2
                         );
-                        glowGradient.addColorStop(0, `rgba(255, 120, 120, ${0.9 * visibility})`);
-                        glowGradient.addColorStop(0.3, `rgba(255, 180, 180, ${0.7 * visibility})`);
-                        glowGradient.addColorStop(0.6, `rgba(255, 200, 200, ${0.5 * visibility})`);
-                        glowGradient.addColorStop(1, 'rgba(255, 150, 150, 0)');
+                        glowGradient.addColorStop(0, `rgba(255, 50, 50, ${1.0 * visibility})`); // Daha parlak kırmızı
+                        glowGradient.addColorStop(0.2, `rgba(255, 100, 100, ${0.9 * visibility})`);
+                        glowGradient.addColorStop(0.4, `rgba(255, 150, 150, ${0.7 * visibility})`);
+                        glowGradient.addColorStop(0.7, `rgba(255, 200, 200, ${0.4 * visibility})`);
+                        glowGradient.addColorStop(1, 'rgba(255, 100, 100, 0)');
                         
                         ctx.fillStyle = glowGradient;
-                        ctx.fillRect(x - glowSize/4, y - glowSize/4, size + glowSize/2, size + glowSize/2);
+                        ctx.fillRect(x - glowSize/3, y - glowSize/3, size + glowSize/1.5, size + glowSize/1.5);
                         
-                        // Ana duvar - gradient ile (çok daha parlak)
+                        // Ana duvar - ÇOK DAHA PARLAK gradient
                         const wallGradient = ctx.createLinearGradient(x, y, x + size, y + size);
-                        wallGradient.addColorStop(0, `rgba(255, 100, 100, ${0.98 * visibility})`);
-                        wallGradient.addColorStop(0.5, `rgba(220, 70, 70, ${0.95 * visibility})`);
-                        wallGradient.addColorStop(1, `rgba(180, 50, 50, ${0.98 * visibility})`);
+                        wallGradient.addColorStop(0, `rgba(255, 80, 80, ${1.0 * visibility})`); // Daha parlak
+                        wallGradient.addColorStop(0.3, `rgba(255, 60, 60, ${0.98 * visibility})`);
+                        wallGradient.addColorStop(0.7, `rgba(255, 40, 40, ${0.98 * visibility})`);
+                        wallGradient.addColorStop(1, `rgba(255, 20, 20, ${1.0 * visibility})`);
                         
                         ctx.fillStyle = wallGradient;
                         ctx.fillRect(x, y, size, size);
                         
-                        // Kenarlık - pulse animasyonu (çok daha parlak)
-                        const borderAlpha = 0.9 + 0.1 * Math.sin(time);
-                        ctx.strokeStyle = `rgba(255, 240, 240, ${borderAlpha * visibility})`;
-                        ctx.lineWidth = 4;
+                        // ÇOK DAHA PARLAK Kenarlık - pulse animasyonu
+                        const borderAlpha = 0.95 + 0.05 * Math.sin(time * 2); // Daha hızlı pulse
+                        ctx.strokeStyle = `rgba(255, 255, 255, ${borderAlpha * visibility})`; // Beyaz kenarlık
+                        ctx.lineWidth = 5; // Daha kalın kenarlık
                         ctx.strokeRect(x + 1, y + 1, size - 2, size - 2);
                         
-                        // İç detay - çapraz çizgiler
-                        ctx.strokeStyle = `rgba(255, 255, 255, ${0.3 * visibility})`;
-                        ctx.lineWidth = 1;
+                        // İkinci kenarlık - dış glow efekti
+                        ctx.strokeStyle = `rgba(255, 200, 200, ${0.6 * visibility})`;
+                        ctx.lineWidth = 2;
+                        ctx.strokeRect(x - 1, y - 1, size + 2, size + 2);
+                        
+                        // İç detay - daha parlak çapraz çizgiler
+                        ctx.strokeStyle = `rgba(255, 255, 255, ${0.7 * visibility})`; // Daha parlak
+                        ctx.lineWidth = 2; // Daha kalın
                         ctx.beginPath();
-                        ctx.moveTo(x + 3, y + 3);
-                        ctx.lineTo(x + size - 3, y + size - 3);
-                        ctx.moveTo(x + size - 3, y + 3);
-                        ctx.lineTo(x + 3, y + size - 3);
+                        ctx.moveTo(x + 4, y + 4);
+                        ctx.lineTo(x + size - 4, y + size - 4);
+                        ctx.moveTo(x + size - 4, y + 4);
+                        ctx.lineTo(x + 4, y + size - 4);
                         ctx.stroke();
+                        
+                        // Merkez nokta - dikkat çekici
+                        ctx.fillStyle = `rgba(255, 255, 255, ${0.9 * visibility})`;
+                        ctx.beginPath();
+                        ctx.arc(x + size/2, y + size/2, 3, 0, 2 * Math.PI);
+                        ctx.fill();
+                        
+                        // Uyarı işareti - mesafe 3'ten azsa
+                        if (distance <= 3) {
+                            ctx.fillStyle = `rgba(255, 255, 0, ${0.8 * visibility})`; // Sarı uyarı
+                            ctx.font = 'bold 12px Arial';
+                            ctx.textAlign = 'center';
+                            ctx.fillText('!', x + size/2, y + size/2 + 4);
+                        }
                     }
                 }
             }
@@ -2365,16 +2386,82 @@
                 } else if (obs.type === 'enemy' && assets.enemy) {
                     ctx.drawImage(assets.enemy, ox*CELL_SIZE - offset, oy*CELL_SIZE - offset, size, size);
                 } else if (obs.type === 'hidden_wall') {
-                    // Gizli duvarlar yılanın başının 4 blok yakınında görünür
+                    // Gizli duvarlar yılanın başının 6 blok yakınında görünür (daha uzak mesafe)
                     let show = false;
+                    let distance = 0;
                     if (timeAttackState.snake && timeAttackState.snake.length > 0) {
                         const [hx, hy] = timeAttackState.snake[0];
-                        const dist = Math.abs(hx - ox) + Math.abs(hy - oy);
-                        if (dist <= 4) show = true;
+                        distance = Math.abs(hx - ox) + Math.abs(hy - oy);
+                        if (distance <= 6) show = true; // Mesafeyi 4'ten 6'ya çıkardık
                     }
                     if (show) {
-                        ctx.fillStyle = '#555';
-                        ctx.fillRect(ox*CELL_SIZE, oy*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                        const x = ox * CELL_SIZE;
+                        const y = oy * CELL_SIZE;
+                        const size = CELL_SIZE;
+                        const time = Date.now() * 0.005; // Daha hızlı animasyon
+                        
+                        // Kademeli görünürlük (mesafeye göre) - daha parlak
+                        const visibility = Math.max(0.5, 1 - (distance / 6)); // Minimum görünürlüğü artırdık
+                        
+                        // ÇOK DAHA PARLAK Glow efekti
+                        const glowSize = size * 3.5; // Glow boyutunu artırdık
+                        const glowGradient = ctx.createRadialGradient(
+                            x + size/2, y + size/2, 0,
+                            x + size/2, y + size/2, glowSize/2
+                        );
+                        glowGradient.addColorStop(0, `rgba(255, 50, 50, ${1.0 * visibility})`); // Daha parlak kırmızı
+                        glowGradient.addColorStop(0.2, `rgba(255, 100, 100, ${0.9 * visibility})`);
+                        glowGradient.addColorStop(0.4, `rgba(255, 150, 150, ${0.7 * visibility})`);
+                        glowGradient.addColorStop(0.7, `rgba(255, 200, 200, ${0.4 * visibility})`);
+                        glowGradient.addColorStop(1, 'rgba(255, 100, 100, 0)');
+                        
+                        ctx.fillStyle = glowGradient;
+                        ctx.fillRect(x - glowSize/3, y - glowSize/3, size + glowSize/1.5, size + glowSize/1.5);
+                        
+                        // Ana duvar - ÇOK DAHA PARLAK gradient
+                        const wallGradient = ctx.createLinearGradient(x, y, x + size, y + size);
+                        wallGradient.addColorStop(0, `rgba(255, 80, 80, ${1.0 * visibility})`); // Daha parlak
+                        wallGradient.addColorStop(0.3, `rgba(255, 60, 60, ${0.98 * visibility})`);
+                        wallGradient.addColorStop(0.7, `rgba(255, 40, 40, ${0.98 * visibility})`);
+                        wallGradient.addColorStop(1, `rgba(255, 20, 20, ${1.0 * visibility})`);
+                        
+                        ctx.fillStyle = wallGradient;
+                        ctx.fillRect(x, y, size, size);
+                        
+                        // ÇOK DAHA PARLAK Kenarlık - pulse animasyonu
+                        const borderAlpha = 0.95 + 0.05 * Math.sin(time * 2); // Daha hızlı pulse
+                        ctx.strokeStyle = `rgba(255, 255, 255, ${borderAlpha * visibility})`; // Beyaz kenarlık
+                        ctx.lineWidth = 5; // Daha kalın kenarlık
+                        ctx.strokeRect(x + 1, y + 1, size - 2, size - 2);
+                        
+                        // İkinci kenarlık - dış glow efekti
+                        ctx.strokeStyle = `rgba(255, 200, 200, ${0.6 * visibility})`;
+                        ctx.lineWidth = 2;
+                        ctx.strokeRect(x - 1, y - 1, size + 2, size + 2);
+                        
+                        // İç detay - daha parlak çapraz çizgiler
+                        ctx.strokeStyle = `rgba(255, 255, 255, ${0.7 * visibility})`; // Daha parlak
+                        ctx.lineWidth = 2; // Daha kalın
+                        ctx.beginPath();
+                        ctx.moveTo(x + 4, y + 4);
+                        ctx.lineTo(x + size - 4, y + size - 4);
+                        ctx.moveTo(x + size - 4, y + 4);
+                        ctx.lineTo(x + 4, y + size - 4);
+                        ctx.stroke();
+                        
+                        // Merkez nokta - dikkat çekici
+                        ctx.fillStyle = `rgba(255, 255, 255, ${0.9 * visibility})`;
+                        ctx.beginPath();
+                        ctx.arc(x + size/2, y + size/2, 3, 0, 2 * Math.PI);
+                        ctx.fill();
+                        
+                        // Uyarı işareti - mesafe 3'ten azsa
+                        if (distance <= 3) {
+                            ctx.fillStyle = `rgba(255, 255, 0, ${0.8 * visibility})`; // Sarı uyarı
+                            ctx.font = 'bold 12px Arial';
+                            ctx.textAlign = 'center';
+                            ctx.fillText('!', x + size/2, y + size/2 + 4);
+                        }
                     }
                 }
             }
