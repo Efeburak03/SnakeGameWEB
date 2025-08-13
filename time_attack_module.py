@@ -377,11 +377,28 @@ class TimeAttackGame:
             OPP = {"UP":"DOWN","DOWN":"UP","LEFT":"RIGHT","RIGHT":"LEFT"}
             direction = OPP.get(direction, direction)
         
-        # Direction control
+        # Direction control - ters yön kontrolü
         current_dir = self.game_state["direction"]
         OPPOSITE_DIRECTIONS = {"UP": "DOWN", "DOWN": "UP", "LEFT": "RIGHT", "RIGHT": "LEFT"}
         if OPPOSITE_DIRECTIONS.get(current_dir) == direction:
             return
+        
+        # Kendine çarpma kontrolü - yeni yön yılanın kendi vücuduna çarpar mı?
+        snake = self.game_state["snake"]
+        if len(snake) > 1:
+            head_x, head_y = snake[0]
+            if direction == "UP":
+                new_head = (head_x, head_y - 1)
+            elif direction == "DOWN":
+                new_head = (head_x, head_y + 1)
+            elif direction == "LEFT":
+                new_head = (head_x - 1, head_y)
+            elif direction == "RIGHT":
+                new_head = (head_x + 1, head_y)
+            
+            # Yeni baş pozisyonu yılanın mevcut vücuduyla çakışıyor mu?
+            if new_head in snake[1:]:
+                return  # Bu hareketi atla, yılan kendine çarpar
         
         self.game_state["direction"] = direction
     
