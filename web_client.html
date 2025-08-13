@@ -1050,21 +1050,21 @@
                             x + size/2, y + size/2, 0,
                             x + size/2, y + size/2, glowSize/2
                         );
-                        glowGradient.addColorStop(0, `rgba(255, 50, 50, ${1.0 * visibility})`); // Daha parlak kırmızı
-                        glowGradient.addColorStop(0.2, `rgba(255, 100, 100, ${0.9 * visibility})`);
-                        glowGradient.addColorStop(0.4, `rgba(255, 150, 150, ${0.7 * visibility})`);
-                        glowGradient.addColorStop(0.7, `rgba(255, 200, 200, ${0.4 * visibility})`);
-                        glowGradient.addColorStop(1, 'rgba(255, 100, 100, 0)');
+                        glowGradient.addColorStop(0, `rgba(255, 165, 0, ${1.0 * visibility})`); // Turuncu
+                        glowGradient.addColorStop(0.2, `rgba(255, 140, 0, ${0.9 * visibility})`);
+                        glowGradient.addColorStop(0.4, `rgba(255, 120, 0, ${0.7 * visibility})`);
+                        glowGradient.addColorStop(0.7, `rgba(255, 100, 0, ${0.4 * visibility})`);
+                        glowGradient.addColorStop(1, 'rgba(255, 80, 0, 0)');
                         
                         ctx.fillStyle = glowGradient;
                         ctx.fillRect(x - glowSize/3, y - glowSize/3, size + glowSize/1.5, size + glowSize/1.5);
                         
                         // Ana duvar - ÇOK DAHA PARLAK gradient
                         const wallGradient = ctx.createLinearGradient(x, y, x + size, y + size);
-                        wallGradient.addColorStop(0, `rgba(255, 80, 80, ${1.0 * visibility})`); // Daha parlak
-                        wallGradient.addColorStop(0.3, `rgba(255, 60, 60, ${0.98 * visibility})`);
-                        wallGradient.addColorStop(0.7, `rgba(255, 40, 40, ${0.98 * visibility})`);
-                        wallGradient.addColorStop(1, `rgba(255, 20, 20, ${1.0 * visibility})`);
+                        wallGradient.addColorStop(0, `rgba(255, 165, 0, ${1.0 * visibility})`); // Turuncu
+                        wallGradient.addColorStop(0.3, `rgba(255, 140, 0, ${0.98 * visibility})`);
+                        wallGradient.addColorStop(0.7, `rgba(255, 120, 0, ${0.98 * visibility})`);
+                        wallGradient.addColorStop(1, `rgba(255, 100, 0, ${1.0 * visibility})`);
                         
                         ctx.fillStyle = wallGradient;
                         ctx.fillRect(x, y, size, size);
@@ -1076,7 +1076,7 @@
                         ctx.strokeRect(x + 1, y + 1, size - 2, size - 2);
                         
                         // İkinci kenarlık - dış glow efekti
-                        ctx.strokeStyle = `rgba(255, 200, 200, ${0.6 * visibility})`;
+                        ctx.strokeStyle = `rgba(255, 200, 100, ${0.6 * visibility})`; // Turuncu ton
                         ctx.lineWidth = 2;
                         ctx.strokeRect(x - 1, y - 1, size + 2, size + 2);
                         
@@ -1678,17 +1678,17 @@
     document.addEventListener('keydown', (e) => {
         if (!started || !socket || socket.disconnected) return;
         if (!myId) return;
-        if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
+        if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "w", "W", "a", "A", "s", "S", "d", "D"].includes(e.key)) {
             e.preventDefault();
         }
         if (e.repeat) return; // Sadece ilk basışta çalışsın, basılı tutunca ilerlemesin
         
         // Time Attack modu için
         if (currentGameMode === 'timeAttack') {
-            if (e.key === 'ArrowUp') sendTimeAttackMove('UP');
-            else if (e.key === 'ArrowDown') sendTimeAttackMove('DOWN');
-            else if (e.key === 'ArrowLeft') sendTimeAttackMove('LEFT');
-            else if (e.key === 'ArrowRight') sendTimeAttackMove('RIGHT');
+            if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') sendTimeAttackMove('UP');
+            else if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') sendTimeAttackMove('DOWN');
+            else if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') sendTimeAttackMove('LEFT');
+            else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') sendTimeAttackMove('RIGHT');
             else if (e.key === 'Enter') {
                 if (socket && socket.connected) {
                     socket.emit('time_attack_respawn', {client_id: myId});
@@ -1699,10 +1699,10 @@
 
         } else {
             // Klasik mod için
-            if (e.key === 'ArrowUp') sendMove('UP');
-            else if (e.key === 'ArrowDown') sendMove('DOWN');
-            else if (e.key === 'ArrowLeft') sendMove('LEFT');
-            else if (e.key === 'ArrowRight') sendMove('RIGHT');
+            if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') sendMove('UP');
+            else if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') sendMove('DOWN');
+            else if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') sendMove('LEFT');
+            else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') sendMove('RIGHT');
             else if (e.key === 'Enter') {
                 hideEagleEggScreen();
                 if (gameState && gameState.active && !gameState.active[myId]) {
@@ -2409,21 +2409,21 @@
                             x + size/2, y + size/2, 0,
                             x + size/2, y + size/2, glowSize/2
                         );
-                        glowGradient.addColorStop(0, `rgba(255, 50, 50, ${1.0 * visibility})`); // Daha parlak kırmızı
-                        glowGradient.addColorStop(0.2, `rgba(255, 100, 100, ${0.9 * visibility})`);
-                        glowGradient.addColorStop(0.4, `rgba(255, 150, 150, ${0.7 * visibility})`);
-                        glowGradient.addColorStop(0.7, `rgba(255, 200, 200, ${0.4 * visibility})`);
-                        glowGradient.addColorStop(1, 'rgba(255, 100, 100, 0)');
+                        glowGradient.addColorStop(0, `rgba(255, 165, 0, ${1.0 * visibility})`); // Turuncu
+                        glowGradient.addColorStop(0.2, `rgba(255, 140, 0, ${0.9 * visibility})`);
+                        glowGradient.addColorStop(0.4, `rgba(255, 120, 0, ${0.7 * visibility})`);
+                        glowGradient.addColorStop(0.7, `rgba(255, 100, 0, ${0.4 * visibility})`);
+                        glowGradient.addColorStop(1, 'rgba(255, 80, 0, 0)');
                         
                         ctx.fillStyle = glowGradient;
                         ctx.fillRect(x - glowSize/3, y - glowSize/3, size + glowSize/1.5, size + glowSize/1.5);
                         
                         // Ana duvar - ÇOK DAHA PARLAK gradient
                         const wallGradient = ctx.createLinearGradient(x, y, x + size, y + size);
-                        wallGradient.addColorStop(0, `rgba(255, 80, 80, ${1.0 * visibility})`); // Daha parlak
-                        wallGradient.addColorStop(0.3, `rgba(255, 60, 60, ${0.98 * visibility})`);
-                        wallGradient.addColorStop(0.7, `rgba(255, 40, 40, ${0.98 * visibility})`);
-                        wallGradient.addColorStop(1, `rgba(255, 20, 20, ${1.0 * visibility})`);
+                        wallGradient.addColorStop(0, `rgba(255, 165, 0, ${1.0 * visibility})`); // Turuncu
+                        wallGradient.addColorStop(0.3, `rgba(255, 140, 0, ${0.98 * visibility})`);
+                        wallGradient.addColorStop(0.7, `rgba(255, 120, 0, ${0.98 * visibility})`);
+                        wallGradient.addColorStop(1, `rgba(255, 100, 0, ${1.0 * visibility})`);
                         
                         ctx.fillStyle = wallGradient;
                         ctx.fillRect(x, y, size, size);
@@ -2435,7 +2435,7 @@
                         ctx.strokeRect(x + 1, y + 1, size - 2, size - 2);
                         
                         // İkinci kenarlık - dış glow efekti
-                        ctx.strokeStyle = `rgba(255, 200, 200, ${0.6 * visibility})`;
+                        ctx.strokeStyle = `rgba(255, 200, 100, ${0.6 * visibility})`; // Turuncu ton
                         ctx.lineWidth = 2;
                         ctx.strokeRect(x - 1, y - 1, size + 2, size + 2);
                         
