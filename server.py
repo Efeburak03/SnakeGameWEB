@@ -651,7 +651,19 @@ clients = {}  # sid: client_id
 READY_MSG = "ready"
 
 def enqueue_move(msg):
-    move_queue.append(msg)
+    client_id = msg["client_id"]
+    direction = msg["direction"]
+    
+    # Oyuncu için buffer yoksa oluştur
+    if client_id not in player_move_buffers:
+        player_move_buffers[client_id] = []
+    
+    # Buffer'a komut ekle
+    player_move_buffers[client_id].append({"client_id": client_id, "direction": direction})
+    
+    # Buffer boyutunu sınırla
+    if len(player_move_buffers[client_id]) > MAX_BUFFER_SIZE:
+        player_move_buffers[client_id] = player_move_buffers[client_id][-MAX_BUFFER_SIZE:]
 
 def enqueue_control(msg):
     if msg.get("type") == MSG_RESTART:
@@ -666,6 +678,9 @@ def enqueue_control(msg):
         game_state["scores"].pop(client_id, None)
         if "active_powerups" in game_state:
             game_state["active_powerups"].pop(client_id, None)
+        # Oyuncu çıkınca buffer'ını temizle
+        if client_id in player_move_buffers:
+            del player_move_buffers[client_id]
     elif msg.get("type") == READY_MSG:
         client_id = msg["client_id"]
         if "ready" not in game_state:
@@ -705,11 +720,16 @@ async def ws_handler(websocket):
     finally:
         if client_id:
             enqueue_control({"type": 'disconnect', "client_id": client_id})
+            # Oyuncu çıkınca buffer'ını temizle
+            if client_id in player_move_buffers:
+                del player_move_buffers[client_id]
         if websocket in clients:
             del clients[websocket]
 
 # --- Oyun döngüsü ve oyuncu yönetimi ---
-move_queue = []
+# Hareket buffer sistemi - her oyuncu için son hareket komutlarını sakla
+player_move_buffers = {}  # client_id: [move_commands]
+MAX_BUFFER_SIZE = 3  # Her oyuncu için maksimum 3 komut sakla
 clients = {}  # sid: client_id
 import threading
 
@@ -749,23 +769,27 @@ def game_loop():
         if waiting_for_restart and all_players_ready():
             reset_game()
         if not waiting_for_restart:
-            for msg in move_queue:
-                cid = msg["client_id"]
+            # Her oyuncu için buffer'daki komutları sırayla işle
+            for client_id in list(player_move_buffers.keys()):
+                if client_id not in player_move_buffers or not player_move_buffers[client_id]:
+                    continue
+                
+                # Buffer'dan bir komut al
+                msg = player_move_buffers[client_id].pop(0)
                 direction = msg["direction"]
-                if has_powerup(cid, "reverse"):
+                
+                # Reverse power-up kontrolü
+                if has_powerup(client_id, "reverse"):
                     OPP = {"UP":"DOWN","DOWN":"UP","LEFT":"RIGHT","RIGHT":"LEFT"}
                     direction = OPP.get(direction, direction)
-                msg["direction"] = direction
-                new_queue.append(msg)
-            move_queue[:] = new_queue
-            while move_queue:
-                msg = move_queue.pop(0)
-                client_id = msg["client_id"]
-                direction = msg["direction"]
+                
+                # Ters yön kontrolü
                 current_dir = game_state["directions"].get(client_id)
                 OPPOSITE_DIRECTIONS = {"UP": "DOWN", "DOWN": "UP", "LEFT": "RIGHT", "RIGHT": "LEFT"}
                 if current_dir and OPPOSITE_DIRECTIONS.get(current_dir) == direction:
                     continue
+                
+                # Yönü güncelle
                 if client_id in game_state["snakes"]:
                     game_state["directions"][client_id] = direction
                 else:
@@ -1171,7 +1195,7 @@ def on_join(data):
 def on_move(data):
     client_id = data.get('client_id')
     direction = data.get('direction')
-    move_queue.append({"client_id": client_id, "direction": direction})
+    enqueue_move({"client_id": client_id, "direction": direction})
 
 @socketio.on('restart')
 def on_restart(data):
