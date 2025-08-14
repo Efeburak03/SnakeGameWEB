@@ -247,17 +247,7 @@
             text-align: center;
         }
         
-        #boost-button {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: transparent;
-            border: none;
-            cursor: pointer;
-            z-index: 10;
-        }
+
         
         /* Boost efektleri */
         .boost-trail {
@@ -664,14 +654,13 @@
     </div>
     
     <!-- Boost sistemi -->
-    <div id="boost-container">
-        <div id="boost-bar">
-            <div id="boost-fill"></div>
-            <div id="boost-cooldown"></div>
+            <div id="boost-container">
+            <div id="boost-bar">
+                <div id="boost-fill"></div>
+                <div id="boost-cooldown"></div>
+            </div>
+            <div id="boost-text">BOOST (SPACE)</div>
         </div>
-        <div id="boost-text">BOOST</div>
-        <button id="boost-button" onclick="activateBoost()"></button>
-    </div>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script>
     // --- Oyun parametreleri ---
@@ -715,6 +704,7 @@
     let boostTrails = [];
     let boostParticles = [];
     let boostUpdateInterval = null;
+    let spacePressed = false;
 
     // --- Boost sistemi fonksiyonları ---
     function activateBoost() {
@@ -723,26 +713,37 @@
         }
     }
     
+    function deactivateBoost() {
+        if (socket && myId) {
+            socket.emit('deactivate_boost', {client_id: myId});
+        }
+    }
+    
     function updateBoostBar() {
         const boostFill = document.getElementById('boost-fill');
         const boostCooldown = document.getElementById('boost-cooldown');
         const boostText = document.getElementById('boost-text');
-        const boostButton = document.getElementById('boost-button');
         
         // Sadece klasik modda ve oyuncu aktifse boost bar'ı güncelle
         if (currentGameMode !== 'classic' || !gameState || !gameState.active || !gameState.active[myId]) {
             boostFill.style.width = '0%';
             boostCooldown.style.width = '0%';
-            boostText.textContent = 'BOOST';
-            boostButton.style.pointerEvents = 'none';
+            boostText.textContent = 'BOOST (SPACE)';
+            return;
+        }
+        
+        // Space tuşu basılıysa boost aktif
+        if (spacePressed && boostInfo && boostInfo.cooldown_progress >= 1.0) {
+            boostFill.style.width = '100%';
+            boostCooldown.style.width = '0%';
+            boostText.textContent = 'BOOST AKTİF!';
             return;
         }
         
         if (!boostInfo) {
             boostFill.style.width = '0%';
             boostCooldown.style.width = '0%';
-            boostText.textContent = 'BOOST';
-            boostButton.style.pointerEvents = 'none';
+            boostText.textContent = 'BOOST (SPACE)';
             return;
         }
         
@@ -751,18 +752,15 @@
             boostFill.style.width = (boostInfo.progress * 100) + '%';
             boostCooldown.style.width = '0%';
             boostText.textContent = 'BOOST AKTİF!';
-            boostButton.style.pointerEvents = 'none';
         } else {
             // Boost pasif
             boostFill.style.width = '0%';
             boostCooldown.style.width = (boostInfo.cooldown_progress * 100) + '%';
             
             if (boostInfo.cooldown_progress >= 1.0) {
-                boostText.textContent = 'BOOST HAZIR!';
-                boostButton.style.pointerEvents = 'auto';
+                boostText.textContent = 'BOOST HAZIR! (SPACE)';
             } else {
                 boostText.textContent = 'BOOST BEKLİYOR...';
-                boostButton.style.pointerEvents = 'none';
             }
         }
     }
@@ -907,6 +905,12 @@
                 console.log('Boost başarıyla aktifleştirildi!');
             } else {
                 console.log('Boost aktifleştirilemedi:', data.message);
+            }
+        });
+        
+        socket.on('boost_deactivated', (data) => {
+            if (data.success) {
+                console.log('Boost durduruldu!');
             }
         });
         
@@ -1925,12 +1929,34 @@
         stopMatrixRain();
     }
 
-    // Easter egg: yukarı, sağ, aşağı, aşağı, aşağı kombinasyonu
-    const easterEggSequence = ['ArrowUp', 'ArrowRight', 'ArrowDown', 'ArrowDown', 'ArrowDown'];
-    let easterEggProgress = 0;
+            // Easter egg: yukarı, sağ, aşağı, aşağı, aşağı kombinasyonu
+        const easterEggSequence = ['ArrowUp', 'ArrowRight', 'ArrowDown', 'ArrowDown', 'ArrowDown'];
+        let easterEggProgress = 0;
+        
+        // Space tuşu bırakıldığında boost'u durdur
+        document.addEventListener('keyup', (e) => {
+            if (e.key === ' ' || e.key === 'Spacebar') {
+                e.preventDefault();
+                if (spacePressed) {
+                    spacePressed = false;
+                    deactivateBoost();
+                }
+            }
+        });
     document.addEventListener('keydown', (e) => {
         if (!started || !socket || socket.disconnected) return;
         if (!myId) return;
+        
+        // Space tuşu kontrolü
+        if (e.key === ' ' || e.key === 'Spacebar') {
+            e.preventDefault();
+            if (!spacePressed) {
+                spacePressed = true;
+                activateBoost();
+            }
+            return;
+        }
+        
         if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "w", "W", "a", "A", "s", "S", "d", "D"].includes(e.key)) {
             e.preventDefault();
         }

@@ -163,7 +163,8 @@ def reset_snake(client_id):
         game_state["boost_system"][client_id] = {
             "active": False,
             "start_time": 0,
-            "cooldown_end": 0
+            "cooldown_end": 0,
+            "space_pressed": False
         }
     if len(game_state["snakes"]) == 1:
         game_state["obstacles"] = place_obstacles()  # Sadece ilk oyuncu girince engelleri yerleştir
@@ -229,13 +230,21 @@ def activate_boost(client_id):
         game_state["boost_system"][client_id] = {
             "active": False,
             "start_time": 0,
-            "cooldown_end": 0
+            "cooldown_end": 0,
+            "space_pressed": False
         }
     
     boost_data = game_state["boost_system"][client_id]
     
-    # Eğer boost zaten aktifse veya cooldown'daysa, işlem yapma
-    if boost_data["active"] or now < boost_data["cooldown_end"]:
+    # Space tuşu basıldı
+    boost_data["space_pressed"] = True
+    
+    # Eğer boost zaten aktifse, sadece space_pressed'i güncelle
+    if boost_data["active"]:
+        return True
+    
+    # Eğer cooldown'daysa, işlem yapma
+    if now < boost_data["cooldown_end"]:
         return False
     
     # Boost'u aktifleştir
@@ -243,13 +252,25 @@ def activate_boost(client_id):
     boost_data["start_time"] = now
     return True
 
+def deactivate_boost(client_id):
+    """Boost'u deaktifleştir (space tuşu bırakıldığında)"""
+    if client_id not in game_state["boost_system"]:
+        return
+    
+    boost_data = game_state["boost_system"][client_id]
+    boost_data["space_pressed"] = False
+
 def update_boost_system():
     """Boost sistemini güncelle"""
     now = time.time()
     for client_id, boost_data in list(game_state["boost_system"].items()):
         if boost_data["active"]:
+            # Space tuşu bırakıldıysa boost'u durdur
+            if not boost_data["space_pressed"]:
+                boost_data["active"] = False
+                boost_data["cooldown_end"] = now + BOOST_COOLDOWN
             # Boost süresi doldu mu kontrol et
-            if now - boost_data["start_time"] >= BOOST_DURATION:
+            elif now - boost_data["start_time"] >= BOOST_DURATION:
                 boost_data["active"] = False
                 boost_data["cooldown_end"] = now + BOOST_COOLDOWN
 
@@ -1333,6 +1354,13 @@ def on_activate_boost(data):
             emit('boost_activated', {"success": True})
         else:
             emit('boost_activated', {"success": False, "message": "Boost kullanılamıyor"})
+
+@socketio.on('deactivate_boost')
+def on_deactivate_boost(data):
+    client_id = data.get('client_id')
+    if client_id and client_id in game_state["snakes"]:
+        deactivate_boost(client_id)
+        emit('boost_deactivated', {"success": True})
 
 @socketio.on('easteregg')
 def on_easteregg(data):
