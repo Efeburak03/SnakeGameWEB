@@ -74,6 +74,7 @@ game_state = {
     "powerups": [],
     "active_powerups": {},
     "trails": {},  # İz bırakıcı power-up için: {client_id: [(x, y), ...]}
+    "boost_system": {},  # Boost sistemi: {client_id: {"active": bool, "start_time": float, "cooldown_end": float}}
 }
 
 # Chat sistemi değişkenleri
@@ -157,6 +158,13 @@ def reset_snake(client_id):
         game_state["scores"][client_id] = 0
     if client_id not in game_state["active_powerups"]:
         game_state["active_powerups"][client_id] = []
+    # Boost sistemi başlatma
+    if client_id not in game_state["boost_system"]:
+        game_state["boost_system"][client_id] = {
+            "active": False,
+            "start_time": 0,
+            "cooldown_end": 0
+        }
     if len(game_state["snakes"]) == 1:
         game_state["obstacles"] = place_obstacles()  # Sadece ilk oyuncu girince engelleri yerleştir
         game_state["portals"] = place_portals()      # Sadece ilk oyuncu girince portalları yerleştir
@@ -209,6 +217,81 @@ def clear_expired_powerups():
         # Eğer biten power-up trail ise izleri de sil
         if ptype == "trail" and cid in game_state["trails"]:
             del game_state["trails"][cid]
+
+# --- Boost sistemi fonksiyonları ---
+BOOST_DURATION = 6.0  # Boost aktiflik süresi (saniye)
+BOOST_COOLDOWN = 30.0  # Boost cooldown süresi (saniye)
+
+def activate_boost(client_id):
+    """Boost'u aktifleştir"""
+    now = time.time()
+    if client_id not in game_state["boost_system"]:
+        game_state["boost_system"][client_id] = {
+            "active": False,
+            "start_time": 0,
+            "cooldown_end": 0
+        }
+    
+    boost_data = game_state["boost_system"][client_id]
+    
+    # Eğer boost zaten aktifse veya cooldown'daysa, işlem yapma
+    if boost_data["active"] or now < boost_data["cooldown_end"]:
+        return False
+    
+    # Boost'u aktifleştir
+    boost_data["active"] = True
+    boost_data["start_time"] = now
+    return True
+
+def update_boost_system():
+    """Boost sistemini güncelle"""
+    now = time.time()
+    for client_id, boost_data in list(game_state["boost_system"].items()):
+        if boost_data["active"]:
+            # Boost süresi doldu mu kontrol et
+            if now - boost_data["start_time"] >= BOOST_DURATION:
+                boost_data["active"] = False
+                boost_data["cooldown_end"] = now + BOOST_COOLDOWN
+
+def is_boost_active(client_id):
+    """Boost aktif mi kontrol et"""
+    if client_id not in game_state["boost_system"]:
+        return False
+    return game_state["boost_system"][client_id]["active"]
+
+def get_boost_info(client_id):
+    """Boost bilgilerini döndür"""
+    if client_id not in game_state["boost_system"]:
+        return {"active": False, "progress": 0, "cooldown_progress": 0}
+    
+    boost_data = game_state["boost_system"][client_id]
+    now = time.time()
+    
+    if boost_data["active"]:
+        # Boost aktif, progress hesapla
+        elapsed = now - boost_data["start_time"]
+        progress = min(1.0, elapsed / BOOST_DURATION)
+        return {
+            "active": True,
+            "progress": progress,
+            "cooldown_progress": 0
+        }
+    else:
+        # Boost pasif, cooldown progress hesapla
+        if now < boost_data["cooldown_end"]:
+            cooldown_elapsed = now - (boost_data["cooldown_end"] - BOOST_COOLDOWN)
+            cooldown_progress = min(1.0, cooldown_elapsed / BOOST_COOLDOWN)
+            return {
+                "active": False,
+                "progress": 0,
+                "cooldown_progress": cooldown_progress
+            }
+        else:
+            return {
+                "active": False,
+                "progress": 0,
+                "cooldown_progress": 1.0  # Hazır
+            }
 
 def eliminate_snake(client_id):
     game_state["active"][client_id] = False
@@ -754,6 +837,7 @@ def game_loop():
         
         # Klasik mod güncellemeleri
         clear_expired_powerups()
+        update_boost_system()  # Boost sistemini güncelle
         new_queue = []
         now = time.time()
         if not game_started and game_timer is None and len(game_state["snakes"]) > 0:
@@ -839,7 +923,8 @@ def game_loop():
             for client_id in list(game_state["snakes"].keys()):
                 if has_powerup(client_id, "frozen"):
                     continue
-                if has_powerup(client_id, "speed"):
+                # Boost aktifse veya speed power-up varsa her tick'te hareket et
+                if is_boost_active(client_id) or has_powerup(client_id, "speed"):
                     move_snake(client_id)
                 else:
                     if tick_count % 2 == 0:
@@ -1158,6 +1243,7 @@ def game_loop():
             state_copy["winner_id"] = winner_id
             state_copy["waiting_for_restart"] = waiting_for_restart
             state_copy["powerup_timers"] = {}
+            state_copy["boost_info"] = {}
             for cid2 in state_copy["snakes"].keys():
                 timers = {}
                 for ptype in ["speed","shield","invisible","reverse"]:
@@ -1166,6 +1252,10 @@ def game_loop():
                         timers[ptype] = tleft
                 if timers:
                     state_copy["powerup_timers"][cid2] = timers
+                
+                # Boost bilgilerini ekle
+                boost_info = get_boost_info(cid2)
+                state_copy["boost_info"][cid2] = boost_info
             state_copy["golden_food"] = game_state["golden_food"]
             # Magnet efektlerini ekle
             if magnet_effects:
@@ -1233,6 +1323,16 @@ def on_ready(data):
     if "ready" not in game_state:
         game_state["ready"] = {}
     game_state["ready"][client_id] = True
+
+@socketio.on('activate_boost')
+def on_activate_boost(data):
+    client_id = data.get('client_id')
+    if client_id and client_id in game_state["snakes"]:
+        success = activate_boost(client_id)
+        if success:
+            emit('boost_activated', {"success": True})
+        else:
+            emit('boost_activated', {"success": False, "message": "Boost kullanılamıyor"})
 
 @socketio.on('easteregg')
 def on_easteregg(data):
@@ -1435,6 +1535,8 @@ def on_disconnect():
         game_state["scores"].pop(client_id, None)
         if "active_powerups" in game_state:
             game_state["active_powerups"].pop(client_id, None)
+        if "boost_system" in game_state:
+            game_state["boost_system"].pop(client_id, None)
         
         # Time Attack temizliği
         time_attack_module.remove_time_attack_game(client_id)

@@ -193,6 +193,114 @@
             font-size: 1.5em;
             margin-left: 12px;
         }
+        
+        /* Boost sistemi CSS */
+        #boost-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 200px;
+            height: 60px;
+            background: rgba(34, 34, 34, 0.8);
+            border-radius: 10px;
+            border: 2px solid #4caf50;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        #boost-bar {
+            width: 180px;
+            height: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+            margin-bottom: 5px;
+        }
+        
+        #boost-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4caf50, #8bc34a);
+            border-radius: 10px;
+            transition: width 0.1s ease;
+            width: 0%;
+        }
+        
+        #boost-cooldown {
+            height: 100%;
+            background: linear-gradient(90deg, #ff5722, #ff9800);
+            border-radius: 10px;
+            transition: width 0.1s ease;
+            width: 0%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        
+        #boost-text {
+            color: #fff;
+            font-size: 12px;
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        #boost-button {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            z-index: 10;
+        }
+        
+        /* Boost efektleri */
+        .boost-trail {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 5;
+            animation: boostFade 0.5s ease-out forwards;
+        }
+        
+        @keyframes boostFade {
+            0% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(0.5);
+            }
+        }
+        
+        .boost-particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 5;
+            animation: particleFade 0.8s ease-out forwards;
+        }
+        
+        @keyframes particleFade {
+            0% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(0) translateY(-20px);
+            }
+        }
         @media (orientation: portrait) {
             body {
                 min-width: 100vw;
@@ -554,6 +662,16 @@
         </div>
         <button class="touch-btn touch-btn-restart" id="btn-restart" style="display:none; align-self:flex-end; margin-left:12px;">⟳</button>
     </div>
+    
+    <!-- Boost sistemi -->
+    <div id="boost-container">
+        <div id="boost-bar">
+            <div id="boost-fill"></div>
+            <div id="boost-cooldown"></div>
+        </div>
+        <div id="boost-text">BOOST</div>
+        <button id="boost-button" onclick="activateBoost()"></button>
+    </div>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script>
     // --- Oyun parametreleri ---
@@ -591,7 +709,100 @@
     let chatInput = null;
     let chatMessages = null;
     let chatError = null;
+    
+    // Boost sistemi değişkenleri
+    let boostInfo = null;
+    let boostTrails = [];
+    let boostParticles = [];
+    let boostUpdateInterval = null;
 
+    // --- Boost sistemi fonksiyonları ---
+    function activateBoost() {
+        if (socket && myId) {
+            socket.emit('activate_boost', {client_id: myId});
+        }
+    }
+    
+    function updateBoostBar() {
+        const boostFill = document.getElementById('boost-fill');
+        const boostCooldown = document.getElementById('boost-cooldown');
+        const boostText = document.getElementById('boost-text');
+        const boostButton = document.getElementById('boost-button');
+        
+        // Sadece klasik modda ve oyuncu aktifse boost bar'ı güncelle
+        if (currentGameMode !== 'classic' || !gameState || !gameState.active || !gameState.active[myId]) {
+            boostFill.style.width = '0%';
+            boostCooldown.style.width = '0%';
+            boostText.textContent = 'BOOST';
+            boostButton.style.pointerEvents = 'none';
+            return;
+        }
+        
+        if (!boostInfo) {
+            boostFill.style.width = '0%';
+            boostCooldown.style.width = '0%';
+            boostText.textContent = 'BOOST';
+            boostButton.style.pointerEvents = 'none';
+            return;
+        }
+        
+        if (boostInfo.active) {
+            // Boost aktif
+            boostFill.style.width = (boostInfo.progress * 100) + '%';
+            boostCooldown.style.width = '0%';
+            boostText.textContent = 'BOOST AKTİF!';
+            boostButton.style.pointerEvents = 'none';
+        } else {
+            // Boost pasif
+            boostFill.style.width = '0%';
+            boostCooldown.style.width = (boostInfo.cooldown_progress * 100) + '%';
+            
+            if (boostInfo.cooldown_progress >= 1.0) {
+                boostText.textContent = 'BOOST HAZIR!';
+                boostButton.style.pointerEvents = 'auto';
+            } else {
+                boostText.textContent = 'BOOST BEKLİYOR...';
+                boostButton.style.pointerEvents = 'none';
+            }
+        }
+    }
+    
+    function createBoostEffect(x, y, color) {
+        // Trail efekti
+        const trail = document.createElement('div');
+        trail.className = 'boost-trail';
+        trail.style.left = (x - 10) + 'px';
+        trail.style.top = (y - 10) + 'px';
+        trail.style.backgroundColor = color;
+        trail.style.boxShadow = `0 0 10px ${color}`;
+        document.body.appendChild(trail);
+        
+        // 0.5 saniye sonra trail'i kaldır
+        setTimeout(() => {
+            if (trail.parentNode) {
+                trail.parentNode.removeChild(trail);
+            }
+        }, 500);
+        
+        // Particle efektleri
+        for (let i = 0; i < 5; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'boost-particle';
+            particle.style.left = (x + Math.random() * 20 - 10) + 'px';
+            particle.style.top = (y + Math.random() * 20 - 10) + 'px';
+            particle.style.backgroundColor = color;
+            particle.style.boxShadow = `0 0 5px ${color}`;
+            document.body.appendChild(particle);
+            
+            // 0.8 saniye sonra particle'ı kaldır
+            setTimeout(() => {
+                if (particle.parentNode) {
+                    particle.parentNode.removeChild(particle);
+                }
+            }, 800);
+        }
+    }
+    
     // --- Görselleri yükle ---
     const assetFiles = {
         apple: 'assets/elma.png',
@@ -635,6 +846,26 @@
             const loadingOverlay = document.getElementById('loading-overlay');
             loadingOverlay.classList.remove('show');
             
+            // Boost bilgilerini güncelle
+            if (state.boost_info && myId && state.boost_info[myId]) {
+                const oldBoostActive = boostInfo ? boostInfo.active : false;
+                boostInfo = state.boost_info[myId];
+                
+                // Boost yeni aktifleştiyse efekt oluştur
+                if (boostInfo.active && !oldBoostActive) {
+                    // Yılanın baş pozisyonunda efekt oluştur
+                    if (state.snakes && state.snakes[myId] && state.snakes[myId].length > 0) {
+                        const head = state.snakes[myId][0];
+                        const x = head[0] * CELL_SIZE + canvas.offsetLeft;
+                        const y = head[1] * CELL_SIZE + canvas.offsetTop;
+                        const color = state.colors[myId] || '#4caf50';
+                        createBoostEffect(x, y, color);
+                    }
+                }
+                
+                updateBoostBar();
+            }
+            
             // Yem yeme kontrolü - önceki state ile karşılaştır
             if (gameState && gameState.food && state.food) {
                 // Yem sayısı azaldıysa patlama efekti oluştur
@@ -669,6 +900,14 @@
             currentGameMode = 'timeAttack';
             currentDifficulty = data.difficulty;
             showTimeAttackUI();
+        });
+        
+        socket.on('boost_activated', (data) => {
+            if (data.success) {
+                console.log('Boost başarıyla aktifleştirildi!');
+            } else {
+                console.log('Boost aktifleştirilemedi:', data.message);
+            }
         });
         
         socket.on('time_attack_state', (state) => {
@@ -847,6 +1086,21 @@
                         }
                         
                         createSmokeEffect(smokeX, smokeY, 'nebula');
+                    }
+                    
+                    // Boost aktifse trail ve particle efektleri
+                    if (gameState.boost_info && gameState.boost_info[pid] && 
+                        gameState.boost_info[pid].active && snake.length > 0) {
+                        const head = snake[0];
+                        const headX = head[0] * CELL_SIZE + CELL_SIZE / 2;
+                        const headY = head[1] * CELL_SIZE + CELL_SIZE / 2;
+                        const color = colorInfo ? colorInfo.hex : (pid === myId ? 'lime' : 'yellow');
+                        
+                        // Boost trail efekti
+                        createBoostTrail(headX, headY, color);
+                        
+                        // Boost particle efektleri
+                        createBoostParticles(headX, headY, color);
                     }
                     
                     // Shield power-up aktifse aura efekti
@@ -1464,6 +1718,7 @@
         updateAndDrawExplosions(ctx);
         updateAndDrawSmoke(ctx);
         updateAndDrawShieldAuras(ctx); // Shield aurasını çiz
+        updateAndDrawBoostEffects(ctx); // Boost efektlerini çiz
     }
 
     // --- Skor tablosu ---
@@ -1592,6 +1847,11 @@
         // Klasik mod için currentGameMode'u ayarla
         if (!currentGameMode || currentGameMode === 'classic') {
             currentGameMode = 'classic';
+            // Boost container'ı göster
+            document.getElementById('boost-container').style.display = 'flex';
+            // Boost bar güncelleme interval'ini başlat
+            if (boostUpdateInterval) clearInterval(boostUpdateInterval);
+            boostUpdateInterval = setInterval(updateBoostBar, 100);
         }
         
         // Canvas'ı boyutlandır
@@ -1634,6 +1894,7 @@
         document.getElementById('top-usernames').style.display = 'none';
         document.getElementById('top-usernames').innerHTML = '';
         document.getElementById('game-container').style.display = 'none';
+        document.getElementById('boost-container').style.display = 'none';
         document.getElementById('mode-ui').style.display = 'none';
         document.getElementById('difficulty-ui').style.display = 'none';
         document.getElementById('main-menu-btn').style.display = 'none';
@@ -1647,6 +1908,12 @@
         if (timeAttackUI) timeAttackUI.remove();
         hideRespawnMessage();
         hideEagleEggScreen();
+        
+        // Boost interval'ini temizle
+        if (boostUpdateInterval) {
+            clearInterval(boostUpdateInterval);
+            boostUpdateInterval = null;
+        }
 
         // Kullanıcı adı ekranına dön ve input'u temizle
         const input = document.getElementById('nicknameInput');
@@ -3226,6 +3493,86 @@
         for (const particle of smokeParticles) {
             particle.update();
             particle.draw(ctx);
+        }
+    }
+    
+    // Boost efekt fonksiyonları
+    function createBoostTrail(x, y, color) {
+        // Boost trail efekti - yılanın renginde iz bırakır
+        const trail = {
+            x: x,
+            y: y,
+            color: color,
+            life: 1.0,
+            size: 15 + Math.random() * 10
+        };
+        
+        boostTrails.push(trail);
+        
+        // Trail sayısını sınırla
+        if (boostTrails.length > 20) {
+            boostTrails.shift();
+        }
+    }
+    
+    function createBoostParticles(x, y, color) {
+        // Boost particle efektleri - yılanın renginde parçacıklar
+        for (let i = 0; i < 3; i++) {
+            const particle = {
+                x: x + (Math.random() - 0.5) * 20,
+                y: y + (Math.random() - 0.5) * 20,
+                vx: (Math.random() - 0.5) * 4,
+                vy: (Math.random() - 0.5) * 4,
+                color: color,
+                life: 1.0,
+                size: 3 + Math.random() * 3
+            };
+            
+            boostParticles.push(particle);
+        }
+        
+        // Particle sayısını sınırla
+        if (boostParticles.length > 50) {
+            boostParticles.splice(0, boostParticles.length - 50);
+        }
+    }
+    
+    function updateAndDrawBoostEffects(ctx) {
+        // Boost trail'larını güncelle ve çiz
+        boostTrails = boostTrails.filter(trail => trail.life > 0);
+        
+        for (const trail of boostTrails) {
+            trail.life -= 0.02;
+            
+            ctx.save();
+            ctx.globalAlpha = trail.life;
+            ctx.fillStyle = trail.color;
+            ctx.shadowColor = trail.color;
+            ctx.shadowBlur = 10;
+            ctx.beginPath();
+            ctx.arc(trail.x, trail.y, trail.size * trail.life, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+        
+        // Boost particle'larını güncelle ve çiz
+        boostParticles = boostParticles.filter(particle => particle.life > 0);
+        
+        for (const particle of boostParticles) {
+            particle.x += particle.vx;
+            particle.y += particle.vy;
+            particle.life -= 0.01;
+            particle.size *= 0.99;
+            
+            ctx.save();
+            ctx.globalAlpha = particle.life;
+            ctx.fillStyle = particle.color;
+            ctx.shadowColor = particle.color;
+            ctx.shadowBlur = 5;
+            ctx.beginPath();
+            ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
         }
     }
 
