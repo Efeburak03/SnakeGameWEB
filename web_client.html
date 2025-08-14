@@ -724,6 +724,9 @@
         const boostCooldown = document.getElementById('boost-cooldown');
         const boostText = document.getElementById('boost-text');
         
+        // Debug: Boost bar durumunu logla
+        console.log('UpdateBoostBar - spacePressed:', spacePressed, 'boostInfo:', boostInfo);
+        
         // Sadece klasik modda ve oyuncu aktifse boost bar'ı güncelle
         if (currentGameMode !== 'classic' || !gameState || !gameState.active || !gameState.active[myId]) {
             boostFill.style.width = '0%';
@@ -848,6 +851,9 @@
             if (state.boost_info && myId && state.boost_info[myId]) {
                 const oldBoostActive = boostInfo ? boostInfo.active : false;
                 boostInfo = state.boost_info[myId];
+                
+                // Debug: Boost bilgilerini logla
+                console.log('Boost Info:', boostInfo);
                 
                 // Boost yeni aktifleştiyse efekt oluştur
                 if (boostInfo.active && !oldBoostActive) {
@@ -3576,7 +3582,8 @@
             ctx.shadowColor = trail.color;
             ctx.shadowBlur = 10;
             ctx.beginPath();
-            ctx.arc(trail.x, trail.y, trail.size * trail.life, 0, Math.PI * 2);
+            const radius = Math.max(0.1, trail.size * trail.life);
+            ctx.arc(trail.x, trail.y, radius, 0, Math.PI * 2);
             ctx.fill();
             ctx.restore();
         }
@@ -3596,7 +3603,8 @@
             ctx.shadowColor = particle.color;
             ctx.shadowBlur = 5;
             ctx.beginPath();
-            ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+            const particleRadius = Math.max(0.1, particle.size);
+            ctx.arc(particle.x, particle.y, particleRadius, 0, Math.PI * 2);
             ctx.fill();
             ctx.restore();
         }
@@ -4085,7 +4093,7 @@
     
     // T tuşu ile chat toggle
     document.addEventListener('keydown', (e) => {
-        if (e.key.toLowerCase() === 't' && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        if (e.key && e.key.toLowerCase() === 't' && !e.ctrlKey && !e.altKey && !e.metaKey) {
             e.preventDefault();
             toggleChat();
         }

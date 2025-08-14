@@ -241,15 +241,19 @@ def activate_boost(client_id):
     
     # Eğer boost zaten aktifse, sadece space_pressed'i güncelle
     if boost_data["active"]:
+        print(f"Boost zaten aktif: {client_id}")
         return True
     
     # Eğer cooldown'daysa, işlem yapma
     if now < boost_data["cooldown_end"]:
+        remaining_cooldown = boost_data["cooldown_end"] - now
+        print(f"Boost cooldown'da: {client_id}, kalan süre: {remaining_cooldown:.1f}s")
         return False
     
     # Boost'u aktifleştir
     boost_data["active"] = True
     boost_data["start_time"] = now
+    print(f"Boost aktifleştirildi: {client_id}")
     return True
 
 def deactivate_boost(client_id):
@@ -269,10 +273,12 @@ def update_boost_system():
             if not boost_data["space_pressed"]:
                 boost_data["active"] = False
                 boost_data["cooldown_end"] = now + BOOST_COOLDOWN
+                print(f"Boost durduruldu (space bırakıldı): {client_id}")
             # Boost süresi doldu mu kontrol et
             elif now - boost_data["start_time"] >= BOOST_DURATION:
                 boost_data["active"] = False
                 boost_data["cooldown_end"] = now + BOOST_COOLDOWN
+                print(f"Boost durduruldu (süre doldu): {client_id}")
 
 def is_boost_active(client_id):
     """Boost aktif mi kontrol et"""
