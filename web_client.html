@@ -3142,26 +3142,26 @@
         constructor(x, y) {
             this.x = x;
             this.y = y;
-            this.vx = (Math.random() - 0.5) * 2;
-            this.vy = (Math.random() - 0.5) * 2;
-            this.life = 1.2; // Daha uzun yaşam süresi
-            this.decay = 0.025; // Daha yavaş yok olma
-            this.size = Math.random() * 12 + 6; // Daha büyük boyut
-            this.opacity = 0.8; // Daha yüksek opaklık
+            this.vx = (Math.random() - 0.5) * 1.5; // Daha yavaş hareket
+            this.vy = (Math.random() - 0.5) * 1.5;
+            this.life = 1.5; // Daha uzun yaşam süresi
+            this.decay = 0.02; // Daha yavaş yok olma
+            this.size = Math.random() * 8 + 4; // Daha küçük boyut
+            this.opacity = 0.5; // Daha düşük opaklık
             
-            // Nebula renkleri - mor, mavi, pembe tonları
+            // Nebula renkleri - daha yumuşak tonlar
             this.colors = [
                 '#8B5CF6', // Mor
                 '#7C3AED', // Koyu mor
                 '#A855F7', // Açık mor
                 '#EC4899', // Pembe
                 '#F59E8B', // Mercan
-                '#8B5A2B', // Kahverengi
                 '#6B46C1', // Lavanta
-                '#9F7AEA'  // Açık lavanta
+                '#9F7AEA', // Açık lavanta
+                '#C084FC'  // Çok açık mor
             ];
             this.color = this.colors[Math.floor(Math.random() * this.colors.length)];
-            this.pulseSpeed = Math.random() * 0.08 + 0.03; // Daha hızlı pulse
+            this.pulseSpeed = Math.random() * 0.05 + 0.02; // Daha yavaş pulse
             this.pulsePhase = Math.random() * Math.PI * 2;
         }
         
@@ -3169,8 +3169,8 @@
             this.x += this.vx;
             this.y += this.vy;
             this.life -= this.decay;
-            this.size *= 1.03; // Daha hızlı büyüme
-            this.opacity *= 0.97; // Daha yavaş solma
+            this.size *= 1.02; // Daha yavaş büyüme
+            this.opacity *= 0.98; // Daha yavaş solma
             this.pulsePhase += this.pulseSpeed;
         }
         
@@ -3180,12 +3180,12 @@
             ctx.save();
             
             // Pulse efekti
-            const pulse = 0.8 + 0.2 * Math.sin(this.pulsePhase);
+            const pulse = 0.9 + 0.1 * Math.sin(this.pulsePhase);
             const alpha = this.opacity * this.life * pulse;
             
-            // Güçlü glow efekti
+            // Hafif glow efekti
             ctx.shadowColor = this.color;
-            ctx.shadowBlur = 15; // Daha fazla blur
+            ctx.shadowBlur = 8; // Daha az blur
             
             // Ana parçacık
             ctx.globalAlpha = alpha;
@@ -3194,18 +3194,11 @@
             ctx.arc(this.x, this.y, this.size, 0, 2 * Math.PI);
             ctx.fill();
             
-            // İç parçacık (daha parlak)
-            ctx.globalAlpha = alpha * 0.7;
+            // İç parçacık (daha az parlak)
+            ctx.globalAlpha = alpha * 0.4;
             ctx.fillStyle = '#ffffff';
             ctx.beginPath();
-            ctx.arc(this.x, this.y, this.size * 0.6, 0, 2 * Math.PI);
-            ctx.fill();
-            
-            // Merkez parçacık (en parlak)
-            ctx.globalAlpha = alpha * 0.9;
-            ctx.fillStyle = '#ffffff';
-            ctx.beginPath();
-            ctx.arc(this.x, this.y, this.size * 0.3, 0, 2 * Math.PI);
+            ctx.arc(this.x, this.y, this.size * 0.7, 0, 2 * Math.PI);
             ctx.fill();
             
             ctx.shadowBlur = 0;
@@ -3216,7 +3209,7 @@
     function createSmokeEffect(x, y, type = 'normal') {
         if (type === 'nebula') {
             // Nebula duman efekti - daha fazla parçacık
-            for (let i = 0; i < 5; i++) {
+            for (let i = 0; i < 8; i++) {
                 smokeParticles.push(new NebulaSmokeParticle(x, y));
             }
         } else {
