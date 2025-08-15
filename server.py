@@ -589,6 +589,7 @@ async def game_loop():
 # --- Zırh etkisi: move_snake içinde çarpışma kontrolünde uygula ---
 MAX_SNAKE_LENGTH = 10
 def move_snake(client_id):
+    shielded = has_powerup(client_id, "shield")
     if not game_state["active"].get(client_id, True):
         return
     direction = game_state["directions"].get(client_id)
