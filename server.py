@@ -612,8 +612,8 @@ def move_snake(client_id):
     # --- Kendine çarpma kontrolü - YENİ BAŞ POZİSYONU HESAPLANDIKTAN SONRA, VÜCUDA EKLENMEDEN ÖNCE ---
     # Yeni baş pozisyonu yılanın mevcut vücuduyla çakışıyor mu kontrol et
     if len(snake) > 1 and new_head in snake[1:]:  # Yeni baş, mevcut vücudun geri kalanında var mı?
-        if shielded:
-            # Shield aktifken kendine çarpmadan geç, shield'i kaldırma
+        if shielded or is_boost_active(client_id):
+            # Shield veya boost aktifken kendine çarpmadan geç, shield'i kaldırma
             pass
         else:
             eliminate_snake(client_id)
@@ -654,7 +654,7 @@ def move_snake(client_id):
             break
     # Engel kontrolü
     shielded = has_powerup(client_id, "shield")
-    if not shielded:
+    if not shielded and not is_boost_active(client_id):
         for obs in game_state.get("obstacles", []):
             if new_head == tuple(obs["pos"]):
                 if obs["type"] == "slow":
@@ -665,7 +665,6 @@ def move_snake(client_id):
                     current_score = game_state["scores"].get(client_id, 0)
                     if current_score > 0:
                         game_state["scores"][client_id] = current_score - 1
-                    
                     if len(snake) > 1:
                         snake.pop()
                     else:
@@ -689,8 +688,8 @@ def move_snake(client_id):
     shielded = has_powerup(client_id, "shield")
     out_of_bounds = not (0 <= new_head[0] < BOARD_WIDTH and 0 <= new_head[1] < BOARD_HEIGHT)
     if out_of_bounds:
-        if shielded:
-            # Shield aktifken duvardan geç, shield'i kaldırma
+        if shielded or is_boost_active(client_id):
+            # Shield veya boost aktifken duvardan geç, shield'i kaldırma
             nx, ny = new_head
             if nx < 0:
                 nx = BOARD_WIDTH - 1
@@ -757,10 +756,11 @@ def move_snake(client_id):
     # --- İZ ÇARPIŞMA KONTROLÜ ---
     # Kendi izine veya başkasının izine çarparsa elenir
     head = snake[0]
-    for trail_owner, trail_blocks in game_state["trails"].items():
-        if head in trail_blocks:
-            eliminate_snake(client_id)
-            return
+    if not is_boost_active(client_id):
+        for trail_owner, trail_blocks in game_state["trails"].items():
+            if head in trail_blocks:
+                eliminate_snake(client_id)
+                return
 
 # Hareket buffer sistemi - her oyuncu için son hareket komutlarını sakla
 player_move_buffers = {}  # client_id: [move_commands]
