@@ -735,14 +735,6 @@
             return;
         }
         
-        // Space tuşu basılıysa boost aktif
-        if (spacePressed && boostInfo && boostInfo.cooldown_progress >= 1.0) {
-            boostFill.style.width = '100%';
-            boostCooldown.style.width = '0%';
-            boostText.textContent = 'BOOST AKTİF!';
-            return;
-        }
-        
         if (!boostInfo) {
             boostFill.style.width = '0%';
             boostCooldown.style.width = '0%';
@@ -750,16 +742,15 @@
             return;
         }
         
-        if (boostInfo.active) {
-            // Boost aktif
+        // Boost aktif veya space basılıysa kalan süre oranını göster
+        if (boostInfo.progress > 0) {
             boostFill.style.width = (boostInfo.progress * 100) + '%';
             boostCooldown.style.width = '0%';
-            boostText.textContent = 'BOOST AKTİF!';
+            boostText.textContent = boostInfo.active ? 'BOOST AKTİF!' : 'BOOST (SPACE)';
         } else {
-            // Boost pasif
+            // Boost bitti, cooldown göster
             boostFill.style.width = '0%';
             boostCooldown.style.width = (boostInfo.cooldown_progress * 100) + '%';
-            
             if (boostInfo.cooldown_progress >= 1.0) {
                 boostText.textContent = 'BOOST HAZIR! (SPACE)';
             } else {

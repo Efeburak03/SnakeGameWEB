@@ -164,7 +164,8 @@ def reset_snake(client_id):
             "active": False,
             "start_time": 0,
             "cooldown_end": 0,
-            "space_pressed": False
+            "space_pressed": False,
+            "remaining_time": BOOST_DURATION
         }
     if len(game_state["snakes"]) == 1:
         game_state["obstacles"] = place_obstacles()  # Sadece ilk oyuncu girince engelleri yerleştir
@@ -220,7 +221,7 @@ def clear_expired_powerups():
             del game_state["trails"][cid]
 
 # --- Boost sistemi fonksiyonları ---
-BOOST_DURATION = 6.0  # Boost aktiflik süresi (saniye)
+BOOST_DURATION = 6.0  # Boost toplam kullanılabilir süresi (saniye)
 BOOST_COOLDOWN = 30.0  # Boost cooldown süresi (saniye)
 
 def activate_boost(client_id):
@@ -231,55 +232,69 @@ def activate_boost(client_id):
             "active": False,
             "start_time": 0,
             "cooldown_end": 0,
-            "space_pressed": False
+            "space_pressed": False,
+            "remaining_time": BOOST_DURATION
         }
-    
     boost_data = game_state["boost_system"][client_id]
-    
-    # Space tuşu basıldı
     boost_data["space_pressed"] = True
-    
-    # Eğer boost zaten aktifse, sadece space_pressed'i güncelle
-    if boost_data["active"]:
-        print(f"Boost zaten aktif: {client_id}")
-        return True
-    
     # Eğer cooldown'daysa, işlem yapma
     if now < boost_data["cooldown_end"]:
-        remaining_cooldown = boost_data["cooldown_end"] - now
-        print(f"Boost cooldown'da: {client_id}, kalan süre: {remaining_cooldown:.1f}s")
         return False
-    
+    # Eğer boost süresi bittiyse, işlem yapma
+    if boost_data.get("remaining_time", BOOST_DURATION) <= 0:
+        return False
+    # Eğer boost zaten aktifse, sadece space_pressed'i güncelle
+    if boost_data["active"]:
+        return True
     # Boost'u aktifleştir
     boost_data["active"] = True
     boost_data["start_time"] = now
-    print(f"Boost aktifleştirildi: {client_id}")
+    boost_data["last_tick_time"] = now
     return True
 
 def deactivate_boost(client_id):
     """Boost'u deaktifleştir (space tuşu bırakıldığında)"""
     if client_id not in game_state["boost_system"]:
         return
-    
     boost_data = game_state["boost_system"][client_id]
     boost_data["space_pressed"] = False
+    # Boost aktifse, kalan süreyi güncelle ve boost'u durdur
+    if boost_data["active"]:
+        now = time.time()
+        elapsed = now - boost_data.get("last_tick_time", now)
+        boost_data["remaining_time"] = max(0, boost_data.get("remaining_time", BOOST_DURATION) - elapsed)
+        boost_data["last_tick_time"] = now
+        if boost_data["remaining_time"] <= 0:
+            boost_data["active"] = False
+            boost_data["last_tick_time"] = now
+            boost_data["cooldown_end"] = now + BOOST_COOLDOWN
 
 def update_boost_system():
     """Boost sistemini güncelle"""
     now = time.time()
     for client_id, boost_data in list(game_state["boost_system"].items()):
-        if boost_data["active"]:
-            # Space tuşu bırakıldıysa boost'u durdur
-            if not boost_data["space_pressed"]:
+        # Boost aktifse ve space basılıysa kalan süreyi azalt
+        if boost_data["active"] and boost_data["space_pressed"]:
+            elapsed = now - boost_data.get("last_tick_time", now)
+            boost_data["remaining_time"] = max(0, boost_data.get("remaining_time", BOOST_DURATION) - elapsed)
+            boost_data["last_tick_time"] = now
+            # Kalan süre bittiyse boost'u durdur ve cooldown başlat
+            if boost_data["remaining_time"] <= 0:
                 boost_data["active"] = False
+                boost_data["last_tick_time"] = now
                 boost_data["cooldown_end"] = now + BOOST_COOLDOWN
-                print(f"Boost durduruldu (space bırakıldı): {client_id}")
-            # Boost süresi doldu mu kontrol et
-            elif now - boost_data["start_time"] >= BOOST_DURATION:
-                boost_data["active"] = False
+        # Space bırakıldıysa boost'u durdur
+        elif boost_data["active"] and not boost_data["space_pressed"]:
+            elapsed = now - boost_data.get("last_tick_time", now)
+            boost_data["remaining_time"] = max(0, boost_data.get("remaining_time", BOOST_DURATION) - elapsed)
+            boost_data["active"] = False
+            boost_data["last_tick_time"] = now
+            if boost_data["remaining_time"] <= 0:
                 boost_data["cooldown_end"] = now + BOOST_COOLDOWN
-                print(f"Boost durduruldu (süre doldu): {client_id}")
-
+        # Cooldown bittiyse ve kalan süre 0 ise, boost'u tekrar doldur
+        if now >= boost_data["cooldown_end"] and boost_data["remaining_time"] <= 0:
+            boost_data["remaining_time"] = BOOST_DURATION
+    
 def is_boost_active(client_id):
     """Boost aktif mi kontrol et"""
     if client_id not in game_state["boost_system"]:
@@ -290,35 +305,24 @@ def get_boost_info(client_id):
     """Boost bilgilerini döndür"""
     if client_id not in game_state["boost_system"]:
         return {"active": False, "progress": 0, "cooldown_progress": 0}
-    
     boost_data = game_state["boost_system"][client_id]
     now = time.time()
-    
-    if boost_data["active"]:
-        # Boost aktif, progress hesapla
-        elapsed = now - boost_data["start_time"]
-        progress = min(1.0, elapsed / BOOST_DURATION)
-        return {
-            "active": True,
-            "progress": progress,
-            "cooldown_progress": 0
-        }
+    # Boost aktifse veya space basılıysa kalan süre oranını göster
+    if boost_data.get("remaining_time", BOOST_DURATION) > 0:
+        progress = boost_data.get("remaining_time", BOOST_DURATION) / BOOST_DURATION
     else:
-        # Boost pasif, cooldown progress hesapla
-        if now < boost_data["cooldown_end"]:
-            cooldown_elapsed = now - (boost_data["cooldown_end"] - BOOST_COOLDOWN)
-            cooldown_progress = min(1.0, cooldown_elapsed / BOOST_COOLDOWN)
-            return {
-                "active": False,
-                "progress": 0,
-                "cooldown_progress": cooldown_progress
-            }
-        else:
-            return {
-                "active": False,
-                "progress": 0,
-                "cooldown_progress": 1.0  # Hazır
-            }
+        progress = 0
+    # Cooldown'daysa cooldown_progress'u hesapla
+    if now < boost_data["cooldown_end"]:
+        cooldown_elapsed = now - (boost_data["cooldown_end"] - BOOST_COOLDOWN)
+        cooldown_progress = min(1.0, cooldown_elapsed / BOOST_COOLDOWN)
+    else:
+        cooldown_progress = 1.0
+    return {
+        "active": boost_data["active"],
+        "progress": progress,
+        "cooldown_progress": cooldown_progress
+    }
 
 def eliminate_snake(client_id):
     game_state["active"][client_id] = False
