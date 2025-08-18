@@ -575,16 +575,16 @@
     
     <!-- Mod Seçimi Ekranı -->
     <div id="mode-ui" style="display:none;">
-        <h1>Oyun Modu Seçin</h1>
+        <h1>Select Game Mode</h1>
         <div class="error-msg" id="mode-error"></div>
         <div class="mode-buttons">
             <button class="mode-btn" data-mode="classic">
-                <h3>Klasik Mod</h3>
+                <h3>Classic Mod</h3>
                 <p>Multiplayer competition</p>
             </button>
             <button class="mode-btn" data-mode="timeAttack">
                 <h3>Time Attack</h3>
-                <p>Solo zaman yarışı</p>
+                <p> Solo </p>
             </button>
 
         </div>
@@ -960,6 +960,9 @@
             }
         });
         
+        socket.on('show_eagle_egg', function() {
+            showEagleEggScreen();
+        });
 
     }
 

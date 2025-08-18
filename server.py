@@ -1377,6 +1377,8 @@ def on_deactivate_boost(data):
 def on_easteregg(data):
     for cid in list(game_state["snakes"].keys()):
         eliminate_snake(cid)
+    # Tüm istemcilere eagle egg gösterme eventi gönder
+    socketio.emit('show_eagle_egg')
 
 # --- Time Attack Event Handler'ları ---
 @socketio.on('start_time_attack')
