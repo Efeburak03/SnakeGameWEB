@@ -569,7 +569,7 @@
     <div id="ui">
         <h1>Snake Game</h1>
         <div class="error-msg" id="ui-error"></div>
-        <input id="nicknameInput" type="text" maxlength="16" placeholder="Kullanıcı adı" />
+        <input id="nicknameInput" type="text" maxlength="16" placeholder="Username" />
         <button id="startBtn">Devam Et</button>
     </div>
     
@@ -746,15 +746,15 @@
         if (boostInfo.progress > 0) {
             boostFill.style.width = (boostInfo.progress * 100) + '%';
             boostCooldown.style.width = '0%';
-            boostText.textContent = boostInfo.active ? 'BOOST AKTİF!' : 'BOOST (SPACE)';
+            boostText.textContent = boostInfo.active ? 'BOOST ACTIVE!' : 'BOOST (SPACE)';
         } else {
             // Boost bitti, cooldown göster
             boostFill.style.width = '0%';
             boostCooldown.style.width = (boostInfo.cooldown_progress * 100) + '%';
             if (boostInfo.cooldown_progress >= 1.0) {
-                boostText.textContent = 'BOOST HAZIR! (SPACE)';
+                boostText.textContent = 'BOOST READY! (SPACE)';
             } else {
-                boostText.textContent = 'BOOST BEKLİYOR...';
+                boostText.textContent = 'BOOST WAITING...';
             }
         }
     }
@@ -799,7 +799,7 @@
     const assetFiles = {
         apple: 'assets/elma.png',
         golden: 'assets/golden_apple.png',
-        grass: 'assets/çimen.png',
+        grass: 'assets/grass.png',
         enemy: 'assets/enemy.png',
         portal: 'assets/portal.png',
         bg: 'assets/bg5.jpg',
@@ -899,9 +899,9 @@
         
         socket.on('boost_activated', (data) => {
             if (data.success) {
-                console.log('Boost başarıyla aktifleştirildi!');
+                console.log('Boost activated successfully!');
             } else {
-                console.log('Boost aktifleştirilemedi:', data.message);
+                console.log('Boost could not be activated:', data.message);
             }
         });
         
@@ -928,7 +928,7 @@
             loadingOverlay.classList.remove('show');
             
             const errorDiv = document.getElementById('ui-error');
-            errorDiv.textContent = err.message || 'Bağlantı hatası!';
+            errorDiv.textContent = err.message || 'Connection error!';
             document.getElementById('ui').style.display = 'flex';
             document.getElementById('game-container').style.display = 'none';
             document.getElementById('top-usernames').style.display = 'none';
@@ -1779,12 +1779,12 @@
         input.classList.remove('error');
         errorDiv.textContent = '';
         if (!nickname) {
-            errorDiv.textContent = 'Kullanıcı adı gir!';
+            errorDiv.textContent = 'Enter username!';
             input.classList.add('error');
             return;
         }
         if (nickname.length > 8) {
-            errorDiv.textContent = 'Kullanıcı adı en fazla 8 karakter olmalı!';
+            errorDiv.textContent = 'Username must be at most 8 characters!';
             input.classList.add('error');
             return;
         }
@@ -2091,7 +2091,7 @@
         img.style.maxWidth = '90vw';
         img.style.maxHeight = '90vh';
         img.onerror = function() {
-            overlay.innerHTML = '<div style="color:white;font-size:2em;">Eagle PNG yüklenemedi! (' + img.src + ')</div>';
+            overlay.innerHTML = '<div style="color:white;font-size:2em;">Eagle PNG could not be loaded! (' + img.src + ')</div>';
         };
         img.onload = function() {
         };
@@ -3604,56 +3604,56 @@
     // Renk bazlı efekt sistemi
     const COLOR_EFFECTS = {
         "nature": {
-            name: "Doğa",
+            name: "Nature",
             particles: "leaf",
             glow: "#00ff40",
             trail: "#00ff00"
         },
         "fire": {
-            name: "Ateş", 
+            name: "Fire", 
             particles: "fire",
             glow: "#ffaa00",
             trail: "#ff6600"
         },
         "ice": {
-            name: "Buz",
+            name: "Ice",
             particles: "ice",
             glow: "#00ffff", 
             trail: "#00ccff"
         },
         "magic": {
-            name: "Sihir",
+            name: "Magic",
             particles: "magic",
             glow: "#ff00ff",
             trail: "#cc00ff"
         },
         "energy": {
-            name: "Enerji",
+            name: "Energy",
             particles: "energy", 
             glow: "#ff6600",
             trail: "#ff4400"
         },
         "cosmic": {
-            name: "Kozmik",
+            name: "Cosmic",
             particles: "star",
             glow: "#6600ff",
             trail: "#4400ff"
         },
         "blood": {
-            name: "Kan",
+            name: "Blood",
             particles: "blood",
             glow: "#ff0000",
             trail: "#cc0000"
         },
         "water": {
-            name: "Su",
+            name: "Water",
             particles: "water",
             glow: "#0080ff",
             trail: "#0066cc"
         },
 
         "gold": {
-            name: "Altın",
+            name: "Gold",
             particles: "gold",
             glow: "#ffd700",
             trail: "#ffcc00"
@@ -4031,7 +4031,7 @@
         
         let messageText = '';
         if (chatData.type === 'whisper') {
-            messageText = `<span class="timestamp">[${timestamp}]</span><span class="player-name" style="color: ${chatData.sender_color}">${chatData.sender_name}</span> fısıldadı: <span class="message-text">${chatData.message}</span>`;
+            messageText = `<span class="timestamp">[${timestamp}]</span><span class="player-name" style="color: ${chatData.sender_color}">${chatData.sender_name}</span> whispered: <span class="message-text">${chatData.message}</span>`;
         } else {
             messageText = `<span class="timestamp">[${timestamp}]</span><span class="player-name" style="color: ${chatData.sender_color}">${chatData.sender_name}</span>: <span class="message-text">${chatData.message}</span>`;
         }
