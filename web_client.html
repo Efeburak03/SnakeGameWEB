@@ -211,6 +211,15 @@
             z-index: 1000;
         }
         
+        /* Mobil cihazlarda boost barını sol alt köşeye taşı */
+        @media (max-width: 900px) {
+            #boost-container {
+                left: 20px;
+                right: auto;
+                bottom: 100px; /* Dokunmatik kontrollerden biraz yukarıda */
+            }
+        }
+        
         #boost-bar {
             width: 180px;
             height: 20px;
